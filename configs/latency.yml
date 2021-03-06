@@ -1,0 +1,27 @@
+# Author: baichen318@gmail.com
+
+## Parse data
+
+# original data
+data-path: /research/d3/cbai/research/chipyard/vlsi/build
+# power | latency | area
+mode: latency
+# output data
+output-path: data/latency.csv
+# configuration name
+config-name:
+  - chipyard.TestHarness.GigaBoomProConfig-ChipTop 
+  - chipyard.TestHarness.GigaBoomConfig-ChipTop
+  - chipyard.TestHarness.GigaBoomSEConfig-ChipTop
+  - chipyard.TestHarness.MegaBoomProConfig-ChipTop
+  - chipyard.TestHarness.MegaBoomConfig-ChipTop
+  - chipyard.TestHarness.MegaBoomSEConfig-ChipTop
+  - chipyard.TestHarness.LargeBoomProConfig-ChipTop
+  - chipyard.TestHarness.LargeBoomConfig-ChipTop
+  - chipyard.TestHarness.LargeBoomSEConfig-ChipTop
+  - chipyard.TestHarness.MediumBoomProConfig-ChipTop
+  - chipyard.TestHarness.MediumBoomConfig-ChipTop
+  - chipyard.TestHarness.MediumBoomSEConfig-ChipTop
+  - chipyard.TestHarness.SmallBoomProConfig-ChipTop
+  - chipyard.TestHarness.SmallBoomConfig-ChipTop
+  - chipyard.TestHarness.SmallBoomProConfig-ChipTop

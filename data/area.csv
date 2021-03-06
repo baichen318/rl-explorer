@@ -1,0 +1,16 @@
+Configure,Area
+chipyard.TestHarness.GigaBoomProConfig-ChipTop,4796647
+chipyard.TestHarness.GigaBoomConfig-ChipTop,4521749
+chipyard.TestHarness.GigaBoomSEConfig-ChipTop,4301943
+chipyard.TestHarness.MegaBoomProConfig-ChipTop,4204171
+chipyard.TestHarness.MegaBoomConfig-ChipTop,4036686
+chipyard.TestHarness.MegaBoomSEConfig-ChipTop,3358280
+chipyard.TestHarness.LargeBoomProConfig-ChipTop,3736023
+chipyard.TestHarness.LargeBoomConfig-ChipTop,2922862
+chipyard.TestHarness.LargeBoomSEConfig-ChipTop,2770908
+chipyard.TestHarness.MediumBoomProConfig-ChipTop,2668559
+chipyard.TestHarness.MediumBoomConfig-ChipTop,1755841
+chipyard.TestHarness.MediumBoomSEConfig-ChipTop,1610675
+chipyard.TestHarness.SmallBoomProConfig-ChipTop,1905521
+chipyard.TestHarness.SmallBoomConfig-ChipTop,1423458
+chipyard.TestHarness.SmallBoomProConfig-ChipTop,1905521
