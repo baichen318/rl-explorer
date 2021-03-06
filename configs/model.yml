@@ -1,0 +1,27 @@
+
+# Author: baichen318@gmail.com
+
+output-path: models/xgb_regressor.mdl
+
+config-name:
+  - GigaBoomProConfig
+  - GigaBoomConfig
+  - GigaBoomSEConfig
+  - MegaBoomProConfig
+  - MegaBoomConfig
+  - MegaBoomSEConfig
+  - LargeBoomProConfig
+  - LargeBoomConfig
+  - LargeBoomSEConfig
+  - MediumBoomProConfig
+  - MediumBoomConfig
+  - MediumBoomSEConfig
+  - SmallBoomProConfig
+  - SmallBoomConfig
+  - SmallBoomSEConfig
+
+benchmark-name:
+  - fft.riscv
+  - sqrt.riscv
+  - whetstone.riscv
+  - hello_world_large.riscv
