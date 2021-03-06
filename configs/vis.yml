@@ -1,0 +1,22 @@
+# Author: baichen318@gmail.com
+
+output-path: data/
+
+config-name:
+  - GigaBoomProConfig 
+  - GigaBoomConfig
+  - GigaBoomSEConfig
+  - MegaBoomProConfig
+  - MegaBoomConfig
+  - MegaBoomSEConfig
+  - LargeBoomProConfig
+  - LargeBoomConfig
+  - LargeBoomSEConfig
+  - MediumBoomProConfig
+  - MediumBoomConfig
+  - MediumBoomSEConfig
+  - SmallBoomProConfig
+  - SmallBoomConfig
+  - SmallBoomSEConfig
+benchmark-name:
+  - whetstone.riscv

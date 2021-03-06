@@ -24,4 +24,4 @@ config-name:
   - chipyard.TestHarness.MediumBoomSEConfig-ChipTop
   - chipyard.TestHarness.SmallBoomProConfig-ChipTop
   - chipyard.TestHarness.SmallBoomConfig-ChipTop
-  - chipyard.TestHarness.SmallBoomProConfig-ChipTop
+  - chipyard.TestHarness.SmallBoomSEConfig-ChipTop

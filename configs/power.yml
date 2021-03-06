@@ -7,7 +7,7 @@ data-path: /uac/gds/cbai/cbai/research/synopsys-flow/build/pt-pwr/
 # power | latency | area
 mode: power
 # output data
-output-path: data/boom-tile.csv
+output-path: data/power.csv
 # configuration name
 config-name:
   - GigaBoomProConfig-benchmarks

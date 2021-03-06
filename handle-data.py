@@ -1,34 +1,10 @@
 # Author: baichen318@gmail.com
 
 import os
-import yaml
-import argparse
 import re
 import pandas as pd
-from util import if_exist
+from util import parse_args, get_config, if_exist
 from exception import UnDefinedException
-
-def parse_args():
-
-    def initialize_parser(parser):
-        parser.add_argument('-c', '--config',
-            required=True,
-            type=str,
-            default='config.yml',
-            help='YAML file to be handled')
-
-        return parser
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser = initialize_parser(parser)
-
-    return parser.parse_args()
-
-def get_config(argv):
-    with open(argv.config, 'r') as f:
-        config = yaml.load(f)
-
-    return config
 
 def handle_power_report(report, root, bmark):
     if if_exist(report):
