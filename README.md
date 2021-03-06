@@ -15,4 +15,7 @@ $ bash exp/exp-vis.sh
 ```bash
 $ bash exp/exp-model.sh
 ```
+## Result
+- Training set: 12 Test set: 3
+- MSE: 0.17%
 
