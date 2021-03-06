@@ -2,7 +2,9 @@
 
 import numpy as np
 from xgboost import XGBRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn import metrics
+import joblib
 from util import parse_args, get_config, read_csv
 
 def get_feature_from_csv():
@@ -109,70 +111,12 @@ def get_feature_dataset(data):
         "test": np.array(test_features_data)
     }
 
-def normalize(latency, power):
-
-    def _normalize(arr, min_val, max_val):
-        ret = []
-        const = max_val - min_val
-        for val in arr:
-            val = (val - min_val) / const
-            ret.append(val)
-
-        return ret
-
-    ext_latency = {
-        "max_train": np.max(np.array(latency['train'])),
-        "min_train": np.min(np.array(latency['train'])),
-        "max_test": np.max(np.array(latency['test'])),
-        "min_test": np.min(np.array(latency['test']))
-    }
-
-    ext_power = {
-        "max_train": np.max(np.array(power['train'])),
-        "min_train": np.min(np.array(power['train'])),
-        "max_test": np.max(np.array(power['test'])),
-        "min_test": np.min(np.array(power['test']))
-    }
-
-    return {
-        "latency": {
-            "train": _normalize(
-                latency['train'],
-                ext_latency['min_train'],
-                ext_latency['max_train']
-            ),
-            "test": _normalize(
-                latency['test'],
-                ext_latency['min_test'],
-                ext_latency['max_test']
-            )
-        },
-        "power": {
-            "train": _normalize(
-                power['train'],
-                ext_power['min_train'],
-                ext_power['max_train']
-            ),
-            "test": _normalize(
-                power['test'],
-                ext_power['min_test'],
-                ext_power['max_test']
-            )
-        }
-    }
-
-def calc_perf(data):
-    # 0.5 * latency + 0.5 * power
-    train_data = []
-    test_data = []
-    for i in range(len(data['latency']['train'])):
-        train_data.append(
-            0.5 * data['latency']['train'][i] + 0.5 * data['power']['train'][i]
-        )
-    for i in range(len(data['latency']['test'])):
-        test_data.append(
-            0.5 * data['latency']['test'][i] + 0.5 * data['power']['test'][i]
-        )
+def combine_target(latency, power):
+    train_data, test_data = [], []
+    for i in range(len(latency['train'])):
+        train_data.append([latency['train'][i], power['train'][i]])
+    for i in range(len(latency['test'])):
+        test_data.append([latency['test'][i], power['test'][i]])
 
     return {
         "train": np.array(train_data),
@@ -185,47 +129,48 @@ def split_dataset(data):
     power = get_power_dataset(data["power"])
     features = get_feature_dataset(data['features'])
 
-    perf = calc_perf(normalize(latency, power))
-    
+    target = combine_target(latency, power)
+
     return {
         "features": features,
-        "perf": perf
+        "target": target
     }
 
 def pareto_model(data):
     def build_xgb_regrssor():
-        return XGBRegressor(
-            reg_alpha=3,
-            reg_lambda=2,
-            gamma=0,
-            min_child_weight=1,
-            colsample_bytree=1,
-            learning_rate=0.02,
-            max_depth=4,
-            n_estimators=30,
-            subsample=0.1
+        return MultiOutputRegressor(
+            XGBRegressor(
+                reg_alpha=3,
+                reg_lambda=2,
+                gamma=0,
+                min_child_weight=1,
+                colsample_bytree=1,
+                learning_rate=0.02,
+                max_depth=4,
+                n_estimators=10000,
+                subsample=0.1
+            )
         )
 
     def save_model(model):
         print("saving the model: %s" % configs['output-path'])
-        model.get_booster().save_model(configs['output-path'])
+        joblib.dump(model, configs['output-path'])
 
     model = build_xgb_regrssor()
     model.fit(
         data['features']['train'],
-        data['perf']['train'],
-        eval_set=[(data['features']['test'], data['perf']['test'])]
+        data['target']['train'],
     )
 
     # test
     pred = model.predict(data['features']['test'])
-    MSE = metrics.mean_squared_error(pred, data['perf']['test'])
-    R2 = metrics.r2_score(pred, data['perf']['test'])
+    MSE_latency = metrics.mean_squared_error(pred[:, 0], data['target']['test'][:, 0])
+    MSE_power = metrics.mean_squared_error(pred[:, 1], data['target']['test'][:, 1])
 
     # save
     save_model(model)
 
-    print("MSE: %.8f, R2: %.8f" % (MSE, R2))
+    print("MSE of latency: %.8f, MSE of power: %.8f" % (MSE_latency, MSE_power))
 
 def handle():
     data = get_data_from_csv()
