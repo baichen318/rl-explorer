@@ -49,3 +49,6 @@ def read_csv(data):
 
         return np.array(pd.read_csv(data))
 
+def calc_mape(x, y):
+        return np.mean(np.abs((np.array(x) - np.array(y)) / np.array(y)))
+

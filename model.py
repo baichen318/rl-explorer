@@ -5,7 +5,7 @@ from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn import metrics
 import joblib
-from util import parse_args, get_config, read_csv
+from util import parse_args, get_config, read_csv, calc_mape
 
 def get_feature_from_csv():
     return read_csv('data/micro-features.csv').T
@@ -138,17 +138,22 @@ def split_dataset(data):
 
 def pareto_model(data):
     def build_xgb_regrssor():
+        # return MultiOutputRegressor(
+        #     XGBRegressor(
+        #         reg_alpha=3,
+        #         reg_lambda=2,
+        #         gamma=0,
+        #         min_child_weight=1,
+        #         colsample_bytree=1,
+        #         learning_rate=0.02,
+        #         max_depth=4,
+        #         n_estimators=10000,
+        #         subsample=0.1
+        #     )
+        # )
         return MultiOutputRegressor(
             XGBRegressor(
-                reg_alpha=3,
-                reg_lambda=2,
-                gamma=0,
-                min_child_weight=1,
-                colsample_bytree=1,
-                learning_rate=0.02,
-                max_depth=4,
-                n_estimators=10000,
-                subsample=0.1
+                n_estimators=100
             )
         )
 
@@ -166,11 +171,14 @@ def pareto_model(data):
     pred = model.predict(data['features']['test'])
     MSE_latency = metrics.mean_squared_error(pred[:, 0], data['target']['test'][:, 0])
     MSE_power = metrics.mean_squared_error(pred[:, 1], data['target']['test'][:, 1])
+    MAPE_latency = calc_mape(pred[:, 0], data['target']['test'][:, 0])
+    MAPE_power = calc_mape(pred[:, 1], data['target']['test'][:, 1])
 
     # save
     save_model(model)
 
-    print("MSE of latency: %.8f, MSE of power: %.8f" % (MSE_latency, MSE_power))
+    print("[INFO]: MSE of latency: %.8f, MSE of power: %.8f" % (MSE_latency, MSE_power),
+          "MAPE of latency: %.8f, MAPE of power: %.8f" % (MAPE_latency, MAPE_power))
 
 def handle():
     data = get_data_from_csv()
