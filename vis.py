@@ -23,32 +23,32 @@ def plot(bmark):
     plt.rcParams['figure.dpi'] = 300
     fig = plt.figure(1)
     # 1st figure
-    plt.subplot(2, 1, 1)
-    plt.plot(latency_points, power_points, color='r', marker='o', linestyle='dashed')
-    # plt.xlabel('Latency')
+    # plt.subplot(2, 1, 1)
+    plt.scatter(latency_points, power_points, color='r', marker='o')
+    plt.xlabel('Latency')
     plt.ylabel('Power')
     plt.title('Latency vs. Power' + '(' + bmark + ')' + ' scatter')
     # plt.text(latency_points, power_points, config['config-name'])
     plt.grid()
 
     # 2nd figure
-    plt.subplot(2, 1, 2)
-    np_latency_points = np.array(latency_points)
-    np_power_points = np.array(power_points)
-    np_power_points = np_power_points[np.argsort(np_latency_points)]
-    np_latency_points = np.sort(np_latency_points)
-    fq = interp1d(np_latency_points, np_power_points, kind='quadratic')
-    np_latency_points_new = np.linspace(
-        np_latency_points.min(),
-        np_latency_points.max(),
-        1000
-    )
-    np_power_points_new = fq(np_latency_points_new)
-    plt.plot(np_latency_points_new, np_power_points_new, color='r', marker='o', linestyle='dashed')
-    plt.xlabel('Latency')
-    plt.ylabel('Power')
-    plt.title('Latency vs. Power' + '(' + bmark + ')' + ' curve')
-    plt.grid()
+    # plt.subplot(2, 1, 2)
+    # np_latency_points = np.array(latency_points)
+    # np_power_points = np.array(power_points)
+    # np_power_points = np_power_points[np.argsort(np_latency_points)]
+    # np_latency_points = np.sort(np_latency_points)
+    # fq = interp1d(np_latency_points, np_power_points, kind='quadratic')
+    # np_latency_points_new = np.linspace(
+    #     np_latency_points.min(),
+    #     np_latency_points.max(),
+    #     1000
+    # )
+    # np_power_points_new = fq(np_latency_points_new)
+    # plt.plot(np_latency_points_new, np_power_points_new, color='r', marker='o', linestyle='dashed')
+    # plt.xlabel('Latency')
+    # plt.ylabel('Power')
+    # plt.title('Latency vs. Power' + '(' + bmark + ')' + ' curve')
+    # plt.grid()
 
     # save
     output = os.path.join(config['output-path'], bmark + '.jpg')

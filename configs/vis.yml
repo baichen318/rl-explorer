@@ -19,4 +19,4 @@ config-name:
   - SmallBoomConfig
   - SmallBoomSEConfig
 benchmark-name:
-  - whetstone.riscv
+  - h264_dec.riscv
