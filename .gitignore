@@ -132,4 +132,5 @@ dmypy.json
 *.jpg
 *.png
 models/
-
+.tags_sorted_by_file
+.tags

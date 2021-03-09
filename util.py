@@ -4,7 +4,9 @@ import argparse
 import yaml
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from exception import NotFoundException, UnDefinedException
+import logging
 
 def parse_args():
 
@@ -25,9 +27,9 @@ def parse_args():
 def get_config(argv):
     if hasattr(argv, 'config'):
         with open(argv.config, 'r') as f:
-            config = yaml.load(f)
+            configs = yaml.load(f)
 
-        return config
+        return configs
     else:
         raise UnDefinedException('config')
 
@@ -44,6 +46,11 @@ def if_exist(path, strict=False):
         else:
             exit(1)
 
+def mkdir(path):
+    if if_exist(path):
+        print("[INFO]: create directory: %s" % path)
+        os.makedirs(path, exist_ok=True)
+
 def read_csv(data):
     if if_exist(data, strict=True):
 
@@ -52,3 +59,58 @@ def read_csv(data):
 def calc_mape(x, y):
         return np.mean(np.abs((np.array(x) - np.array(y)) / np.array(y)))
 
+def timer():
+
+    return datetime.now()
+
+def point2knob(p, dims):
+    """convert point form (single integer) to knob form (vector)"""
+    knob = []
+    for dim in dims:
+        knob.append(p % dim)
+        p //= dim
+
+    return knob
+
+def knob2point(knob, dims):
+    """convert knob form (vector) to point form (single integer)"""
+    p = 0
+    for j, k in enumerate(knob):
+        p += int(np.prod(dims[:j])) * k
+
+    return p
+
+def execute(cmd, logger=None):
+    if logger:
+        logger.info("executing: ", cmd)
+    else:
+        print("[INFO]: executing:", cmd)
+
+    os.system(cmd)
+
+def create_logger(path, name):
+    time_str = time.strftime("%Y-%m-%d-%H-%M")
+    log_file = '{}_{}.log'.format(name, time_str)
+    mkdir(path)
+    log_file = os.path.join(path, log_file)
+    head = "%(asctime)-15s %(message)s"
+    logging.basicConfig(filename=str(log_file), format=head)
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    console = logging.StreamHandler()
+    logging.getLogger('').addHandler(console)
+
+    return logger
+
+def dump_yaml(path, yml_dict):
+    with open(path, 'w') as f:
+        yaml.dump(yml_dict, f)
+
+
+def is_pow2(num):
+    if not (num & (num - 1)):
+
+        return True
+    else:
+
+        return False

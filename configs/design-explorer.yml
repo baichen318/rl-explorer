@@ -1,0 +1,64 @@
+# Author: baichen318@gmail.com
+
+design-space:
+  fetchWidth:
+    candidates: [4, 8]
+  decodeWidth:
+    start: 1
+    end: 5
+    stride: 1
+  numFetchBufferEntries:
+    start: 8
+    end: 40
+    stride: 8
+  numRobEntries:
+    start: 32
+    end: 128
+    stride: 32
+  numRasEntries:
+    start: 8
+    end: 32
+    stride: 8
+  numIntPhysRegisters:
+    start: 36
+    end: 128
+    stride: 4
+  numFpPhysRegisters:
+    start: 36
+    end: 128
+    stride: 4
+  numLdqEntries:
+    start: 8
+    end: 48
+    stride: 8
+  numStqEntries:
+    start: 8
+    end: 48
+    stride: 8
+  maxBrCount:
+    start: 8
+    end: 20
+    stride: 4
+  mem_issueWidth:
+    candidates: [1, 2]
+  int_issueWidth:
+    start: 1
+    end: 5
+    stride: 1
+  fp_issueWidth:
+    candidates: [1, 2]
+  DCacheParams_nWays:
+    candidates: [2, 4, 8]
+  DCacheParams_nMSHRs:
+    candidates: [2, 4, 8]
+  DCacheParams_nTLBEntries:
+    candidates: [8, 16, 32]
+  ICacheParams_nWays:
+    candidates: [2, 4, 8]
+  ICacheParams_nTLBEntries:
+    candidates: [8, 16, 32]
+  ICacheParams_fetchBytes:
+    candidates: [8, 16, 32]
+
+iteration: 100
+output-path: results/
