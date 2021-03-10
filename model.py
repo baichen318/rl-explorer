@@ -51,14 +51,14 @@ class GP(object):
         self.size = 1
         bounds = OrderedDict()
         for k, v in self.design_space.items():
-            # calculate feature dimensions
-            self.dims += 1
             # calculate the size of the design space
             if 'candidates' in v.keys():
                 temp = v['candidates']
                 self.size *= len(temp)
                 # generate bounds
                 bounds[k] = (min(temp), max(temp))
+                # generate dims
+                self.dims.append(len(temp))
             else:
                 assert 'start' in v.keys() and 'end' in v.keys() and \
                     'stride' in v.keys(), "[ERROR]: assert failed. YAML includes errors."
@@ -66,6 +66,8 @@ class GP(object):
                 self.size *= len(temp)
                 # generate bounds
                 bounds[k] = (temp[0], temp[-1])
+                # generate dims
+                self.dims.append(len(temp))
 
         return bounds
 
