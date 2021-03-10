@@ -5,8 +5,11 @@ import numpy as np
 from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn import metrics
+
+sys.path.append("BayesianOptimization")
 from bayes_opt import BayesianOptimization
 from bayes_opt import UtilityFunction
+
 from collections import OrderedDict
 import joblib
 from vlsi.vlsi import vlsi_flow
@@ -60,7 +63,7 @@ class GP(object):
                 temp = v['candidates']
                 self.size *= len(temp)
                 # generate bounds
-                bounds[k] = (min(temp), max(temp))
+                bounds[k] = np.array(temp)
                 # generate dims
                 self.dims.append(len(temp))
             else:
@@ -69,7 +72,7 @@ class GP(object):
                 temp = np.arange(v['start'], v['end'] + 1, v['stride'])
                 self.size *= len(temp)
                 # generate bounds
-                bounds[k] = (temp[0], temp[-1])
+                bounds[k] = temp
                 # generate dims
                 self.dims.append(len(temp))
 

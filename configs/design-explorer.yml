@@ -58,7 +58,7 @@ design-space:
   ICacheParams_nTLBEntries:
     candidates: [8, 16, 32]
   ICacheParams_fetchBytes:
-    candidates: [8, 16, 32]
+    candidates: [2, 4]
 
 iteration: 100
 output-path: results/
