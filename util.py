@@ -2,6 +2,7 @@
 import os
 import argparse
 import yaml
+import time
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -47,7 +48,7 @@ def if_exist(path, strict=False):
             exit(1)
 
 def mkdir(path):
-    if if_exist(path):
+    if not if_exist(path):
         print("[INFO]: create directory: %s" % path)
         os.makedirs(path, exist_ok=True)
 

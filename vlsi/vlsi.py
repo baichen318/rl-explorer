@@ -1,7 +1,7 @@
 # Author: baichen318@gmail.com
 
 from glob import glob
-from ..util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
+from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
 from .macros import MACROS, modify_macros
 
 class VLSI(object):
@@ -266,7 +266,7 @@ class %s extends Config(
             os.path.join(
                 MACROS["sim-syn-rundir"],
                 "simv"
-            )
+            ),
             strict=True
         )
 
@@ -296,7 +296,7 @@ class %s extends Config(
     def record(self):
         def generate_latency_yml():
             latency_dict = {
-                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build")
+                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
                 "mode": "latency",
                 "output-path": MACROS["temp-latency-csv"],
                 "config-name": "chipyard.TestHarness.%s-ChipTop" % self.soc_name
@@ -305,7 +305,7 @@ class %s extends Config(
 
         def generate_power_yml():
             power_dict = {
-                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build")
+                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
                 "mode": "power",
                 "output-path": MACROS["temp-power-csv"],
                 "config-name": "chipyard.TestHarness.%s-ChipTop" % self.soc_name
@@ -314,7 +314,7 @@ class %s extends Config(
 
         def generate_area_yml():
             area_dict = {
-                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build")
+                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
                 "mode": "area",
                 "output-path": MACROS["temp-area-csv"],
                 "config-name": "chipyard.TestHarness.%s-ChipTop" % self.soc_name

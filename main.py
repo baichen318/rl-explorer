@@ -4,8 +4,8 @@ from model import GP
 from util import parse_args, get_config, if_exist, timer
 
 def init():
-    model = GP()
-    model.init(configs)
+    model = GP(configs)
+    model.init()
 
     return model
 

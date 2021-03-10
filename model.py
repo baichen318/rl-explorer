@@ -14,6 +14,8 @@ from util import parse_args, get_config, read_csv, calc_mape, point2knob, knob2p
     create_logger, is_pow2
 
 class GP(object):
+    FEATURES = []
+
     def __init__(self, configs):
         self.design_space = configs['design-space']
         self.iteration = configs['iteration']
@@ -34,7 +36,7 @@ class GP(object):
         bounds = self.parse_design_space_size()
         self.optimizer = BayesianOptimization(
                 f=None,
-                pbouds=self.bounds,
+                pbounds=bounds,
                 verbose=2,
                 random_state=1
             )
@@ -47,10 +49,12 @@ class GP(object):
         # self.optimizer.savegp()
 
     def parse_design_space_size(self):
-        self.dims = 0
+        self.dims = []
         self.size = 1
         bounds = OrderedDict()
         for k, v in self.design_space.items():
+            # add `FEATURES`
+            GP.FEATURES.append(k)
             # calculate the size of the design space
             if 'candidates' in v.keys():
                 temp = v['candidates']
@@ -71,16 +75,18 @@ class GP(object):
 
         return bounds
 
-    def dict2features(self, _dict):
+    def get_features(self, _dict):
         vec = []
-        for k, v in _dict.items():
-            vec.append(v)
+        for i in range(len(GP.FEATURES)):
+            vec.append(_dict[GP.FEATURES[i]])
 
         return vec
 
     def round_features(self, vec):
         for i in range(len(vec)):
-            vec[i] = round(vec[i])
+            vec[i] = int(round(vec[i]))
+
+        return vec
 
     def verify_features(self, vec):
         # fetchWidth = 2^x
@@ -132,6 +138,7 @@ class GP(object):
                         )
                     )
                 )
+                print(vec[3], vec[1])
         # (numLdqEntries - 1)  > decodeWidth
         if not ((vec[7] - 1) > vec[1]):
             while not ((vec[7] - 1) > vec[1]):
@@ -198,7 +205,7 @@ class GP(object):
 
     def sample(self):
         self.next = self.round_features(
-            self.dict2features(
+            self.get_features(
                 self.optimizer.suggest(self.utility)
             )
         )
@@ -207,7 +214,7 @@ class GP(object):
         if self.idx in self.visited:
             while self.idx in self.visited:
                 self.next = self.round_features(
-                    self.dict2features(
+                    self.get_features(
                         self.optimizer.suggest(self.utility)
                     )
                 )
