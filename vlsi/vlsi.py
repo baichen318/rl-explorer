@@ -11,12 +11,9 @@ class VLSI(object):
         self.core_name = "config" + '_' + self.idx
         self.soc_name = "BOOM_" + self.core_name + "_Config"
         self.logger = create_logger("logs", self.core_name)
-        if_exist(MACROS['config_mixins'], strict=True)
-        if_exist(MACROS['boom_configs'], strict=True)
+        # if_exist(MACROS['config_mixins'], strict=True)
+        # if_exist(MACROS['boom_configs'], strict=True)
         modify_macros(self.core_name, self.soc_name)
-        # temporarily use for debugging
-        print(MACROS)
-        exit()
 
         # variables used by `VLSI`
         self.latency = None
@@ -42,16 +39,37 @@ class VLSI(object):
     def generate_config_mixins(self):
         # fetchWidth decides Ftq_nEntries
         if self.configs[0] == 1:
+            issueWidth = {
+                "mem": 8,
+                "int": 8,
+                "fp": 8
+            }
             Ftq_nEntries = 16
         elif self.configs[0] == 2 or self.configs[0] == 3:
             Ftq_nEntries = 32
+            if self.configs[0] == 2:
+                issueWidth = {
+                    "mem": 12,
+                    "int": 20,
+                    "fp": 16
+                }
+            else:
+                issueWidth = {
+                    "mem": 16,
+                    "int": 32,
+                    "fp": 24
+                }
         else:
             Ftq_nEntries = 40
+            issueWidth = {
+                "mem": 24,
+                "int": 40,
+                "fp": 32
+            }
         codes = []
 
         codes.append('''
-class %s extends Config((site, here, up) => {
-        '''% self.core_name
+class %s extends Config((site, here, up) => {''' % self.core_name
         )
 
         # backbone
@@ -62,9 +80,9 @@ class %s extends Config((site, here, up) => {
       decodeWidth = %d, // decodeWidth
       numRobEntries = %d, // numRobEntries
       issueParams = Seq(
-        IssueParams(issueWidth=%d, numEntries=24, iqType=IQT_MEM.litValue, dispatchWidth=5), // mem_issueWidth
-        IssueParams(issueWidth=%d, numEntries=40, iqType=IQT_INT.litValue, dispatchWidth=5), // int_issueWidth
-        IssueParams(issueWidth=%d, numEntries=32, iqType=IQT_FP.litValue , dispatchWidth=5)), // fp_issueWidth
+        IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d), // mem_issueWidth
+        IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d), // int_issueWidth
+        IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue , dispatchWidth=%d)), // fp_issueWidth
       numIntPhysRegisters = %d, // numIntPhysRegisters
       numFpPhysRegisters = %d, // numFpPhysRegisters
       numLdqEntries = %d, // numLdqEntries
@@ -73,31 +91,34 @@ class %s extends Config((site, here, up) => {
       numFetchBufferEntries = %d, // numFetchBufferEntries
       numRasEntries = %d, // numRasEntries
       fpu = Some(freechips.rocketchip.tile.FPUParams(sfmaLatency=4, dfmaLatency=4, divSqrt=true)),
-      ftq = FtqParameters(nEntries=%d),
-        ''' % (self.configs[0], self.configs[1], self.configs[3], self.configs[10], self.configs[11],
-            self.configs[12], self.configs[5], self.configs[6], self.configs[7], self.configs[8],
-            self.configs[9], self.configs[2], self.configs[4], Ftq_nEntries))
+      ftq = FtqParameters(nEntries=%d),''' % (self.configs[0], self.configs[1],
+            self.configs[3], self.configs[10], issueWidth["mem"], self.configs[1],
+            self.configs[11], issueWidth["int"], self.configs[1], self.configs[12],
+            issueWidth["fp"], self.configs[1], self.configs[5], self.configs[6],
+            self.configs[7], self.configs[8], self.configs[9], self.configs[2],
+            self.configs[4], Ftq_nEntries)
+        )
         if self.configs[0] == 1:
             codes.append('''
-      nPerfCounters = 2
-            ''')
+      nPerfCounters = 2'''
+            )
         elif self.configs[0] == 2:
             codes.append('''
-      nPerfCounters = 6
-            ''')
+      nPerfCounters = 6'''
+            )
         elif self.configs[0] == 4:
             codes.append('''
       numDCacheBanks = 2,
-      enablePrefetching = true
-            ''')
+      enablePrefetching = true'''
+            )
         elif self.configs[0] == 5:
             codes.append('''
       numDCacheBanks = 1,
-      enablePrefetching = true
-            ''')
+      enablePrefetching = true'''
+            )
         codes.append('''
-    ),
-        ''')
+    ),'''
+        )
 
         codes.append('''
     dcache = Some(
@@ -117,17 +138,17 @@ class %s extends Config((site, here, up) => {
         nTLBEntries=%d, // ICacheParams_nTLBEntries
         fetchBytes=%d*4 // ICacheParams_ fetchBytes
       )
-    )}
-        ''' % (self.configs[13], self.configs[14], self.configs[15],
-            self.configs[16], self.configs[17], self.configs[18]))
+    )}''' % (self.configs[13], self.configs[14], self.configs[15],
+             self.configs[16], self.configs[17], self.configs[18])
+        )
         codes.append('''
   case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 8)
   case XLen => 64
-  case MaxHartIdBits => log2Up(site(BoomTilesKey).size)
-        ''')
+  case MaxHartIdBits => log2Up(site(BoomTilesKey).size)'''
+        )
         codes.append('''
-})
-        ''')
+})'''
+        )
 
         return codes
 
@@ -175,6 +196,7 @@ class %s extends Config(
         execute(cmd, self.logger)
         cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["compile-script"])
         execute(cmd, self.logger)
+        exit()
         cmd = "bash %s" % MACROS["compile-script"]
         execute(cmd, self.logger)
 
@@ -365,7 +387,7 @@ class %s extends Config(
         execute(cmd, self.logger)
 
 def vlsi_flow(configs, **kwargs):
-    vlsi = VLSI(configs, kwargs)
+    vlsi = VLSI(configs, **kwargs)
     vlsi.run()
 
     # Multi-objective -> Single-objective

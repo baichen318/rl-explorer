@@ -29,6 +29,7 @@ class GP(object):
         self.visited = set()
 
         # variables used by `GP`
+        self.bounds = None
         self.optimizer = None
         self.dims = None
         self.size = None
@@ -37,10 +38,10 @@ class GP(object):
         self.idx = None
 
     def init(self):
-        bounds = self.parse_design_space_size()
+        self.bounds = self.parse_design_space_size()
         self.optimizer = BayesianOptimization(
                 f=None,
-                pbounds=bounds,
+                pbounds=self.bounds,
                 verbose=2,
                 random_state=1
             )
@@ -180,6 +181,26 @@ class GP(object):
                     )
                 )
 
+    def features2knob(self, vec):
+        ret = []
+        for idx in range(len(vec)):
+            ret.append(
+                np.argwhere(
+                    self.bounds[GP.FEATURES[idx]] == vec[idx]
+                )[0][0]
+            )
+
+        return ret
+
+    def knob2features(self, vec):
+        ret = []
+        for idx in range(len(vec)):
+            ret.append(
+                self.bounds[GP.FEATURES[idx]][vec[idx]]
+            )
+
+        return ret
+
     def features2string(self, vector):
 
         return '''
@@ -214,7 +235,10 @@ class GP(object):
             )
         )
         self.verify_features(self.next)
-        self.idx = knob2point(self.next, self.dims)
+        self.idx = knob2point(
+            self.features2knob(self.next),
+            self.dims
+        )
         if self.idx in self.visited:
             while self.idx in self.visited:
                 self.next = self.round_features(
@@ -223,7 +247,10 @@ class GP(object):
                     )
                 )
                 self.verify_features(self.next)
-                self.idx = knob2point(self.next, self.dims)
+                self.idx = knob2point(
+                    self.features2knob(self.next),
+                    self.dims
+                )
         self.visited.add(self.idx)
 
     def query(self):

@@ -3,8 +3,10 @@
 import os
 
 MACROS = {
-    "config_mixins": "/research/d3/cbai/research/chipyard/generators/boom/src/main/scala/common/config-mixins.scala",
-    "boom_configs": "/research/d3/cbai/research/chipyard/generators/chipyard/src/main/scala/config/BoomConfigs.scala",
+    # "config_mixins": "/research/d3/cbai/research/chipyard/generators/boom/src/main/scala/common/config-mixins.scala",
+    # "boom_configs": "/research/d3/cbai/research/chipyard/generators/chipyard/src/main/scala/config/BoomConfigs.scala",
+    "config_mixins": "config-mixins.temp",
+    "boom_configs": "boom-configs.temp",
     "chipyard_root": "/research/d3/cbai/research/chipyard",
     "chipyard_vlsi_root": "/research/d3/cbai/research/chipyard/vlsi",
     "vlsi_root": "vlsi",
