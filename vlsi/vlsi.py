@@ -38,16 +38,16 @@ class VLSI(object):
 
     def generate_config_mixins(self):
         # fetchWidth decides Ftq_nEntries
-        if self.configs[0] == 1:
+        if self.configs[1] == 1:
             issueWidth = {
                 "mem": 8,
                 "int": 8,
                 "fp": 8
             }
             Ftq_nEntries = 16
-        elif self.configs[0] == 2 or self.configs[0] == 3:
+        elif self.configs[1] == 2 or self.configs[1] == 3:
             Ftq_nEntries = 32
-            if self.configs[0] == 2:
+            if self.configs[1] == 2:
                 issueWidth = {
                     "mem": 12,
                     "int": 20,
@@ -98,20 +98,20 @@ class %s extends Config((site, here, up) => {''' % self.core_name
             self.configs[7], self.configs[8], self.configs[9], self.configs[2],
             self.configs[4], Ftq_nEntries)
         )
-        if self.configs[0] == 1:
+        if self.configs[1] == 1:
             codes.append('''
       nPerfCounters = 2'''
             )
-        elif self.configs[0] == 2:
+        elif self.configs[1] == 2:
             codes.append('''
       nPerfCounters = 6'''
             )
-        elif self.configs[0] == 4:
+        elif self.configs[1] == 4:
             codes.append('''
       numDCacheBanks = 2,
       enablePrefetching = true'''
             )
-        elif self.configs[0] == 5:
+        elif self.configs[1] == 5:
             codes.append('''
       numDCacheBanks = 1,
       enablePrefetching = true'''
@@ -120,7 +120,8 @@ class %s extends Config((site, here, up) => {''' % self.core_name
     ),'''
         )
 
-        codes.append('''
+        if self.configs[1] == 1 or self.configs[1] == 2:
+            codes.append('''
     dcache = Some(
       DCacheParams(
         rowBits = site(SystemBusKey).beatBits,
@@ -138,9 +139,58 @@ class %s extends Config((site, here, up) => {''' % self.core_name
         nTLBEntries=%d, // ICacheParams_nTLBEntries
         fetchBytes=%d*4 // ICacheParams_ fetchBytes
       )
-    )}''' % (self.configs[13], self.configs[14], self.configs[15],
+    )
+  )}''' % (self.configs[13], self.configs[14], self.configs[15],
              self.configs[16], self.configs[17], self.configs[18])
-        )
+            )
+        elif self.configs[2] == 3:
+            codes.append('''
+    dcache = Some(
+      DCacheParams(
+        rowBits = site(SystemBusKey).beatBytes*8,
+        nSets=64,
+        nWays=%d, // DCacheParams_ nWays
+        nMSHRs=%d, // DCacheParams_ nMSHRs
+        nTLBEntries=%d, // DCacheParams_ nTLBEntries
+      )
+    ),
+    icache = Some(
+      ICacheParams(
+        rowBits = site(SystemBusKey).beatBytes*8,
+        nSets=64,
+        nWays=%d, // ICacheParams_ nWays
+        nTLBEntries=%d, // ICacheParams_nTLBEntries
+        fetchBytes=%d*4 // ICacheParams_ fetchBytes
+      )
+    )
+  )}''' % (self.configs[13], self.configs[14], self.configs[15],
+             self.configs[16], self.configs[17], self.configs[18])
+            )
+        else:
+            codes.append('''
+    dcache = Some(
+      DCacheParams(
+        rowBits = site(SystemBusKey).beatBytes*8,
+        nSets=64,
+        nWays=%d, // DCacheParams_ nWays
+        nMSHRs=%d, // DCacheParams_ nMSHRs
+        nTLBEntries=%d, // DCacheParams_ nTLBEntries
+      )
+    ),
+    icache = Some(
+      ICacheParams(
+        rowBits = site(SystemBusKey).beatBytes*8,
+        nSets=64,
+        nWays=%d, // ICacheParams_ nWays
+        nTLBEntries=%d, // ICacheParams_nTLBEntries
+        fetchBytes=%d*4, // ICacheParams_ fetchBytes
+        prefetch=true
+      )
+    )
+  )}''' % (self.configs[13], self.configs[14], self.configs[15],
+             self.configs[16], self.configs[17], self.configs[18])
+            )
+
         codes.append('''
   case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 8)
   case XLen => 64
