@@ -239,7 +239,7 @@ class GP(object):
                 self.optimizer.suggest(self.utility)
             )
         )
-        self.verify_features(self.next)
+        # self.verify_features(self.next)
         self.idx = knob2point(
             self.features2knob(self.next),
             self.dims
@@ -251,7 +251,7 @@ class GP(object):
                         self.optimizer.suggest(self.utility)
                     )
                 )
-                self.verify_features(self.next)
+                # self.verify_features(self.next)
                 self.idx = knob2point(
                     self.features2knob(self.next),
                     self.dims

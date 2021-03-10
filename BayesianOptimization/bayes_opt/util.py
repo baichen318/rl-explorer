@@ -4,7 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
+def acq_max(ac, gp, y_max, bounds, dim, random_state, n_warmup=10000, n_iter=10):
     """
     A function to find the maximum of the acquisition function
 
@@ -41,20 +41,37 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
     """
 
     # Warm up with random points
-    x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
-                                   size=(n_warmup, bounds.shape[0]))
+    x_tries = np.empty((n_warmup, dim))
+    for i in range(n_warmup):
+        for col, candidates in enumerate(bounds):
+            x_tries[i][col] = random_state.choice(candidates, size=1)
+        while not verify_features(x_tries[i]):
+            for col, candidates in enumerate(bounds):
+                x_tries[i][col] = random_state.choice(candidates, size=1)
+
     ys = ac(x_tries, gp=gp, y_max=y_max)
     x_max = x_tries[ys.argmax()]
     max_acq = ys.max()
 
     # Explore the parameter space more throughly
-    x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
-                                   size=(n_iter, bounds.shape[0]))
+    x_seeds = np.empty((n_iter, dim))
+    for i in range(n_iter):
+        for col, candidates in enumerate(bounds):
+            x_seeds[i][col] = random_state.choice(candidates, size=1)
+        while not verify_features(x_seeds[i]):
+            for col, candidates in enumerate(bounds):
+                x_seeds[i][col] = random_state.choice(candidates, size=1)
+
+    _bounds = []
+    for candidates in bounds:
+        _bounds.append(np.array([min(candidates), max(candidates)]))
+    _bounds = np.array(_bounds)
+    # relax from integer domain to R domain
     for x_try in x_seeds:
         # Find the minimum of minus the acquisition function
         res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
                        x_try.reshape(1, -1),
-                       bounds=bounds,
+                       bounds=_bounds,
                        method="L-BFGS-B")
 
         # See if success
@@ -68,8 +85,34 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return np.clip(x_max, bounds[:, 0], bounds[:, 1])
+    return np.clip(x_max, _bounds[:, 0], _bounds[:, 1])
 
+def verify_features(self, vec):
+    # fetchWidth = 2^x
+    if not is_pow2(vec[0]):
+        return False
+    # decodeWidth <= fetchWidth
+    if not (vec[1] <= vec[0]):
+        return False
+    # numIntPhysRegisters >= (32 + decodeWidth)
+    if not (vec[5] >= 32 + vec[1]):
+        return False
+    # numFpPhysRegisters >= (32 + decodeWidth)
+    if not (vec[6] >= 32 + vec[1]):
+        return False
+    # numRobEntries % coreWidth == 0
+    if not (vec[3] % vec[1] == 0):
+        return False
+    # (numLdqEntries - 1) > decodeWidth
+    if not ((vec[7] - 1) > vec[1]):
+        return False
+    # (numStqEntries - 1) > decodeWidth
+    if not ((vec[8] - 1) > vec[1]):
+        return False
+    # numFetchBufferEntries > fetchWidth
+    if not (vec[2] > vec[0]):
+        return False
+    return True
 
 class UtilityFunction(object):
     """

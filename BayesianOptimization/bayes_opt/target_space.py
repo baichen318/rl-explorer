@@ -1,6 +1,5 @@
 import numpy as np
-from .util import ensure_rng
-
+from .util import ensure_rng, verify_features
 
 def _hashable(x):
     """ ensure that an point is hashable by a python dict """
@@ -213,6 +212,9 @@ class TargetSpace(object):
         data = np.empty((1, self.dim))
         for col, candidates in enumerate(self._bounds):
             data.T[col] = self.random_state.choice(candidates, size=1)
+        while not verify_features(data):
+            for col, candidates in enumerate(self._bounds):
+                data.T[col] = self.random_state.choice(candidates, size=1)
         return data.ravel()
 
     def max(self):

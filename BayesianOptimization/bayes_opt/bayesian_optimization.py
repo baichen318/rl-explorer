@@ -91,7 +91,9 @@ class BayesianOptimization(Observable):
 
         # Internal GP regressor
         if job_reuse == True:
-            self._gp = joblib.load('./adder/synthesis/model/gp.pkl')
+            # TODO: load pretrained model
+            # self._gp = joblib.load('./adder/synthesis/model/gp.pkl')
+            pass
         else:
         	self._gp = GaussianProcessRegressor(
             	kernel=Matern(nu=2.5),
@@ -150,12 +152,14 @@ class BayesianOptimization(Observable):
             gp=self._gp,
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
+            dim=self._space.dim,
             random_state=self._random_state
         )
 
         return self.sol_processing_v2(self._space.array_to_params(suggestion), utility_function)
 
     def savegp(self,):
+        # TODO: `savegp`
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
@@ -170,7 +174,7 @@ class BayesianOptimization(Observable):
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
         x_array = self._space._as_array(test_params)   
-        return self._gp.predict(x_array.reshape(1,-1))
+        return self._gp.predict(x_array.reshape(1, -1))
 
     def _prime_queue(self, init_points):
         """Make sure there's something in the queue at the very beginning."""
