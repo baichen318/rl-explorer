@@ -14,6 +14,9 @@ class VLSI(object):
         if_exist(MACROS['config_mixins'], strict=True)
         if_exist(MACROS['boom_configs'], strict=True)
         modify_macros(self.core_name, self.soc_name)
+        # temporarily use for debugging
+        print(MACROS)
+        exit()
 
         # variables used by `VLSI`
         self.latency = None
