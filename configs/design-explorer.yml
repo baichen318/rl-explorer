@@ -61,4 +61,4 @@ design-space:
     candidates: [2, 4]
 
 iteration: 100
-output-path: results/
+output-path: results/result.rpt

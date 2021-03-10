@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 import sys
+import os
 import random
 import numpy as np
 from xgboost import XGBRegressor
@@ -15,7 +16,7 @@ from collections import OrderedDict
 import joblib
 from vlsi.vlsi import vlsi_flow
 from util import parse_args, get_config, read_csv, calc_mape, point2knob, knob2point, \
-    create_logger, is_pow2
+    create_logger, is_pow2, mkdir
 
 class GP(object):
     FEATURES = []
@@ -23,7 +24,10 @@ class GP(object):
     def __init__(self, configs):
         self.design_space = configs['design-space']
         self.iteration = configs['iteration']
-        self.output_path = configs['output-path']
+        self.output_path = os.path.join(
+            os.path.abspath(os.curdir),
+            configs['output-path']
+        )
         self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
         self.logger = create_logger("logs", "gp")
         self.visited = set()
@@ -38,6 +42,7 @@ class GP(object):
         self.idx = None
 
     def init(self):
+        mkdir(os.path.dirname(self.output_path))
         self.bounds = self.parse_design_space_size()
         self.optimizer = BayesianOptimization(
                 f=None,
@@ -268,7 +273,7 @@ class GP(object):
 The parameter is: %s
         ''' % self.features2string(self.next)
         self.logger.info(msg)
-        with open(configs["output-path"], 'a') as f:
+        with open(self.output_path, 'a') as f:
             f.write(msg)
 
     def final_record(self):
@@ -282,7 +287,7 @@ The best result is: %s
             )
         )
         self.logger.info(msg)
-        with open(configs["output-path"], 'a') as f:
+        with open(output_path, 'a') as f:
             f.write(msg)
 
 def get_feature_from_csv():

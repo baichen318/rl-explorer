@@ -1,5 +1,6 @@
 # Author: baichen318@gmail.com
 
+import os
 from glob import glob
 from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
 from .macros import MACROS, modify_macros
@@ -128,7 +129,7 @@ class %s extends Config((site, here, up) => {''' % self.core_name
         nSets=64,
         nWays=%d, // DCacheParams_ nWays
         nMSHRs=%d, // DCacheParams_ nMSHRs
-        nTLBEntries=%d, // DCacheParams_ nTLBEntries
+        nTLBEntries=%d // DCacheParams_ nTLBEntries
       )
     ),
     icache = Some(
@@ -151,7 +152,7 @@ class %s extends Config((site, here, up) => {''' % self.core_name
         nSets=64,
         nWays=%d, // DCacheParams_ nWays
         nMSHRs=%d, // DCacheParams_ nMSHRs
-        nTLBEntries=%d, // DCacheParams_ nTLBEntries
+        nTLBEntries=%d // DCacheParams_ nTLBEntries
       )
     ),
     icache = Some(
@@ -174,7 +175,7 @@ class %s extends Config((site, here, up) => {''' % self.core_name
         nSets=64,
         nWays=%d, // DCacheParams_ nWays
         nMSHRs=%d, // DCacheParams_ nMSHRs
-        nTLBEntries=%d, // DCacheParams_ nTLBEntries
+        nTLBEntries=%d // DCacheParams_ nTLBEntries
       )
     ),
     icache = Some(
@@ -197,7 +198,9 @@ class %s extends Config((site, here, up) => {''' % self.core_name
   case MaxHartIdBits => log2Up(site(BoomTilesKey).size)'''
         )
         codes.append('''
-})'''
+})
+
+'''
         )
 
         return codes
@@ -213,7 +216,7 @@ class %s extends Config(
   new chipyard.iobinders.WithSimSerial ++
   new testchipip.WithTSI ++
   new chipyard.config.WithBootROM ++
-  new chipyard.config.WithUART2 ++
+  new chipyard.config.WithUART ++
   new chipyard.config.WithL2TLBs(1024) ++
   new freechips.rocketchip.subsystem.WithNoMMIOPort ++
   new freechips.rocketchip.subsystem.WithNoSlavePort ++
@@ -246,29 +249,29 @@ class %s extends Config(
         execute(cmd, self.logger)
         cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["compile-script"])
         execute(cmd, self.logger)
-        exit()
+
         cmd = "bash %s" % MACROS["compile-script"]
         execute(cmd, self.logger)
 
         self.logger.info("compilation done.")
         
     def synthesis(self):
-        if_exist(
-            os.path.join(
-                MACROS["syn-rundir"],
-                "ChipTop.mapped.v"
-            ),
-            strict=True
-        )
+        # if_exist(
+        #     os.path.join(
+        #         MACROS["syn-rundir"],
+        #         "ChipTop.mapped.v"
+        #     ),
+        #     strict=True
+        # )
 
         self.logger.info("synthesis done.")
 
     def generate_simv(self):
 
         def pre_misc_work():
-            cmd = "mv -f %s %s" % (MACROS["hir-file"], MACROS["generated-src"])
+            cmd = "mv -f %s %s/" % (MACROS["hir-file"], MACROS["generated-src"])
             execute(cmd, self.logger)
-            cmd = "cp -f %s %s" % (MACROS["sram-vhdl"], MACROS["generated-src"])
+            cmd = "cp -f %s %s/" % (MACROS["sram-vhdl"], MACROS["generated-src"])
             execute(cmd, self.logger)
 
         def post_misc_work():
@@ -284,7 +287,7 @@ class %s extends Config(
             # DANGER!
             cmd = "rm -fr %s" % os.path.join(MACROS["sim-syn-rundir"], "dhrystone.riscv")
             execute(cmd, self.logger)
-            cmd = "cp -f %s %s" % (
+            cmd = "cp -f %s %s/" % (
                 os.path.join(
                     MACROS["scripts"],
                     "run.tcl"
@@ -294,12 +297,17 @@ class %s extends Config(
             execute(cmd, self.logger)
             cmd = "sed -i 's/PATTERN/%s/g' %s" % (
                 self.soc_name,
-                os.path.join(MACROS["simv-script"], "run.tcl")
+                os.path.join(MACROS["sim-syn-rundir"], "run.tcl")
             )
             execute(cmd, self.logger)
-            cmd = "mv -f %s %s" % (
+            cmd = "mv -f %s %s/" % (
                 os.path.join(MACROS["chipyard_vlsi_root"], "csrc"),
                 MACROS["sim-syn-rundir"]
+            )
+            execute(cmd, self.logger)
+            cmd = "mv -f %s %s/" % (
+                os.path.join(MACROS["chipyard_vlsi_root"], "vc_hdrs.h"),
+                os.path.join(MACROS["sim-syn-rundir"])
             )
             execute(cmd, self.logger)
 
@@ -318,10 +326,11 @@ class %s extends Config(
                 os.path.join(
                     MACROS["sim-syn-rundir"],
                     "simv.daidir",
-                    path.join.basename(so_file)
+                    os.path.basename(so_file)
                 ),
                 so_file
             )
+            execute(cmd, self.logger)
 
         pre_misc_work()
 
@@ -337,13 +346,13 @@ class %s extends Config(
         cmd = "bash %s" % MACROS["simv-script"]
         execute(cmd, self.logger)
 
-        if_exist(
-            os.path.join(
-                MACROS["sim-syn-rundir"],
-                "simv"
-            ),
-            strict=True
-        )
+        # if_exist(
+        #     os.path.join(
+        #         MACROS["sim-syn-rundir"],
+        #         "simv"
+        #     ),
+        #     strict=True
+        # )
 
         post_misc_work()
 
@@ -409,31 +418,46 @@ class %s extends Config(
         cmd = "python handle-data.py -c %s" % MACROS["temp-area-yml"]
         execute(cmd, self.logger)
 
-        latency = read_csv(MACROS["temp-latency-csv"])
-        t = 0
-        cnt = 0
-        for v in latency:
-            t += v[1]
-            cnt += 1
-        t /= cnt
-        self.latency = t
+        # latency = read_csv(MACROS["temp-latency-csv"])
+        # t = 0
+        # cnt = 0
+        # for v in latency:
+        #     t += v[1]
+        #     cnt += 1
+        # t /= cnt
+        # self.latency = t
 
-        power = read_csv(MACROS["temp-power-csv"])
-        t = 0
-        cnt = 0
-        for v in power:
-            t += v[-1]
-            cnt += 1
-        t /= cnt
-        self.power = t
+        # power = read_csv(MACROS["temp-power-csv"])
+        # t = 0
+        # cnt = 0
+        # for v in power:
+        #     t += v[-1]
+        #     cnt += 1
+        # t /= cnt
+        # self.power = t
 
-        self.area = read_csv(MACROS["temp-area-csv"])[0][1]
+        # self.area = read_csv(MACROS["temp-area-csv"])[0][1]
+        self.latency = 0
+        self.power = 0
+        self.area = 0
 
     def clean(self):
         # DANGER!
         cmd = "rm -f %s" % MACROS["compile-script"]
         execute(cmd, self.logger)
         cmd = "rm -f %s" % MACROS["simv-script"]
+        execute(cmd, self.logger)
+        cmd = "rm -f %s" % MACROS["temp-latency-yml"]
+        execute(cmd, self.logger)
+        cmd = "rm -f %s" % MACROS["temp-power-yml"]
+        execute(cmd, self.logger)
+        cmd = "rm -f %s" % MACROS["temp-area-yml"]
+        execute(cmd, self.logger)
+        cmd = "rm -f %s" % MACROS["temp-latency-csv"]
+        execute(cmd, self.logger)
+        cmd = "rm -f %s" % MACROS["temp-power-csv"]
+        execute(cmd, self.logger)
+        cmd = "rm -f %s" % MACROS["temp-area-csv"]
         execute(cmd, self.logger)
 
 def vlsi_flow(configs, **kwargs):

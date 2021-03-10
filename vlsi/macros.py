@@ -57,26 +57,32 @@ def modify_macros(core_name, soc_name):
         "%s-benchmarks" % soc_name
     )
     MACROS["temp-latency-yml"] = os.path.join(
+        os.path.abspath(os.curdir),
         "configs",
         "%s-latency.yml" % core_name
     )
     MACROS["temp-power-yml"] = os.path.join(
+        os.path.abspath(os.curdir),
         "configs",
         "%s-power.yml" % core_name
     )
     MACROS["temp-area-yml"] = os.path.join(
+        os.path.abspath(os.curdir),
         "configs",
         "%s-area.yml" % core_name
     )
     MACROS["temp-latency-csv"] = os.path.join(
+        os.path.abspath(os.curdir),
         "data",
         "%s-latency.csv" % core_name
     )
     MACROS["temp-power-csv"] = os.path.join(
+        os.path.abspath(os.curdir),
         "data",
         "%s-power.csv" % core_name
     )
     MACROS["temp-area-csv"] = os.path.join(
+        os.path.abspath(os.curdir),
         "data",
         "%s-area.csv" % core_name
     )

@@ -1,6 +1,6 @@
-#Author: baichen318@gmail.com
-
 #!/bin/bash
+
+#Author: baichen318@gmail.com
 
 path="/research/d3/cbai/research/riscv-benchmarks"
 sim_path=${sim_path:-"/uac/gds/cbai/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/sim-syn-rundir/output"}
@@ -42,7 +42,7 @@ function _ptpx() {
         cat ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.out | grep "PASSED"
         ret=$?
 
-        if [[ $ret == 0 ]] || true 
+        if [[ $ret == 0 ]] || true
         then
             pushd ${_sim_path}
 
@@ -68,7 +68,7 @@ function _ptpx() {
         cat ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.out | grep "PASSED"
         ret=$?
 
-        if [[ $ret == 0 ]] || true 
+        if [[ $ret == 0 ]] || true
         then
             pushd ${_sim_path}
             # delete redundant files

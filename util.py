@@ -83,11 +83,11 @@ def knob2point(knob, dims):
 
 def execute(cmd, logger=None):
     if logger:
-        logger.info("executing: ", cmd)
+        logger.info("executing: %s " % cmd)
     else:
-        print("[INFO]: executing:", cmd)
+        print("[INFO]: executing: %s" % cmd)
 
-    os.system(cmd)
+    # os.system(cmd)
 
 def create_logger(path, name):
     time_str = time.strftime("%Y-%m-%d-%H-%M")
@@ -106,7 +106,6 @@ def create_logger(path, name):
 def dump_yaml(path, yml_dict):
     with open(path, 'w') as f:
         yaml.dump(yml_dict, f)
-
 
 def is_pow2(num):
     if not (num & (num - 1)):
