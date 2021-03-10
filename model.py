@@ -262,7 +262,8 @@ class GP(object):
         kwargs = {
             'dims': self.dims,
             'size': self.size,
-            'idx': self.idx
+            'idx': self.idx,
+            'logger': self.logger
         }
         # latency, power & area
         self.metrics = vlsi_flow(self.next, **kwargs)

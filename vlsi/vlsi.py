@@ -11,7 +11,7 @@ class VLSI(object):
         self.idx = str(kwargs['idx'])
         self.core_name = "config" + '_' + self.idx
         self.soc_name = "BOOM_" + self.core_name + "_Config"
-        self.logger = create_logger("logs", self.core_name)
+        self.logger = kwargs['logger']
         # if_exist(MACROS['config_mixins'], strict=True)
         # if_exist(MACROS['boom_configs'], strict=True)
         modify_macros(self.core_name, self.soc_name)
