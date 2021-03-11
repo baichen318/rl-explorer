@@ -41,9 +41,9 @@ class TargetSpace(object):
         self.target_func = target_func
 
         # Get the name of the parameters
-        self._keys = sorted(pbounds)
+        self._keys = pbounds
         # Create a list with parameters bounds
-        self._bounds = [item[1] for item in sorted(pbounds.items(), key=lambda x: x[0])]
+        self._bounds = [item[1] for item in pbounds.items()]
 
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
@@ -215,7 +215,6 @@ class TargetSpace(object):
         while not verify_features(data[0]):
             for col, candidates in enumerate(self._bounds):
                 data.T[col] = self.random_state.choice(candidates, size=1)
-            print(data)
         return data.ravel()
 
     def max(self):

@@ -96,7 +96,6 @@ def verify_features(vec):
         return _vec
     _vec = round_vec(vec)
     # fetchWidth = 2^x
-    print(_vec[0], vec)
     if (_vec[0] & (_vec[0] - 1)):
         return False
     # decodeWidth <= fetchWidth

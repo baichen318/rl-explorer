@@ -60,5 +60,5 @@ design-space:
   ICacheParams_fetchBytes:
     candidates: [2, 4]
 
-iteration: 100
+iteration: 5
 output-path: results/result.rpt

@@ -127,9 +127,9 @@ class %s extends Config((site, here, up) => {''' % self.core_name
       DCacheParams(
         rowBits = site(SystemBusKey).beatBits,
         nSets=64,
-        nWays=%d, // DCacheParams_ nWays
-        nMSHRs=%d, // DCacheParams_ nMSHRs
-        nTLBEntries=%d // DCacheParams_ nTLBEntries
+        nWays=%d, // DCacheParams_nWays
+        nMSHRs=%d, // DCacheParams_nMSHRs
+        nTLBEntries=%d // DCacheParams_nTLBEntries
       )
     ),
     icache = Some(
@@ -138,7 +138,7 @@ class %s extends Config((site, here, up) => {''' % self.core_name
         nSets=64,
         nWays=%d, // ICacheParams_ nWays
         nTLBEntries=%d, // ICacheParams_nTLBEntries
-        fetchBytes=%d*4 // ICacheParams_ fetchBytes
+        fetchBytes=%d*4 // ICacheParams_fetchBytes
       )
     )
   )}''' % (self.configs[13], self.configs[14], self.configs[15],
@@ -312,25 +312,25 @@ class %s extends Config(
             execute(cmd, self.logger)
 
             # re-link the *.so
-            so_file = glob(
-                os.path.join(
-                    MACROS["sim-syn-rundir"],
-                    "csrc",
-                    "*.so"
-                )
-            )[0]
+            # so_file = glob(
+            #     os.path.join(
+            #         MACROS["sim-syn-rundir"],
+            #         "csrc",
+            #         "*.so"
+            #     )
+            # )[0]
             # DANGER!
-            cmd = "rm -f %s" % so_file
-            execute(cmd, self.logger)
-            cmd = "ln -s %s %s" % (
-                os.path.join(
-                    MACROS["sim-syn-rundir"],
-                    "simv.daidir",
-                    os.path.basename(so_file)
-                ),
-                so_file
-            )
-            execute(cmd, self.logger)
+            # cmd = "rm -f %s" % so_file
+            # execute(cmd, self.logger)
+            # cmd = "ln -s %s %s" % (
+            #     os.path.join(
+            #         MACROS["sim-syn-rundir"],
+            #         "simv.daidir",
+            #         os.path.basename(so_file)
+            #     ),
+            #     so_file
+            # )
+            # execute(cmd, self.logger)
 
         pre_misc_work()
 
@@ -374,6 +374,7 @@ class %s extends Config(
             MACROS["power-path"]
         )
         execute(cmd, self.logger)
+        os.chdir(os.path.join(MACROS["vlsi_root"], os.path.pardir))
 
         self.logger.info("simulation done.")
 

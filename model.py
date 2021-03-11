@@ -88,14 +88,7 @@ class GP(object):
     def get_features(self, _dict):
         vec = []
         for i in range(len(GP.FEATURES)):
-            vec.append(_dict[GP.FEATURES[i]])
-
-        return vec
-
-    def round_features(self, vec):
-        for i in range(len(vec)):
-            vec[i] = int(round(vec[i]))
-
+            vec.append(int(_dict[GP.FEATURES[i]]))
         return vec
 
     def verify_features(self, vec):
@@ -234,24 +227,18 @@ class GP(object):
     vector[18])
 
     def sample(self):
-        self.next = self.round_features(
-            self.get_features(
-                self.optimizer.suggest(self.utility)
-            )
+        self.next = self.get_features(
+            self.optimizer.suggest(self.utility)
         )
-        # self.verify_features(self.next)
         self.idx = knob2point(
             self.features2knob(self.next),
             self.dims
         )
         if self.idx in self.visited:
             while self.idx in self.visited:
-                self.next = self.round_features(
-                    self.get_features(
-                        self.optimizer.suggest(self.utility)
-                    )
+                self.next = self.get_features(
+                    self.optimizer.suggest(self.utility)
                 )
-                # self.verify_features(self.next)
                 self.idx = knob2point(
                     self.features2knob(self.next),
                     self.dims
@@ -281,14 +268,12 @@ The parameter is: %s
         msg = '''
 The best result is: %s
         ''' % self.features2string(
-            self.round_features(
-                self.dict2features(
+                self.get_features(
                     self.optimizer.max['params']
                 )
             )
-        )
         self.logger.info(msg)
-        with open(output_path, 'a') as f:
+        with open(self.output_path, 'a') as f:
             f.write(msg)
 
 def get_feature_from_csv():

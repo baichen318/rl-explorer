@@ -9,8 +9,8 @@ MACROS = {
     "boom_configs": "boom-configs.temp",
     "chipyard_root": "/research/d3/cbai/research/chipyard",
     "chipyard_vlsi_root": "/research/d3/cbai/research/chipyard/vlsi",
-    "vlsi_root": "vlsi",
-    "scripts": "vlsi/scripts",
+    "vlsi_root": "/research/d3/cbai/research/design-explorer/vlsi",
+    "scripts": "/research/d3/cbai/research/design-explorer/vlsi/scripts",
     "power_root": "/uac/gds/cbai/cbai/research/synopsys-flow/build/pt-pwr/"
 }
 
