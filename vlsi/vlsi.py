@@ -4,7 +4,6 @@ import os
 from glob import glob
 from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
 from .macros import MACROS, modify_macros
-from model import single_objective_cost_function
 
 class VLSI(object):
     def __init__(self, configs, **kwargs):
@@ -466,7 +465,9 @@ def vlsi_flow(configs, **kwargs):
     vlsi = VLSI(configs, **kwargs)
     vlsi.run()
 
-    # Multi-objective -> Single-objective
-    metrics = single_objective_cost_function(vlsi.latency, vlsi.power)
+    return {
+        "latency": vlsi.latency,
+        "power": vlsi.power,
+        "area:": vlsi.area
+    }
 
-    return metrics

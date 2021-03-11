@@ -36,7 +36,7 @@ class GP(object):
         self.logger = create_logger("logs", "gp")
         self.visited = set()
 
-        if_exist("data/init-model.csv", strict=True)
+        # if_exist("data/init-model.csv", strict=True)
 
         # variables used by `GP`
         self.bounds = None
@@ -59,11 +59,11 @@ class GP(object):
             )
 
         # initialize the model
-        points, targets = self.read_init_data("data/init-model.csv")
-        for i, target in enumerate(targets):
-            self.next = p[i]
-            self.optimizer.register(params=self.next, target=target)
-        self.optimizer.savegp(self.model_output_path)
+        # points, targets = self.read_init_data("data/init-model.csv")
+        # for i, target in enumerate(targets):
+        #     self.next = p[i]
+        #     self.optimizer.register(params=self.next, target=target)
+        # self.optimizer.savegp(self.model_output_path)
 
     def read_init_data(self, path):
         # features latency power
@@ -189,7 +189,13 @@ class GP(object):
         }
         # latency, power & area
         self.metrics = vlsi_flow(self.next, **kwargs)
-        self.optimizer.register(params=self.next, target=-self.metrics)
+        self.optimizer.register(
+            params=self.next,
+            target=-self.single_objective_cost_function(
+                self.metrics["latency"],
+                self.metrics["power"]
+            )
+        )
 
     def record(self):
         msg = '''
@@ -204,9 +210,7 @@ The parameter is: %s
         msg = '''
 The best result is: %s
         ''' % self.features2string(
-                self.get_features(
-                    self.optimum
-                )
+                self.get_features(self.optimum)
             )
         self.logger.info(msg)
         with open(self.report_output_path, 'a') as f:
@@ -214,7 +218,11 @@ The best result is: %s
 
     def verification(self):
         self.idx = knob2point(
-            self.features2knob(self.optimum),
+            self.features2knob(
+                self.get_features(
+                    self.optimum
+                )
+            ),
             self.dims
         )
         kwargs = {
@@ -224,9 +232,9 @@ The best result is: %s
             'logger': self.logger
         }
         # latency, power & area
-        self.metrics = vlsi_flow(self.optimum, **kwargs)
+        self.metrics = vlsi_flow(self.get_features(self.optimum), **kwargs)
 
-        self.logger("idx: %s metrics: %f" % (self.idx, self.metrics))
+        self.logger.info("idx: %s metrics: %s" % (self.idx, self.metrics))
 
     def single_objective_cost_function(latency, power):
 
