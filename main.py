@@ -22,6 +22,7 @@ def design_explorer():
     do_design_explore(model)
     end_time = timer()
     print("[INFO]: time elapsed: %s h" % str((end_time - start_time).seconds / 3600))
+    model.verification()
 
 if __name__ == "__main__":
     argv = parse_args()
