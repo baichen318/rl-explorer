@@ -16,3 +16,10 @@ $ bash exp/exp-vis.sh
 $ bash exp/exp-model.sh
 ```
 
+## TODO
+- YAML, CSV cleaning
+- Report extraction verification
+- GP Initialization
+- GP models saving
+- Optimized point verification
+- Parallelization

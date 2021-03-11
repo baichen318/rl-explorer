@@ -4,6 +4,7 @@ import os
 from glob import glob
 from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
 from .macros import MACROS, modify_macros
+from model import single_objective_cost_function
 
 class VLSI(object):
     def __init__(self, configs, **kwargs):
@@ -454,18 +455,18 @@ class %s extends Config(
         execute(cmd, self.logger)
         cmd = "rm -f %s" % MACROS["temp-area-yml"]
         execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["temp-latency-csv"]
-        execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["temp-power-csv"]
-        execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["temp-area-csv"]
-        execute(cmd, self.logger)
+        # cmd = "rm -f %s" % MACROS["temp-latency-csv"]
+        # execute(cmd, self.logger)
+        # cmd = "rm -f %s" % MACROS["temp-power-csv"]
+        # execute(cmd, self.logger)
+        # cmd = "rm -f %s" % MACROS["temp-area-csv"]
+        # execute(cmd, self.logger)
 
 def vlsi_flow(configs, **kwargs):
     vlsi = VLSI(configs, **kwargs)
     vlsi.run()
 
     # Multi-objective -> Single-objective
-    metrics = 1e-6 * vlsi.latency + vlsi.power
+    metrics = single_objective_cost_function(vlsi.latency, vlsi.power)
 
     return metrics

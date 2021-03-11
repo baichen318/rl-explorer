@@ -43,8 +43,6 @@ def handle_power():
     if if_exist(config['data-path']):
         for root in config['config-name']:
             for bmark in os.listdir(os.path.join(config['data-path'], root)):
-                if bmark == "pmp.riscv":
-                    continue
                 report = os.path.join(config['data-path'],
                     root,
                     bmark,

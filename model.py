@@ -15,8 +15,8 @@ from bayes_opt import UtilityFunction
 from collections import OrderedDict
 import joblib
 from vlsi.vlsi import vlsi_flow
-from util import parse_args, get_config, read_csv, calc_mape, point2knob, knob2point, \
-    create_logger, is_pow2, mkdir
+from util import parse_args, get_config, read_csv, if_exist, calc_mape, point2knob, knob2point, \
+    create_logger, is_pow2, mkdir, execute
 
 class GP(object):
     FEATURES = []
@@ -24,13 +24,19 @@ class GP(object):
     def __init__(self, configs):
         self.design_space = configs['design-space']
         self.iteration = configs['iteration']
-        self.output_path = os.path.join(
+        self.report_output_path = os.path.join(
             os.path.abspath(os.curdir),
-            configs['output-path']
+            configs['report-output-path']
+        )
+        self.model_output_path = os.path.join(
+            os.path.abspath(os.curdir),
+            configs["model-output-path"]
         )
         self.utility = UtilityFunction(kind="ucb", kappa=2.5, xi=0.0)
         self.logger = create_logger("logs", "gp")
         self.visited = set()
+
+        if_exist("data/init-model.csv", strict=True)
 
         # variables used by `GP`
         self.bounds = None
@@ -40,9 +46,10 @@ class GP(object):
         self.next = None
         self.metrics = None
         self.idx = None
+        self.optimum = None
 
     def init(self):
-        mkdir(os.path.dirname(self.output_path))
+        mkdir(os.path.dirname(self.report_output_path))
         self.bounds = self.parse_design_space_size()
         self.optimizer = BayesianOptimization(
                 f=None,
@@ -51,12 +58,28 @@ class GP(object):
                 random_state=1
             )
 
-        # points, targets = read_csv("init.csv")
-        # for p, t in enumerate(targets):
-        #     self.next = p[i]
-        #     self.target = t
-        #     self.optimizer.register(params=self.next, target=self.target)
-        # self.optimizer.savegp()
+        # initialize the model
+        points, targets = self.read_init_data("data/init-model.csv")
+        for i, target in enumerate(targets):
+            self.next = p[i]
+            self.optimizer.register(params=self.next, target=target)
+        self.optimizer.savegp(self.model_output_path)
+
+    def read_init_data(self, path):
+        # features latency power
+        data = read_csv(path)
+        points = []
+        metrics = []
+        for row in data:
+            point = {}
+            for name in GP.FEATURES:
+                point[name] = row[GP.FEATURES.index(name)]
+            points.append(point)
+            metrics.append(
+                single_objective_cost_function(data[-2], data[-1])
+            )
+
+        return points, metrics
 
     def parse_design_space_size(self):
         self.dims = []
@@ -90,94 +113,6 @@ class GP(object):
         for i in range(len(GP.FEATURES)):
             vec.append(int(_dict[GP.FEATURES[i]]))
         return vec
-
-    def verify_features(self, vec):
-        # fetchWidth = 2^x
-        if not is_pow2(vec[0]):
-            while not is_pow2(vec[0]):
-                vec[0] = random.choice(self.design_space['fetchWidth']['candidates'])
-        # decodeWidth <= fetchWidth
-        if not (vec[1] <= vec[0]):
-            vec[0] = random.choice(
-                list(
-                    np.arange(
-                        self.design_space['decodeWidth']['start'],
-                        min(self.design_space['decodeWidth']['end'], vec[0]) + 1,
-                        self.design_space['decodeWidth']['stride']
-                    )
-                )
-            )
-        # numIntPhysRegisters >= (32 + decodeWidth)
-        if not (vec[5] >= 32 + vec[1]):
-            vec[5] = random.choice(
-                list(
-                    np.arange(
-                        max(self.design_space['numIntPhysRegisters']['start'], 32 + vec[1]),
-                        self.design_space['numIntPhysRegisters']['end'],
-                        self.design_space['numIntPhysRegisters']['stride']
-                    )
-                )
-            )
-        # numFpPhysRegisters >= (32 + decodeWidth)
-        if not (vec[6] >= 32 + vec[1]):
-            vec[6] = random.choice(
-                list(
-                    np.arange(
-                        max(self.design_space['numFpPhysRegisters']['start'], 32 + vec[1]),
-                        self.design_space['numFpPhysRegisters']['end'],
-                        self.design_space['numFpPhysRegisters']['stride']
-                    )
-                )
-            )
-        # numRobEntries % coreWidth == 0
-        if not (vec[3] % vec[1] == 0):
-            while not (vec[3] % vec[1] == 0):
-                vec[3] = random.choice(
-                    list(
-                        np.arange(
-                            self.design_space['numRobEntries']['start'],
-                            self.design_space['numRobEntries']['end'],
-                            self.design_space['numRobEntries']['stride']
-                        )
-                    )
-                )
-                print(vec[3], vec[1])
-        # (numLdqEntries - 1)  > decodeWidth
-        if not ((vec[7] - 1) > vec[1]):
-            while not ((vec[7] - 1) > vec[1]):
-                vec[7] = random.choice(
-                    list(
-                        np.arange(
-                            self.design_space['numLdqEntries']['start'],
-                            self.design_space['numLdqEntries']['end'],
-                            self.design_space['numLdqEntries']['stride']
-                        )
-                    )
-                )
-        # (numStqEntries - 1) > decodeWidth
-        if not ((vec[8] - 1) > vec[1]):
-            while not ((vec[8] - 1) > vec[1]):
-                vec[8] = random.choice(
-                    list(
-                        np.arange(
-                            self.design_space['numStqEntries']['start'],
-                            self.design_space['numStqEntries']['end'],
-                            self.design_space['numStqEntries']['stride']
-                        )
-                    )
-                )
-        # numFetchBufferEntries > fetchWidth
-        if not (vec[2] > vec[0]):
-            while not (vec[2] > vec[0]):
-                vec[2] = random.choice(
-                    list(
-                        np.arange(
-                            self.design_space['numFetchBufferEntries']['start'],
-                            self.design_space['numFetchBufferEntries']['end'],
-                            self.design_space['numFetchBufferEntries']['stride']
-                        )
-                    )
-                )
 
     def features2knob(self, vec):
         ret = []
@@ -261,20 +196,41 @@ class GP(object):
 The parameter is: %s
         ''' % self.features2string(self.next)
         self.logger.info(msg)
-        with open(self.output_path, 'a') as f:
+        with open(self.report_output_path, 'a') as f:
             f.write(msg)
 
     def final_record(self):
+        self.optimum = self.optimizer.max['params']
         msg = '''
 The best result is: %s
         ''' % self.features2string(
                 self.get_features(
-                    self.optimizer.max['params']
+                    self.optimum
                 )
             )
         self.logger.info(msg)
-        with open(self.output_path, 'a') as f:
+        with open(self.report_output_path, 'a') as f:
             f.write(msg)
+
+    def verification(self):
+        self.idx = knob2point(
+            self.features2knob(self.optimum),
+            self.dims
+        )
+        kwargs = {
+            'dims': self.dims,
+            'size': self.size,
+            'idx': self.idx,
+            'logger': self.logger
+        }
+        # latency, power & area
+        self.metrics = vlsi_flow(self.optimum, **kwargs)
+
+        self.logger("idx: %s metrics: %f" % (self.idx, self.metrics))
+
+    def single_objective_cost_function(latency, power):
+
+        return 1e-6 * latency + power
 
 def get_feature_from_csv():
 

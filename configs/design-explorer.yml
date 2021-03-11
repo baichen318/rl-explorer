@@ -61,4 +61,5 @@ design-space:
     candidates: [2, 4]
 
 iteration: 5
-output-path: results/result.rpt
+report-output-path: results/result.rpt
+model-output-path: models

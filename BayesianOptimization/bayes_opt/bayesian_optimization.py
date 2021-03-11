@@ -1,4 +1,5 @@
 import warnings
+import os
 from math import ceil, floor
 import numpy as np
 from .target_space import TargetSpace
@@ -158,16 +159,18 @@ class BayesianOptimization(Observable):
 
         return self.sol_processing_v2(self._space.array_to_params(suggestion), utility_function)
 
-    def savegp(self,):
+    def savegp(self, path):
         # TODO: `savegp`
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
-        if not os.path.exists('./adder/synthesis/model/'):
-            os.makedirs('./adder/synthesis/model/')
-        joblib.dump(self._gp,'./adder/synthesis/model/gp.pkl')
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+        joblib.dump(self._gp,
+            os.path.join(path, "gp.pkl")
+        )
 
-    def predict(self,test_params):
+    def predict(self, test_params):
         """Just for testing the GP prediction without std of one point"""
         """Notice! The self._space.params at least has one data point"""
         with warnings.catch_warnings():
