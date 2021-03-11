@@ -22,4 +22,5 @@ $ bash exp/exp-model.sh
 - GP Initialization
 - GP models saving
 - Optimized point verification
+- ~~Duplicated points verification~~
 - Parallelization

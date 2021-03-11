@@ -50,7 +50,7 @@ class GP(object):
 
     def init(self):
         mkdir(os.path.dirname(self.report_output_path))
-        self.bounds = self.parse_design_space_size()
+        self.bounds = self.parse_design_space()
         self.optimizer = BayesianOptimization(
                 f=None,
                 pbounds=self.bounds,
@@ -81,7 +81,7 @@ class GP(object):
 
         return points, metrics
 
-    def parse_design_space_size(self):
+    def parse_design_space(self):
         self.dims = []
         self.size = 1
         bounds = OrderedDict()
@@ -427,4 +427,3 @@ if __name__ == "__main__":
     argv = parse_args()
     configs = get_config(argv)
     handle()
-
