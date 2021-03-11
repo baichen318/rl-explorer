@@ -212,9 +212,10 @@ class TargetSpace(object):
         data = np.empty((1, self.dim))
         for col, candidates in enumerate(self._bounds):
             data.T[col] = self.random_state.choice(candidates, size=1)
-        while not verify_features(data):
+        while not verify_features(data[0]):
             for col, candidates in enumerate(self._bounds):
                 data.T[col] = self.random_state.choice(candidates, size=1)
+            print(data)
         return data.ravel()
 
     def max(self):

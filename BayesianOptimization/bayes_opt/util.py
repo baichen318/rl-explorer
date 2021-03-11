@@ -87,30 +87,38 @@ def acq_max(ac, gp, y_max, bounds, dim, random_state, n_warmup=10000, n_iter=10)
     # point technicalities this is not always the case.
     return np.clip(x_max, _bounds[:, 0], _bounds[:, 1])
 
-def verify_features(self, vec):
+def verify_features(vec):
+    def round_vec(vec):
+        _vec = []
+        for item in vec:
+            _vec.append(int(item))
+
+        return _vec
+    _vec = round_vec(vec)
     # fetchWidth = 2^x
-    if not is_pow2(vec[0]):
+    print(_vec[0], vec)
+    if (_vec[0] & (_vec[0] - 1)):
         return False
     # decodeWidth <= fetchWidth
-    if not (vec[1] <= vec[0]):
+    if not (_vec[1] <= _vec[0]):
         return False
     # numIntPhysRegisters >= (32 + decodeWidth)
-    if not (vec[5] >= 32 + vec[1]):
+    if not (_vec[5] >= 32 + _vec[1]):
         return False
     # numFpPhysRegisters >= (32 + decodeWidth)
-    if not (vec[6] >= 32 + vec[1]):
+    if not (_vec[6] >= 32 + _vec[1]):
         return False
     # numRobEntries % coreWidth == 0
-    if not (vec[3] % vec[1] == 0):
+    if not (_vec[3] % _vec[1] == 0):
         return False
     # (numLdqEntries - 1) > decodeWidth
-    if not ((vec[7] - 1) > vec[1]):
+    if not ((_vec[7] - 1) > _vec[1]):
         return False
     # (numStqEntries - 1) > decodeWidth
-    if not ((vec[8] - 1) > vec[1]):
+    if not ((_vec[8] - 1) > _vec[1]):
         return False
     # numFetchBufferEntries > fetchWidth
-    if not (vec[2] > vec[0]):
+    if not (_vec[2] > _vec[0]):
         return False
     return True
 
