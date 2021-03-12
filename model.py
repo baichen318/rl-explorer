@@ -59,11 +59,11 @@ class GP(object):
             )
 
         # initialize the model
-        # points, targets = self.read_init_data("data/init-model.csv")
-        # for i, target in enumerate(targets):
-        #     self.next = p[i]
-        #     self.optimizer.register(params=self.next, target=target)
-        # self.optimizer.savegp(self.model_output_path)
+        points, targets = self.read_init_data("data/init-model.csv")
+        for i, target in enumerate(targets):
+            self.next = p[i]
+            self.optimizer.register(params=self.next, target=target)
+        self.optimizer.savegp(self.model_output_path)
 
     def read_init_data(self, path):
         # features latency power
@@ -416,12 +416,124 @@ def pareto_model(data):
     print("[INFO]: MSE of latency: %.8f, MSE of power: %.8f" % (MSE_latency, MSE_power),
           "MAPE of latency: %.8f, MAPE of power: %.8f" % (MAPE_latency, MAPE_power))
 
+def extract_features(data):
+    features = []
+
+    for config in configs['config-name']:
+        _feature = []
+        for item in data:
+            if config in item[0]:
+                for f in item[1:]:
+                    _feature.append(int(f))
+        features.append(_feature)
+
+    assert (len(features) == len(configs['config-name'])), \
+    "[ERROR]: assert failed. " \
+    "features: {}, configs: {}".format(len(features), len(configs['config-name']))
+
+    return features
+
+def extract_latency(data):
+    latency = []
+
+    for config in configs['config-name']:
+        _latency = 0
+        cnt = 0
+        for item in data:
+            if config in item[0]:
+                for bmark in configs['benchmark-name']:
+                    if bmark in item[0]:
+                        if not np.isnan(item[1]):
+                            _latency += item[1]
+                            cnt += 1
+        _latency /= cnt
+        latency.append(_latency)
+
+    assert (len(latency) == len(configs['config-name'])), \
+        "[ERROR]: assert failed. " \
+        "latency: {}, configs: {}".format(len(latency), len(configs['config-name']))
+
+    return latency
+
+def extract_power(data):
+    power = []
+
+    for config in configs['config-name']:
+        _power = 0
+        cnt = 0
+        for item in data:
+            if config in item[0]:
+                for bmark in configs['benchmark-name']:
+                    if bmark in item[0]:
+                        _power += item[-1]
+                        cnt += 1
+        _power /= cnt
+        power.append(_power)
+
+    assert (len(power) == len(configs['config-name'])), \
+        "[ERROR]: assert failed. " \
+        "power: {}, configs: {}".format(len(power), len(configs['config-name']))
+
+    return power
+
+def merge_data(features, latency, power):
+    results = []
+    for idx in range(len(features)):
+        # features
+        for _idx in range(len(features[idx])):
+            results.append(features[idx][_idx])
+        # latency
+        results.append(latency[idx])
+        results.append(power[idx])
+
+    return results
+
+def extract_data(data):
+    import pandas as pd
+
+    features = extract_features(data["features"])
+    latency = extract_latency(data["latency"])
+    power = extract_power(data["power"])
+
+    results = merge_data(features, latency, power)
+
+    columns = [
+        "fetchWidth",
+        "decodeWidth",
+        "numFetchBufferEntries",
+        "numRobEntries",
+        "numRasEntries",
+        "numIntPhysRegisters",
+        "numFpPhysRegisters",
+        "numLdqEntries",
+        "numStqEntries",
+        "maxBrCount",
+        "mem_issueWidth",
+        "int_issueWidth",
+        "fp_issueWidth",
+        "DCacheParams_nWays",
+        "DCacheParams_nMSHRs",
+        "DCacheParams_nTLBEntries",
+        "ICacheParams_nWays",
+        "ICacheParams_nTLBEntries",
+        "ICacheParams_fetchBytes",
+        "latency",
+        "power"
+    ]
+    writer = pd.DataFrame(columns=columns, data=results)
+    write.to_csv(config['output-path'], index=False)
+
 def handle():
     data = get_data_from_csv()
 
-    data = split_dataset(data)
+    if configs["xgb"]:
+        data = split_dataset(data)
 
-    pareto_model(data)
+        pareto_model(data)
+    else:
+        # extract data ONLY
+        extract_data(data)
+
 
 if __name__ == "__main__":
     argv = parse_args()
