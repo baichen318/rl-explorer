@@ -13,9 +13,9 @@ maxBrCount,6,8,10,10,12,14,14,16,16,18,20,20,18,20,22
 mem_issueWidth,1,1,1,1,1,1,1,1,2,1,2,2,2,2,2 
 int_issueWidth,1,1,2,1,2,2,3,3,3,4,4,4,5,5,5 
 fp_issueWidth,1,1,1,1,1,1,1,1,2,1,2,2,2,2,2 
-DCacheParams_ nWays,2,4,8,4,4,8,8,8,8,8,8,8,8,8,8 
-DCacheParams_ nMSHRs,2,2,4,2,2,4,4,4,4,4,8,8,8,8,8 
-DCacheParams_ nTLBEntries,8,8,16,8,8,16,16,16,32,32,32,32,32,32,32 
-ICacheParams_ nWays,2,4,4,4,4,4,8,8,8,8,8,8,8,8,8 
+DCacheParams_nWays,2,4,8,4,4,8,8,8,8,8,8,8,8,8,8
+DCacheParams_nMSHRs,2,2,4,2,2,4,4,4,4,4,8,8,8,8,8
+DCacheParams_nTLBEntries,8,8,16,8,8,16,16,16,32,32,32,32,32,32,32
+ICacheParams_nWays,2,4,4,4,4,4,8,8,8,8,8,8,8,8,8
 ICacheParams_nTLBEntries,8,8,16,8,8,16,16,16,32,32,32,32,32,32,32 
-ICacheParams_ fetchBytes,8,8,8,8,8,16,16,16,16,16,16,16,16,16,16 
+ICacheParams_fetchBytes,2,2,2,2,2,4,4,4,4,4,4,4,4,4,4

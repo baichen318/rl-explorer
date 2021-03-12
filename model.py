@@ -206,7 +206,7 @@ The parameter is: %s
             f.write(msg)
 
     def final_record(self):
-        self.optimum = self.optimizer.max['params']
+        self.optimum = self.optimizer.max["params"]
         msg = '''
 The best result is: %s
         ''' % self.features2string(
@@ -225,6 +225,7 @@ The best result is: %s
             ),
             self.dims
         )
+        self.optimizer.savegp(self.model_output_path)
         kwargs = {
             'dims': self.dims,
             'size': self.size,

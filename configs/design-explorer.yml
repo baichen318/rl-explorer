@@ -12,33 +12,33 @@ design-space:
     end: 40
     stride: 8
   numRobEntries:
-    start: 32
-    end: 128
-    stride: 32
+    start: 16
+    end: 144
+    stride: 8
   numRasEntries:
     start: 8
     end: 32
     stride: 8
   numIntPhysRegisters:
     start: 36
-    end: 128
+    end: 140
     stride: 4
   numFpPhysRegisters:
     start: 36
-    end: 128
+    end: 140
     stride: 4
   numLdqEntries:
-    start: 8
-    end: 48
-    stride: 8
+    start: 4
+    end: 36
+    stride: 2
   numStqEntries:
-    start: 8
-    end: 48
-    stride: 8
+    start: 4
+    end: 36
+    stride: 2
   maxBrCount:
-    start: 8
-    end: 20
-    stride: 4
+    start: 6
+    end: 22
+    stride: 2
   mem_issueWidth:
     candidates: [1, 2]
   int_issueWidth:
