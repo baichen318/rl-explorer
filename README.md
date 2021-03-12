@@ -16,6 +16,11 @@ $ bash exp/exp-vis.sh
 $ bash exp/exp-model.sh
 ```
 
+## Bayes Optimization Flow
+```bash
+$ bash exp/exp-opt.sh
+```
+
 ## TODO
 - ~~YAML, CSV cleaning~~
 - ~~Report extraction verification~~

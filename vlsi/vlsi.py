@@ -12,8 +12,8 @@ class VLSI(object):
         self.core_name = "config" + '_' + self.idx
         self.soc_name = "BOOM_" + self.core_name + "_Config"
         self.logger = kwargs['logger']
-        # if_exist(MACROS['config_mixins'], strict=True)
-        # if_exist(MACROS['boom_configs'], strict=True)
+        if_exist(MACROS['config_mixins'], strict=True)
+        if_exist(MACROS['boom_configs'], strict=True)
         modify_macros(self.core_name, self.soc_name)
 
         # variables used by `VLSI`
@@ -250,19 +250,21 @@ class %s extends Config(
         cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["compile-script"])
         execute(cmd, self.logger)
 
+        os.chdir(MACROS["chipyard_vlsi_root"])
         cmd = "bash %s" % MACROS["compile-script"]
         execute(cmd, self.logger)
+        os.chdir(os.path.join(MACROS["vlsi_root"], os.path.pardir))
 
         self.logger.info("compilation done.")
         
     def synthesis(self):
-        # if_exist(
-        #     os.path.join(
-        #         MACROS["syn-rundir"],
-        #         "ChipTop.mapped.v"
-        #     ),
-        #     strict=True
-        # )
+        if_exist(
+            os.path.join(
+                MACROS["syn-rundir"],
+                "ChipTop.mapped.v"
+            ),
+            strict=True
+        )
 
         self.logger.info("synthesis done.")
 
@@ -312,25 +314,25 @@ class %s extends Config(
             execute(cmd, self.logger)
 
             # re-link the *.so
-            # so_file = glob(
-            #     os.path.join(
-            #         MACROS["sim-syn-rundir"],
-            #         "csrc",
-            #         "*.so"
-            #     )
-            # )[0]
+            so_file = glob(
+                os.path.join(
+                    MACROS["sim-syn-rundir"],
+                    "csrc",
+                    "*.so"
+                )
+            )[0]
             # DANGER!
-            # cmd = "rm -f %s" % so_file
-            # execute(cmd, self.logger)
-            # cmd = "ln -s %s %s" % (
-            #     os.path.join(
-            #         MACROS["sim-syn-rundir"],
-            #         "simv.daidir",
-            #         os.path.basename(so_file)
-            #     ),
-            #     so_file
-            # )
-            # execute(cmd, self.logger)
+            cmd = "rm -f %s" % so_file
+            execute(cmd, self.logger)
+            cmd = "ln -s %s %s" % (
+                os.path.join(
+                    MACROS["sim-syn-rundir"],
+                    "simv.daidir",
+                    os.path.basename(so_file)
+                ),
+                so_file
+            )
+            execute(cmd, self.logger)
 
         pre_misc_work()
 
@@ -343,16 +345,18 @@ class %s extends Config(
         execute(cmd, self.logger)
         cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["simv-script"])
         execute(cmd, self.logger)
+        os.chdir(MACROS["chipyard_vlsi_root"])
         cmd = "bash %s" % MACROS["simv-script"]
         execute(cmd, self.logger)
+        os.chdir(os.path.join(MACROS["vlsi_root"], os.path.pardir))
 
-        # if_exist(
-        #     os.path.join(
-        #         MACROS["sim-syn-rundir"],
-        #         "simv"
-        #     ),
-        #     strict=True
-        # )
+        if_exist(
+            os.path.join(
+                MACROS["sim-syn-rundir"],
+                "simv"
+            ),
+            strict=True
+        )
 
         post_misc_work()
 
@@ -419,28 +423,30 @@ class %s extends Config(
         cmd = "python handle-data.py -c %s" % MACROS["temp-area-yml"]
         execute(cmd, self.logger)
 
-        # latency = read_csv(MACROS["temp-latency-csv"])
-        # t = 0
-        # cnt = 0
-        # for v in latency:
-        #     t += v[1]
-        #     cnt += 1
-        # t /= cnt
-        # self.latency = t
+        latency = read_csv(MACROS["temp-latency-csv"])
+        t = 0
+        cnt = 0
+        for v in latency:
+            t += v[1]
+            cnt += 1
+        t /= cnt
+        self.latency = t
 
-        # power = read_csv(MACROS["temp-power-csv"])
-        # t = 0
-        # cnt = 0
-        # for v in power:
-        #     t += v[-1]
-        #     cnt += 1
-        # t /= cnt
-        # self.power = t
+        power = read_csv(MACROS["temp-power-csv"])
+        t = 0
+        cnt = 0
+        for v in power:
+            t += v[-1]
+            cnt += 1
+        t /= cnt
+        self.power = t
 
-        # self.area = read_csv(MACROS["temp-area-csv"])[0][1]
-        self.latency = 0
-        self.power = 0
-        self.area = 0
+        self.area = read_csv(MACROS["temp-area-csv"])[0][1]
+
+        # for debugging
+        # self.latency = 0
+        # self.power = 0
+        # self.area = 0
 
     def clean(self):
         # DANGER!

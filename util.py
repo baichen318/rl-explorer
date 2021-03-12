@@ -87,7 +87,7 @@ def execute(cmd, logger=None):
     else:
         print("[INFO]: executing: %s" % cmd)
 
-    # os.system(cmd)
+    os.system(cmd)
 
 def create_logger(path, name):
     time_str = time.strftime("%Y-%m-%d-%H-%M")
