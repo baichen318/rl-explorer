@@ -384,16 +384,16 @@ class %s extends Config(
                 "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
                 "mode": "latency",
                 "output-path": MACROS["temp-latency-csv"],
-                "config-name": "chipyard.TestHarness.%s-ChipTop" % self.soc_name
+                "config-name": ["chipyard.TestHarness.%s-ChipTop" % self.soc_name]
             }
             dump_yaml(MACROS["temp-latency-yml"], latency_dict)
 
         def generate_power_yml():
             power_dict = {
-                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
+                "data-path": os.path.join(MACROS["power_root"]),
                 "mode": "power",
                 "output-path": MACROS["temp-power-csv"],
-                "config-name": "chipyard.TestHarness.%s-ChipTop" % self.soc_name
+                "config-name": ["%s-benchmarks" % self.core_name]
             }
             dump_yaml(MACROS["temp-power-yml"], power_dict)
 
@@ -402,7 +402,7 @@ class %s extends Config(
                 "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
                 "mode": "area",
                 "output-path": MACROS["temp-area-csv"],
-                "config-name": "chipyard.TestHarness.%s-ChipTop" % self.soc_name
+                "config-name": ["chipyard.TestHarness.%s-ChipTop" % self.soc_name]
             }
             dump_yaml(MACROS["temp-area-yml"], area_dict)
 

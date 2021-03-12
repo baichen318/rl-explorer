@@ -12,8 +12,8 @@ def init():
 def do_design_explore(model):
     for _ in range(model.iteration):
         model.sample()
-        model.query()
         model.record()
+        model.query()
     model.final_record()
 
 def design_explorer():

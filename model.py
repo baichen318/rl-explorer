@@ -236,9 +236,9 @@ The best result is: %s
 
         self.logger.info("idx: %s metrics: %s" % (self.idx, self.metrics))
 
-    def single_objective_cost_function(latency, power):
+    def single_objective_cost_function(self, latency, power):
 
-        return 1e-6 * latency + power
+        return 1e-7 * latency + power
 
 def get_feature_from_csv():
 

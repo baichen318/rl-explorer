@@ -54,7 +54,7 @@ def modify_macros(core_name, soc_name):
     )
     MACROS["power-path"] = os.path.join(
         MACROS["power_root"],
-        "%s-benchmarks" % soc_name
+        "%s-benchmarks" % core_name
     )
     MACROS["temp-latency-yml"] = os.path.join(
         os.path.abspath(os.curdir),

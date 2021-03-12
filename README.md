@@ -17,10 +17,10 @@ $ bash exp/exp-model.sh
 ```
 
 ## TODO
-- YAML, CSV cleaning
-- Report extraction verification
+- ~~YAML, CSV cleaning~~
+- ~~Report extraction verification~~
 - GP Initialization
 - GP models saving
-- Optimized point verification
+- ~~Optimized point verification~~
 - ~~Duplicated points verification~~
 - Parallelization
