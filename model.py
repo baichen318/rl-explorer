@@ -61,7 +61,7 @@ class GP(object):
         # initialize the model
         points, targets = self.read_init_data("data/init-model.csv")
         for i, target in enumerate(targets):
-            self.next = p[i]
+            self.next = points[i]
             self.optimizer.register(params=self.next, target=target)
         self.optimizer.savegp(self.model_output_path)
 
@@ -73,10 +73,10 @@ class GP(object):
         for row in data:
             point = {}
             for name in GP.FEATURES:
-                point[name] = row[GP.FEATURES.index(name)]
+                point[name] = int(row[GP.FEATURES.index(name)])
             points.append(point)
             metrics.append(
-                single_objective_cost_function(data[-2], data[-1])
+                self.single_objective_cost_function(row[-2], row[-1])
             )
 
         return points, metrics
@@ -479,12 +479,14 @@ def extract_power(data):
 def merge_data(features, latency, power):
     results = []
     for idx in range(len(features)):
+        result = []
         # features
         for _idx in range(len(features[idx])):
-            results.append(features[idx][_idx])
+            result.append(features[idx][_idx])
         # latency
-        results.append(latency[idx])
-        results.append(power[idx])
+        result.append(latency[idx])
+        result.append(power[idx])
+        results.append(result)
 
     return results
 
@@ -521,7 +523,7 @@ def extract_data(data):
         "power"
     ]
     writer = pd.DataFrame(columns=columns, data=results)
-    write.to_csv(config['output-path'], index=False)
+    writer.to_csv(configs['output-path'], index=False)
 
 def handle():
     data = get_data_from_csv()
