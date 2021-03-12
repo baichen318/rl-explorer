@@ -2,7 +2,6 @@
 
 import sys
 import os
-import random
 import numpy as np
 from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
@@ -13,7 +12,7 @@ from bayes_opt import BayesianOptimization
 from bayes_opt import UtilityFunction
 
 from collections import OrderedDict
-import joblib
+from multiprocessing import Pool
 from vlsi.vlsi import vlsi_flow
 from util import parse_args, get_config, read_csv, if_exist, calc_mape, point2knob, knob2point, \
     create_logger, is_pow2, mkdir, execute
@@ -162,40 +161,61 @@ class GP(object):
     vector[18])
 
     def sample(self):
-        self.next = self.get_features(
-            self.optimizer.suggest(self.utility)
-        )
-        self.idx = knob2point(
-            self.features2knob(self.next),
-            self.dims
-        )
-        if self.idx in self.visited:
-            while self.idx in self.visited:
-                self.next = self.get_features(
-                    self.optimizer.suggest(self.utility)
-                )
-                self.idx = knob2point(
-                    self.features2knob(self.next),
-                    self.dims
-                )
-        self.visited.add(self.idx)
+
+        def _sample():
+            next = self.get_features(
+                self.optimizer.suggest(self.utility)
+            )
+            idx = knob2point(
+                self.features2knob(next),
+                self.dims
+            )
+            if idx in self.visited:
+                while idx in self.visited:
+                    next = self.get_features(
+                        self.optimizer.suggest(self.utility)
+                    )
+                    idx = knob2point(
+                        self.features2knob(next),
+                        self.dims
+                    )
+            self.idx.append(idx)
+            self.next.append(next)
+            self.visited.add(idx)
+
+        self.idx = []
+        self.next = []
+        # parallel 4 `vlsi_flow`
+        for i in range(4):
+            _sample()
+
+        assert len(self.idx) == self.next, \
+            "[ERROR]: assert failed. " \
+            "idx: {}, next: {}".format(len(self.idx), len(self.next))
 
     def query(self):
-        kwargs = {
-            'dims': self.dims,
-            'size': self.size,
-            'idx': self.idx,
-            'logger': self.logger
-        }
+        def _construct_kwargs(idx):
+            return {
+                "dims": self.dims,
+                "size": self.size,
+                "idx": idx,
+                "logger": self.logger
+            }
+
+        res = []
+        with Pool(processes=4) as pool:
+            for _idx in range(len(self.idx)):
+                kwargs = _construct_kwargs(self.idx[_idx])
+                res.append(pool.apply_async(func=vlsi_flow, args=(self.next[0], **kwargs,)))
         # latency, power & area
-        self.metrics = vlsi_flow(self.next, **kwargs)
-        self.optimizer.register(
-            params=self.next,
-            target=-self.single_objective_cost_function(
-                self.metrics["latency"],
-                self.metrics["power"]
+        for _idx in range(len(res)):
+            self.optimizer.register(
+                params=self.next[_idx],
+                target=-self.single_objective_cost_function(
+                    res[_idx].get()["latency"],
+                    res[_idx].get()["power"]
+                )
             )
-        )
 
     def record(self):
         msg = '''
@@ -394,10 +414,6 @@ def pareto_model(data):
             )
         )
 
-    def save_model(model):
-        print("saving the model: %s" % configs['output-path'])
-        joblib.dump(model, configs['output-path'])
-
     model = build_xgb_regrssor()
     model.fit(
         data['features']['train'],
@@ -412,7 +428,7 @@ def pareto_model(data):
     MAPE_power = calc_mape(pred[:, 1], data['target']['test'][:, 1])
 
     # save
-    save_model(model)
+    self.optimizer.savegp(self.model_output_path)
 
     print("[INFO]: MSE of latency: %.8f, MSE of power: %.8f" % (MSE_latency, MSE_power),
           "MAPE of latency: %.8f, MAPE of power: %.8f" % (MAPE_latency, MAPE_power))
