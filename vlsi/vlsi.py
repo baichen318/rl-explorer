@@ -9,8 +9,8 @@ class VLSI(object):
     def __init__(self, configs, **kwargs):
         self.configs = configs
         self.idx = str(kwargs['idx'])
-        self.core_name = "config" + '_' + self.idx
-        self.soc_name = "BOOM_" + self.core_name + "_Config"
+        self.core_name = "Config" + self.idx
+        self.soc_name = "BOOM" + self.core_name + "Config"
         self.logger = kwargs['logger']
         if_exist(MACROS['config_mixins'], strict=True)
         if_exist(MACROS['boom_configs'], strict=True)
