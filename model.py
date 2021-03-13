@@ -12,7 +12,7 @@ from bayes_opt import BayesianOptimization
 from bayes_opt import UtilityFunction
 
 from collections import OrderedDict
-from multiprocessing import Pool
+from multiprocessing import Process, Queue
 from vlsi.vlsi import vlsi_flow
 from util import parse_args, get_config, read_csv, if_exist, calc_mape, point2knob, knob2point, \
     create_logger, is_pow2, mkdir, execute
@@ -110,7 +110,7 @@ class GP(object):
     def get_features(self, _dict):
         vec = []
         for i in range(len(GP.FEATURES)):
-            vec.append(int(_dict[GP.FEATURES[i]]))
+            vec.append(round(_dict[GP.FEATURES[i]]))
         return vec
 
     def features2knob(self, vec):
@@ -161,7 +161,6 @@ class GP(object):
     vector[18])
 
     def sample(self):
-
         def _sample():
             next = self.get_features(
                 self.optimizer.suggest(self.utility)
@@ -183,47 +182,59 @@ class GP(object):
             self.next.append(next)
             self.visited.add(idx)
 
+        self.logger.info("Sampling...")
         self.idx = []
         self.next = []
         # parallel 4 `vlsi_flow`
         for i in range(4):
             _sample()
 
-        assert len(self.idx) == self.next, \
+        assert len(self.idx) == len(self.next), \
             "[ERROR]: assert failed. " \
             "idx: {}, next: {}".format(len(self.idx), len(self.next))
 
     def query(self):
-        def _construct_kwargs(idx):
+        def _construct_kwargs(idx, vec):
             return {
                 "dims": self.dims,
                 "size": self.size,
                 "idx": idx,
+                "configs": vec,
                 "logger": self.logger
             }
 
-        res = []
-        with Pool(processes=4) as pool:
-            for _idx in range(len(self.idx)):
-                kwargs = _construct_kwargs(self.idx[_idx])
-                res.append(pool.apply_async(func=vlsi_flow, args=(self.next[0], **kwargs,)))
+        self.logger.info("Querying...")
+        queue = [Queue() for i in range(len(self.idx))]
+        processes = []
+        for _idx in range(len(self.idx)):
+            kwargs = _construct_kwargs(self.idx[_idx], self.next[_idx])
+            p = Process(target=vlsi_flow, args=(kwargs, queue[_idx],))
+            processes.append(p)
+            p.start()
+        for p in processes:
+            p.join()
         # latency, power & area
-        for _idx in range(len(res)):
+        for _idx in range(len(queue)):
+            _queue = queue[_idx].get()
             self.optimizer.register(
                 params=self.next[_idx],
                 target=-self.single_objective_cost_function(
-                    res[_idx].get()["latency"],
-                    res[_idx].get()["power"]
+                    _queue["latency"],
+                    _queue["power"]
                 )
             )
 
     def record(self):
-        msg = '''
-The parameter is: %s
-        ''' % self.features2string(self.next)
-        self.logger.info(msg)
-        with open(self.report_output_path, 'a') as f:
-            f.write(msg)
+        for _idx in range(len(self.next)):
+            with open(self.report_output_path, 'a') as f:
+                msg = '''
+The parameter of %s is: %s
+                ''' % (
+                    self.idx[_idx],
+                    self.features2string(self.next[_idx])
+                )
+                self.logger.info(msg)
+                f.write(msg)
 
     def final_record(self):
         self.optimum = self.optimizer.max["params"]
@@ -237,11 +248,10 @@ The best result is: %s
             f.write(msg)
 
     def verification(self):
+        configs = self.get_features(self.optimum)
         self.idx = knob2point(
             self.features2knob(
-                self.get_features(
-                    self.optimum
-                )
+                configs
             ),
             self.dims
         )
@@ -250,10 +260,11 @@ The best result is: %s
             'dims': self.dims,
             'size': self.size,
             'idx': self.idx,
+            "configs": configs,
             'logger': self.logger
         }
         # latency, power & area
-        self.metrics = vlsi_flow(self.get_features(self.optimum), **kwargs)
+        self.metrics = vlsi_flow(kwargs)
 
         self.logger.info("idx: %s metrics: %s" % (self.idx, self.metrics))
 

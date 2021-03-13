@@ -29,4 +29,4 @@ $ bash exp/exp-opt.sh
 - ~~Optimized point verification~~
 - ~~Duplicated points verification~~
 - VLSI error handler
-- Parallelization
+- ~~Parallelization~~

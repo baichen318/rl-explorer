@@ -6,8 +6,8 @@ from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
 from .macros import MACROS, modify_macros
 
 class VLSI(object):
-    def __init__(self, configs, **kwargs):
-        self.configs = configs
+    def __init__(self, kwargs):
+        self.configs = kwargs["configs"]
         self.idx = str(kwargs['idx'])
         self.core_name = "Config" + self.idx
         self.soc_name = "BOOM" + self.core_name + "Config"
@@ -467,13 +467,18 @@ class %s extends Config(
         # cmd = "rm -f %s" % MACROS["temp-area-csv"]
         # execute(cmd, self.logger)
 
-def vlsi_flow(configs, **kwargs):
-    vlsi = VLSI(configs, **kwargs)
+def vlsi_flow(kwargs, queue=None):
+    vlsi = VLSI(kwargs)
     vlsi.run()
 
-    return {
+    ret =  {
         "latency": vlsi.latency,
         "power": vlsi.power,
         "area:": vlsi.area
     }
+
+    if queue:
+        queue.put(ret)
+    else:
+        return ret
 
