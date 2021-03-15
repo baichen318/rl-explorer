@@ -137,3 +137,5 @@ models/
 tags
 results/
 config_*.yml
+Config*.yml
+Config*.csv
