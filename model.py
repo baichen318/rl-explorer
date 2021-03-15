@@ -23,6 +23,7 @@ class GP(object):
     def __init__(self, configs):
         self.design_space = configs['design-space']
         self.iteration = configs['iteration']
+        self.parallel = configs["parallel"]
         self.report_output_path = os.path.join(
             os.path.abspath(os.curdir),
             configs['report-output-path']
@@ -162,6 +163,25 @@ class GP(object):
 
     def sample(self):
         def _sample():
+            self.next = self.get_features(
+                self.optimizer.suggest(self.utility)
+            )
+            self.idx = knob2point(
+                self.features2knob(self.next),
+                self.dims
+            )
+            if self.idx in self.visited:
+                while self.idx in self.visited:
+                    self.next = self.get_features(
+                        self.optimizer.suggest(self.utility)
+                    )
+                    self.idx = knob2point(
+                        self.features2knob(self.next),
+                        self.dims
+                    )
+            self.visited.add(self.idx)
+
+        def _batch_sample():
             next = self.get_features(
                 self.optimizer.suggest(self.utility)
             )
@@ -182,16 +202,20 @@ class GP(object):
             self.next.append(next)
             self.visited.add(idx)
 
-        self.logger.info("Sampling...")
-        self.idx = []
-        self.next = []
-        # parallel 4 `vlsi_flow`
-        for i in range(4):
-            _sample()
 
-        assert len(self.idx) == len(self.next), \
-            "[ERROR]: assert failed. " \
-            "idx: {}, next: {}".format(len(self.idx), len(self.next))
+        self.logger.info("Sampling...")
+        if self.parallel:
+            self.idx = []
+            self.next = []
+            # parallel 4 `vlsi_flow`
+            for i in range(4):
+                _batch_sample()
+
+            assert len(self.idx) == len(self.next), \
+                "[ERROR]: assert failed. " \
+                "idx: {}, next: {}".format(len(self.idx), len(self.next))
+        else:
+            _sample()
 
     def query(self):
         def _construct_kwargs(idx, vec):
@@ -204,36 +228,62 @@ class GP(object):
             }
 
         self.logger.info("Querying...")
-        queue = [Queue() for i in range(len(self.idx))]
-        processes = []
-        for _idx in range(len(self.idx)):
-            kwargs = _construct_kwargs(self.idx[_idx], self.next[_idx])
-            p = Process(target=vlsi_flow, args=(kwargs, queue[_idx],))
-            processes.append(p)
-            p.start()
-        for p in processes:
-            p.join()
-        # latency, power & area
-        for _idx in range(len(queue)):
-            _queue = queue[_idx].get()
+        if self.parallel:
+            queue = [Queue() for i in range(len(self.idx))]
+            processes = []
+            for _idx in range(len(self.idx)):
+                kwargs = _construct_kwargs(self.idx[_idx], self.next[_idx])
+                p = Process(target=vlsi_flow, args=(kwargs, queue[_idx],))
+                processes.append(p)
+                p.start()
+            for p in processes:
+                p.join()
+            # latency, power & area
+            for _idx in range(len(queue)):
+                _queue = queue[_idx].get()
+                self.optimizer.register(
+                    params=self.next[_idx],
+                    target=-self.single_objective_cost_function(
+                        _queue["latency"],
+                        _queue["power"]
+                    )
+                )
+        else:
+            kwargs = {
+                "dims": self.dims,
+                "size": self.size,
+                "idx": self.idx,
+                "configs": self.next,
+                "logger": self.logger
+            }
+            # latency, power & area
+            self.metrics = vlsi_flow(kwargs)
             self.optimizer.register(
-                params=self.next[_idx],
+                params=self.next,
                 target=-self.single_objective_cost_function(
-                    _queue["latency"],
-                    _queue["power"]
+                    self.metrics["lateny"],
+                    self.metrics["power"]
                 )
             )
 
     def record(self):
-        for _idx in range(len(self.next)):
-            with open(self.report_output_path, 'a') as f:
-                msg = '''
+        if self.parallel:
+            for _idx in range(len(self.next)):
+                with open(self.report_output_path, 'a') as f:
+                    msg = '''
 The parameter of %s is: %s
-                ''' % (
-                    self.idx[_idx],
-                    self.features2string(self.next[_idx])
-                )
-                self.logger.info(msg)
+                    ''' % (
+                        self.idx[_idx],
+                        self.features2string(self.next[_idx])
+                    )
+                    self.logger.info(msg)
+                    f.write(msg)
+        else:
+            msg = '''
+The parameter is: %s
+        ''' % self.features2string(self.next)
+            self.logger.info(msg)
+            with open(self.report_output_path, 'a') as f:
                 f.write(msg)
 
     def final_record(self):

@@ -63,3 +63,4 @@ design-space:
 iteration: 5
 report-output-path: results/result.rpt
 model-output-path: models
+parallel: False

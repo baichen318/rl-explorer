@@ -30,3 +30,6 @@ $ bash exp/exp-opt.sh
 - ~~Duplicated points verification~~
 - VLSI error handler
 - ~~Parallelization~~
+
+## Unresolved Issues
+Parallelization & Sync.
