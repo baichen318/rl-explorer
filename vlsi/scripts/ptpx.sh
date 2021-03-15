@@ -31,17 +31,19 @@ function _ptpx() {
     local _sim_path=$2
     local _temp_sim_path=$3
     local _bmark=$4
+	local _icc_dir=$5
 
     if [[ ! -e ${_sim_path}/vcdplus.vpd  ]]
     then
         mkdir -p ${_sim_path}
         mkdir -p ${_temp_sim_path}
 
-        set -o pipefail && ./simv +permissive +dramsim +max-cycles=2000000 -ucli -do run.tcl \
-            +verbose +vcdplusfile=${_sim_path}/vcdplus.vpd \
+        set -o pipefail && ./simv +permissive +dramsim +max-cycles=1500000 -ucli -do run.tcl \
+			+verbose +vcdplusfile=${_sim_path}/vcdplus.vpd \
             +permissive-off ${_bmark} </dev/null 2> \
             >(spike-dasm > ${_sim_path}/${bmark}.out) | \
             tee ${_sim_path}/${bmark}.log
+		echo $cmd
         cat ${_sim_path}/${bmark}.out | grep "PASSED"
         ret=$?
 
@@ -55,7 +57,7 @@ function _ptpx() {
             make build_pt_dir=${power_path}/"build-pt-"${bmark} \
                 cur_build_pt_dir=${power_path}/"current-pt-"${bmark} \
                 vcs_dir=${_temp_sim_path} \
-                icc_dir=/research/d3/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/syn-rundir
+                icc_dir=${_icc_dir}
             cd -
             cd ${power_path}
             mv build-pt-${bmark} ${bmark}
@@ -69,6 +71,7 @@ function _ptpx() {
     elif [[ -e ${_sim_path}/vcdplus.vpd ]]
     then
         cat ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.out | grep "PASSED"
+		echo $cmd
         ret=$?
 
         if [[ $ret == 0 ]] || true
@@ -83,7 +86,7 @@ function _ptpx() {
             make build_pt_dir=${power_path}/"build-pt-"${bmark} \
                 cur_build_pt_dir=${power_path}/"current-pt-"${bmark} \
                 vcs_dir=${_temp_sim_path} \
-                icc_dir=/research/d3/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/syn-rundir
+                icc_dir=${_icc_dir}
             cd -
             cd ${power_path}
             mv build-pt-${bmark} ${bmark}
@@ -133,7 +136,8 @@ function ptpx() {
         _sim_path=${sim_path}/${bmark}
         _temp_sim_path=${temp_sim_path}/${bmark}
         _bmark=${path}/${bmark}
-        _ptpx ${bmark} ${_sim_path} ${_temp_sim_path} ${_bmark} &
+		_icc_dir=${sim_path}/../../syn-rundir
+        _ptpx ${bmark} ${_sim_path} ${_temp_sim_path} ${_bmark} ${_icc_dir} &
         sleep 300
     done
 }
@@ -169,12 +173,10 @@ do
             fi
             ;;
         t)
-            if [[ -f $OPTARG ]]
+            if [[ ! -d $OPTARG ]]
             then
                 temp_sim_path=${OPTARG}
-            else
-                echo ${OPTARG} not found.
-            fi
+			fi
             ;;
         p)
             if [[ -d $OPTARG ]]
