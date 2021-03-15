@@ -261,7 +261,7 @@ class GP(object):
             self.optimizer.register(
                 params=self.next,
                 target=-self.single_objective_cost_function(
-                    self.metrics["lateny"],
+                    self.metrics["latency"],
                     self.metrics["power"]
                 )
             )

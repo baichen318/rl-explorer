@@ -38,7 +38,7 @@ function _ptpx() {
         mkdir -p ${_sim_path}
         mkdir -p ${_temp_sim_path}
 
-        set -o pipefail && ./simv +permissive +dramsim +max-cycles=1500000 -ucli -do run.tcl \
+        set -o pipefail && ./simv +permissive +dramsim +max-cycles=1300000 -ucli -do run.tcl \
 			+verbose +vcdplusfile=${_sim_path}/vcdplus.vpd \
             +permissive-off ${_bmark} </dev/null 2> \
             >(spike-dasm > ${_sim_path}/${bmark}.out) | \
