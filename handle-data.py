@@ -64,7 +64,7 @@ def handle_latency():
                     'sim-syn-rundir',
                     'output',
                     bmark,
-                    bmark + '.' + root.split('-ChipTop')[0] + '.out'
+                    bmark + '.out'
                 )
                 handle_latency_report(report, root, bmark)
         latency = ['Configure', 'Cycles']

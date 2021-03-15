@@ -12,8 +12,8 @@ class VLSI(object):
         self.core_name = "Config" + self.idx
         self.soc_name = "BOOM" + self.core_name + "Config"
         self.logger = kwargs['logger']
-        if_exist(MACROS['config_mixins'], strict=True)
-        if_exist(MACROS['boom_configs'], strict=True)
+        if_exist(MACROS['config-mixins'], strict=True)
+        if_exist(MACROS['boom-configs'], strict=True)
         modify_macros(self.core_name, self.soc_name)
 
         # variables used by `VLSI`
@@ -232,11 +232,11 @@ class %s extends Config(
 
     def generate_design(self):
         codes = self.generate_config_mixins()
-        with open(MACROS['config_mixins'], 'a') as f:
+        with open(MACROS['config-mixins'], 'a') as f:
             f.writelines(codes)
 
         codes = self.generate_boom_configs()
-        with open(MACROS['boom_configs'], 'a') as f:
+        with open(MACROS['boom-configs'], 'a') as f:
             f.writelines(codes)
 
         self.logger.info("generate design done.")
@@ -250,10 +250,10 @@ class %s extends Config(
         cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["compile-script"])
         execute(cmd, self.logger)
 
-        os.chdir(MACROS["chipyard_vlsi_root"])
+        os.chdir(MACROS["chipyard-vlsi-root"])
         cmd = "bash %s" % MACROS["compile-script"]
         execute(cmd, self.logger)
-        os.chdir(os.path.join(MACROS["vlsi_root"], os.path.pardir))
+        os.chdir(os.path.join(MACROS["vlsi-root"], os.path.pardir))
 
         self.logger.info("compilation done.")
         
@@ -303,12 +303,12 @@ class %s extends Config(
             )
             execute(cmd, self.logger)
             cmd = "mv -f %s %s/" % (
-                os.path.join(MACROS["chipyard_vlsi_root"], "csrc"),
+                os.path.join(MACROS["chipyard-vlsi-root"], "csrc"),
                 MACROS["sim-syn-rundir"]
             )
             execute(cmd, self.logger)
             cmd = "mv -f %s %s/" % (
-                os.path.join(MACROS["chipyard_vlsi_root"], "vc_hdrs.h"),
+                os.path.join(MACROS["chipyard-vlsi-root"], "vc_hdrs.h"),
                 os.path.join(MACROS["sim-syn-rundir"])
             )
             execute(cmd, self.logger)
@@ -345,10 +345,10 @@ class %s extends Config(
         execute(cmd, self.logger)
         cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["simv-script"])
         execute(cmd, self.logger)
-        os.chdir(MACROS["chipyard_vlsi_root"])
+        os.chdir(MACROS["chipyard-vlsi-root"])
         cmd = "bash %s" % MACROS["simv-script"]
         execute(cmd, self.logger)
-        os.chdir(os.path.join(MACROS["vlsi_root"], os.path.pardir))
+        os.chdir(os.path.join(MACROS["vlsi-root"], os.path.pardir))
 
         if_exist(
             os.path.join(
@@ -373,19 +373,20 @@ class %s extends Config(
         mkdir(MACROS["power-path"])
 
         os.chdir(MACROS["sim-syn-rundir"])
-        cmd = "bash ptpx.sh -s %s -p %s -r" % (
+        cmd = "bash ptpx.sh -s %s -t %s -p %s -r" % (
             MACROS["sim-path"],
+            MACROS["temp-sim-path"],
             MACROS["power-path"]
         )
         execute(cmd, self.logger)
-        os.chdir(os.path.join(MACROS["vlsi_root"], os.path.pardir))
+        os.chdir(os.path.join(MACROS["vlsi-root"], os.path.pardir))
 
         self.logger.info("simulation done.")
 
     def record(self):
         def generate_latency_yml():
             latency_dict = {
-                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
+                "data-path": os.path.join(MACROS["chipyard-vlsi-root"], "build"),
                 "mode": "latency",
                 "output-path": MACROS["temp-latency-csv"],
                 "config-name": ["chipyard.TestHarness.%s-ChipTop" % self.soc_name]
@@ -394,7 +395,7 @@ class %s extends Config(
 
         def generate_power_yml():
             power_dict = {
-                "data-path": os.path.join(MACROS["power_root"]),
+                "data-path": os.path.join(MACROS["power-root"]),
                 "mode": "power",
                 "output-path": MACROS["temp-power-csv"],
                 "config-name": ["%s-benchmarks" % self.core_name]
@@ -403,7 +404,7 @@ class %s extends Config(
 
         def generate_area_yml():
             area_dict = {
-                "data-path": os.path.join(MACROS["chipyard_vlsi_root"], "build"),
+                "data-path": os.path.join(MACROS["chipyard-vlsi-root"], "build"),
                 "mode": "area",
                 "output-path": MACROS["temp-area-csv"],
                 "config-name": ["chipyard.TestHarness.%s-ChipTop" % self.soc_name]

@@ -4,6 +4,7 @@
 
 path="/research/d3/cbai/research/riscv-benchmarks"
 sim_path=${sim_path:-"/uac/gds/cbai/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/sim-syn-rundir/output"}
+temp_sim_path=${temp_sim_path:-"/uac/gds/cbai/cbai2/temp/SmallBoomConfig"}
 power_path=${power_path:-"/uac/gds/cbai/cbai/research/synopsys-flow/build/pt-pwr/SmallBoomConfig-benchmarks"}
 
 function set_env() {
@@ -28,37 +29,39 @@ EOF
 function _ptpx() {
     local bmark=$1
     local _sim_path=$2
-    local _bmark=$3
+    local _temp_sim_path=$3
+    local _bmark=$4
 
     if [[ ! -e ${_sim_path}/vcdplus.vpd  ]]
     then
         mkdir -p ${_sim_path}
+        mkdir -p ${_temp_sim_path}
 
         set -o pipefail && ./simv +permissive +dramsim +max-cycles=2000000 -ucli -do run.tcl \
             +verbose +vcdplusfile=${_sim_path}/vcdplus.vpd \
             +permissive-off ${_bmark} </dev/null 2> \
-            >(spike-dasm > ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.out) | \
-            tee ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.log
-        cat ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.out | grep "PASSED"
+            >(spike-dasm > ${_sim_path}/${bmark}.out) | \
+            tee ${_sim_path}/${bmark}.log
+        cat ${_sim_path}/${bmark}.out | grep "PASSED"
         ret=$?
 
         if [[ $ret == 0 ]] || true
         then
             pushd ${_sim_path}
 
-            vpd2vcd vcdplus.vpd vcdplus.vcd
-            vcd2saif -input vcdplus.vcd -output vcdplus.saif
+            vpd2vcd vcdplus.vpd ${_temp_sim_path}/vcdplus.vcd
+            vcd2saif -input ${_temp_sim_path}/vcdplus.vcd -output ${_temp_sim_path}/vcdplus.saif
             cd /research/d3/cbai/research/synopsys-flow/build/pt-pwr
             make build_pt_dir=${power_path}/"build-pt-"${bmark} \
                 cur_build_pt_dir=${power_path}/"current-pt-"${bmark} \
-                vcs_dir=${_sim_path} \
+                vcs_dir=${_temp_sim_path} \
                 icc_dir=/research/d3/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/syn-rundir
             cd -
             cd ${power_path}
             mv build-pt-${bmark} ${bmark}
             rm -rf current-pt-${bmark}
             cd -
-            rm -f ${_sim_path}/*.vcd ${_sim_path}/*.saif
+            rm -f ${_temp_sim_path}/*.vcd ${_temp_sim_path}/*.saif
 
             pushd +1
             popd +1
@@ -72,21 +75,21 @@ function _ptpx() {
         then
             pushd ${_sim_path}
             # delete redundant files
-            rm -f ${_sim_path}/*.vcd ${_sim_path}/*.saif
+            rm -f ${_temp_sim_path}/*.vcd ${_temp_sim_path}/*.saif
 
-            vpd2vcd vcdplus.vpd vcdplus.vcd
-            vcd2saif -input vcdplus.vcd -output vcdplus.saif
+            vpd2vcd vcdplus.vpd ${_temp_sim_path}/vcdplus.vcd
+            vcd2saif -input ${_temp_sim_path}vcdplus.vcd -output ${_temp_sim_path}vcdplus.saif
             cd /research/d3/cbai/research/synopsys-flow/build/pt-pwr
             make build_pt_dir=${power_path}/"build-pt-"${bmark} \
                 cur_build_pt_dir=${power_path}/"current-pt-"${bmark} \
-                vcs_dir=${_sim_path} \
+                vcs_dir=${_temp_sim_path} \
                 icc_dir=/research/d3/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/syn-rundir
             cd -
             cd ${power_path}
             mv build-pt-${bmark} ${bmark}
             rm -rf current-pt-${bmark}
             cd -
-            rm -f ${_sim_path}/*.vcd ${_sim_path}/*.saif
+            rm -f ${_temp_sim_path}/*.vcd ${_temp_sim_path}/*.saif
 
             pushd +1
             popd +1
@@ -128,8 +131,9 @@ function ptpx() {
     for bmark in `ls $path`
     do
         _sim_path=${sim_path}/${bmark}
+        _temp_sim_path=${temp_sim_path}/${bmark}
         _bmark=${path}/${bmark}
-        _ptpx ${bmark} ${_sim_path} ${_bmark} &
+        _ptpx ${bmark} ${_sim_path} ${_temp_sim_path} ${_bmark} &
         sleep 300
     done
 }
@@ -143,7 +147,7 @@ function post() {
 
 set_env
 
-while getopts "s:p:f:rh" arg
+while getopts "s:t:p:f:rh" arg
 do
     case $arg in
         f)
@@ -160,6 +164,14 @@ do
             if [[ -d $OPTARG ]]
             then
                 sim_path=${OPTARG}
+            else
+                echo ${OPTARG} not found.
+            fi
+            ;;
+        t)
+            if [[ -f $OPTARG ]]
+            then
+                temp_sim_path=${OPTARG}
             else
                 echo ${OPTARG} not found.
             fi
