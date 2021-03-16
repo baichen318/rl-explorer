@@ -33,3 +33,6 @@ $ bash exp/exp-opt.sh
 
 ## Unresolved Issues
 Parallelization & Sync.
+
+## Notice
+- Pay attention to vlsi/macros.py
