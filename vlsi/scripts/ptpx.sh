@@ -2,10 +2,10 @@
 
 #Author: baichen318@gmail.com
 
-path="/research/d3/cbai/research/riscv-benchmarks"
-sim_path=${sim_path:-"/uac/gds/cbai/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/sim-syn-rundir/output"}
-temp_sim_path=${temp_sim_path:-"/uac/gds/cbai/cbai2/temp/SmallBoomConfig"}
-power_path=${power_path:-"/uac/gds/cbai/cbai/research/synopsys-flow/build/pt-pwr/SmallBoomConfig-benchmarks"}
+path="/research/dept8/gds/cbai/research/riscv-benchmarks"
+sim_path=${sim_path:-"/research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/sim-syn-rundir/output"}
+temp_sim_path=${temp_sim_path:-"/research/dept8/gds/cbai/cbai2/temp/SmallBoomConfig"}
+power_path=${power_path:-"/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/SmallBoomConfig-benchmarks"}
 
 function set_env() {
     function handler() {
@@ -38,7 +38,7 @@ function _ptpx() {
         mkdir -p ${_sim_path}
         mkdir -p ${_temp_sim_path}
 
-        set -o pipefail && ./simv +permissive +dramsim +max-cycles=1300000 -ucli -do run.tcl \
+        set -o pipefail && ./simv +permissive +dramsim +max-cycles=1000000 -ucli -do run.tcl \
 			+verbose +vcdplusfile=${_sim_path}/vcdplus.vpd \
             +permissive-off ${_bmark} </dev/null 2> \
             >(spike-dasm > ${_sim_path}/${bmark}.out) | \
@@ -53,7 +53,7 @@ function _ptpx() {
 
             vpd2vcd vcdplus.vpd ${_temp_sim_path}/vcdplus.vcd
             vcd2saif -input ${_temp_sim_path}/vcdplus.vcd -output ${_temp_sim_path}/vcdplus.saif
-            cd /research/d3/cbai/research/synopsys-flow/build/pt-pwr
+            cd /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr
             make build_pt_dir=${power_path}/"build-pt-"${bmark} \
                 cur_build_pt_dir=${power_path}/"current-pt-"${bmark} \
                 vcs_dir=${_temp_sim_path} \
@@ -82,7 +82,7 @@ function _ptpx() {
 
             vpd2vcd vcdplus.vpd ${_temp_sim_path}/vcdplus.vcd
             vcd2saif -input ${_temp_sim_path}vcdplus.vcd -output ${_temp_sim_path}vcdplus.saif
-            cd /research/d3/cbai/research/synopsys-flow/build/pt-pwr
+            cd /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr
             make build_pt_dir=${power_path}/"build-pt-"${bmark} \
                 cur_build_pt_dir=${power_path}/"current-pt-"${bmark} \
                 vcs_dir=${_temp_sim_path} \
@@ -138,7 +138,7 @@ function ptpx() {
         _bmark=${path}/${bmark}
 		_icc_dir=${sim_path}/../../syn-rundir
         _ptpx ${bmark} ${_sim_path} ${_temp_sim_path} ${_bmark} ${_icc_dir} &
-        sleep 300
+        sleep 240
     done
 }
 
