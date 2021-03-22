@@ -55,3 +55,4 @@ parallel: False
 # Currently only support `random`
 sample-method: random
 sample-size: 200
+sample-output-path: data/sample.xlsx

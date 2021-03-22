@@ -114,3 +114,26 @@ def is_pow2(num):
     else:
 
         return False
+
+def write_excel(path, data, features):
+    """
+        data: np.array
+    """
+    writer = pd.ExcelWriter(path)
+    _data = pd.DataFrame(data)
+    _data.columns = features
+    _data.to_excel(writer, 'page_1')
+    print("[INFO]: saving to %s" % path)
+    writer.save()
+
+def write_txt(path, data, fmt='%i'):
+    """
+        data: np.array
+    """
+    dims = len(data.shape)
+    if dims > 2:
+        print("[WARN]: cannot save to %s" % path)
+        return
+    print("[INFO]: saving to %s" % path)
+    np.savetxt(path, data, fmt)
+

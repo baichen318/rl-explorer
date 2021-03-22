@@ -16,6 +16,11 @@ $ bash exp/exp-vis.sh
 $ bash exp/exp-model.sh
 ```
 
+## Offline dataset sampling
+```bash
+$ bash exp/exp-sample.sh
+```
+
 ## Bayes Optimization Flow
 ```bash
 $ bash exp/exp-opt.sh

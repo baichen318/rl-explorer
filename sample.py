@@ -2,17 +2,12 @@
 
 import random
 import numpy as np
-from collection import OrderedDict
+from collections import OrderedDict
 from space import DesignSpace
-from util import parse_args, get_config, create_logger
+from util import parse_args, get_config, create_logger, write_excel, write_txt
 from exception import UnDefinedException
 
-sample_func = [
-    random_sample
-]
-
-
-def parse_design_space():
+def parse_design_space(design_space):
     bounds = OrderedDict()
     dims = []
     size = 1
@@ -42,21 +37,20 @@ def parse_design_space():
 
 def random_sample():
     logger = create_logger("logs", "random_sample")
+    logger.info("Create logger: %s" % "logs/random_sample")
     design_space = parse_design_space(configs["design-space"])
     logger.info("Size of the design space: %d" % design_space.size)
 
     data = design_space.random_sample(configs["sample-size"])
 
-    return data
-
+    write_excel(configs["sample-output-path"], data, design_space.features)
+    # write_txt(configs["sample-output-path"], data)
 
 def do_sample(method):
     if method == "random":
-        f = sample_func[sample_func.index(method + "_sample")]
+        random_sample()
     else:
         raise UnDefinedException(method + " method")
-
-    data = f()
 
 def sample():
     if "sample-method" in configs.keys():
@@ -68,3 +62,4 @@ if __name__ == "__main__":
     argv = parse_args()
     configs = get_config(argv)
     sample()
+
