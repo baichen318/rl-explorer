@@ -3,7 +3,7 @@
 import os
 from glob import glob
 import numpy as np
-from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
+from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv, load_txt
 from .macros import MACROS, modify_macros
 
 class VLSI(object):
@@ -24,13 +24,7 @@ class VLSI(object):
 
     def steps(self):
         return [
-            'generate_design',
-            'compilation',
-            'synthesis',
-            'generate_simv',
-            'simulation',
-            'record',
-            'clean'
+            'generate_design'
         ]
 
     def run(self):
@@ -486,3 +480,23 @@ def vlsi_flow(kwargs, queue=None):
     else:
         return ret
 
+def offline_vlsi_flow():
+    if_exist(
+        configs["sample-output-path"],
+        strict=True
+    )
+    dataset = load_txt(configs["sample-output-path"])
+
+    for idx, data in enumerate(dataset):
+        kwargs = {
+            "configs": data,
+            "idx": idx,
+            "logger": create_logger("logs", "vlsi"),
+        }
+        vlsi = VLSI(kwargs)
+        vlsi.run()
+
+if __name__ == "__main__":
+    argv = parse_args()
+    configs = get_config(argv)
+    offline_vlsi_flow()

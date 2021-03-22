@@ -137,3 +137,9 @@ def write_txt(path, data, fmt='%i'):
     print("[INFO]: saving to %s" % path)
     np.savetxt(path, data, fmt)
 
+def load_txt(path, fmt=int):
+    if if_exist(path):
+        print("[INFO]: loading to %s" % path)
+        np.loadtxt(path, dytpe=fmt)
+    else:
+        print("[WARN]: cannot load %s" % path)
