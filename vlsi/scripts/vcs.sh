@@ -34,7 +34,7 @@ set -ex
     /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.PATTERN-ChipTop/tech-asap7-cache/extracted/ASAP7_PDKandLIB.tar/ASAP7_PDKandLIB_v1p5/asap7libs_24.tar.bz2/asap7libs_24/verilog/asap7sc7p5t_24_INVBUF_SLVT_TT.v \
     /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.PATTERN-ChipTop/tech-asap7-cache/extracted/ASAP7_PDKandLIB.tar/ASAP7_PDKandLIB_v1p5/asap7libs_24.tar.bz2/asap7libs_24/verilog/asap7sc7p5t_24_INVBUF_SRAM_TT.v \
     /research/dept8/gds/cbai/research/chipyard/vlsi/generated-src/chipyard.TestHarness.PATTERN/sram_behav_models.v \
-    +define+VCS +define+CLOCK_PERIOD=2.0 +define+RESET_DELAY=777.7 +define+PRINTF_COND=TestDriver.printf_cond +define+STOP_COND=!TestDriver.reset \
+    +define+VCS +define+CLOCK_PERIOD=0.5 +define+RESET_DELAY=777.7 +define+PRINTF_COND=TestDriver.printf_cond +define+STOP_COND=!TestDriver.reset \
     +define+RANDOMIZE_MEM_INIT +define+RANDOMIZE_REG_INIT +define+RANDOMIZE_GARBAGE_ASSIGN \
     +define+RANDOMIZE_INVALID_ASSIGN +define+DEBUG \
     -debug +notimingcheck +delay_mode_zero -top TestDriver \
