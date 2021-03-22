@@ -485,10 +485,10 @@ def vlsi_flow(kwargs, queue=None):
 
 def offline_vlsi_flow():
     if_exist(
-        configs["sample-output-path"],
+        configs["sample-output-path"] + ".txt",
         strict=True
     )
-    dataset = load_txt(configs["sample-output-path"])
+    dataset = load_txt(configs["sample-output-path"] + ".txt")
 
     for idx, data in enumerate(dataset):
         kwargs = {

@@ -55,4 +55,5 @@ parallel: False
 # Currently only support `random`
 sample-method: random
 sample-size: 200
-sample-output-path: data/sample.txt
+# Ouput two formats: xlsx & txt
+sample-output-path: data/sample

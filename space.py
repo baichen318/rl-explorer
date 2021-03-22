@@ -29,6 +29,7 @@ class DesignSpace(Space):
         self.features = features
         self.bounds = bounds
         # handle `size`
+        size /= len(bounds["fetchWidth"])
         size /= len(bounds["numFpPhysRegisters"])
         size /= len(bounds["numStqEntries"])
         size /= len(bounds["fp_issueWidth"])
@@ -63,6 +64,9 @@ class DesignSpace(Space):
         _vec = self.round_vec(vec)
         # fetchWidth = 2^x
         if (_vec[0] & (_vec[0] - 1)):
+            return False
+        # numFetchBufferEntries % decodeWidth
+        if not (_vec[2] % _vec[1] == 0):
             return False
         # decodeWidth <= fetchWidth
         if not (_vec[1] <= _vec[0]):
@@ -101,6 +105,12 @@ class DesignSpace(Space):
                 if self.features[col] == "fp_issueWidth":
                     _data.T[col] = _data.T[col - 2]
                     continue
+                if self.features[col] == "ICacheParams_fetchBytes":
+                    if _data.T[0] == 8:
+                        _data.T[col] = 4
+                    else:
+                        _data.T[col] = 2
+                    continue
                 _data.T[col] = self.random_state.choice(candidates, size=1)
             while (not self.verify_features(_data[0])) and \
                 (not self.knob2point(
@@ -116,6 +126,12 @@ class DesignSpace(Space):
                         continue
                     if self.features[col] == "fp_issueWidth":
                         _data.T[col] = _data.T[col - 2]
+                        continue
+                    if self.features[col] == "ICacheParams_fetchBytes":
+                        if _data.T[0] == 8:
+                            _data.T[col] = 4
+                        else:
+                            _data.T[col] = 2
                         continue
                     _data.T[col] = self.random_state.choice(candidates, size=1)
             _data = self.round_vec(_data.ravel())
