@@ -2,6 +2,7 @@
 
 import os
 from glob import glob
+import numpy as np
 from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv
 from .macros import MACROS, modify_macros
 
@@ -428,8 +429,9 @@ class %s extends Config(
         t = 0
         cnt = 0
         for v in latency:
-            t += v[1]
-            cnt += 1
+            if not np.isnan(v[1]):
+                t += v[1]
+                cnt += 1
         t /= cnt
         self.latency = t
 
@@ -437,8 +439,9 @@ class %s extends Config(
         t = 0
         cnt = 0
         for v in power:
-            t += v[-1]
-            cnt += 1
+            if not np.isnan(v[-1]):
+                t += v[-1]
+                cnt += 1
         t /= cnt
         self.power = t
 

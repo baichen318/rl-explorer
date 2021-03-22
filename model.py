@@ -606,7 +606,7 @@ def extract_data(data):
 def handle():
     data = get_data_from_csv()
 
-    if configs["xgb"]:
+    if "xgb" in configs.keys() and configs["xgb"]:
         data = split_dataset(data)
 
         pareto_model(data)
