@@ -1,10 +1,13 @@
 # Author: baichen318@gmail.com
 
 import os
+import sys
+sys.path.append(os.path.dirname(__file__) + os.sep + '../')
 from glob import glob
 import numpy as np
-from util import if_exist, execute, create_logger, mkdir, dump_yaml, read_csv, load_txt
-from .macros import MACROS, modify_macros
+from util import parse_args, get_config, if_exist, \
+    execute, create_logger, mkdir, dump_yaml, read_csv, load_txt
+from macros import MACROS, modify_macros
 
 class VLSI(object):
     def __init__(self, kwargs):
@@ -490,7 +493,7 @@ def offline_vlsi_flow():
     for idx, data in enumerate(dataset):
         kwargs = {
             "configs": data,
-            "idx": idx,
+            "idx": idx + 1,
             "logger": create_logger("logs", "vlsi"),
         }
         vlsi = VLSI(kwargs)

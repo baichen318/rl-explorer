@@ -43,8 +43,8 @@ def random_sample():
 
     data = design_space.random_sample(configs["sample-size"])
 
-    write_excel(configs["sample-output-path"], data, design_space.features)
-    # write_txt(configs["sample-output-path"], data)
+    # write_excel(configs["sample-output-path"], data, design_space.features)
+    write_txt(configs["sample-output-path"], data)
 
 def do_sample(method):
     if method == "random":
