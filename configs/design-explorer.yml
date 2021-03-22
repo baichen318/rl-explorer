@@ -1,5 +1,9 @@
 # Author: baichen318@gmail.com
 
+# `numIntPhysRegisters` = `numFpPhysRegisters`
+# `numLdqEntries` = `numStqEntries`
+# `mem_issueWidth` = `fp_issueWidth`
+
 design-space:
   fetchWidth:
     candidates: [4, 8]
@@ -8,37 +12,21 @@ design-space:
     end: 5
     stride: 1
   numFetchBufferEntries:
-    start: 8
-    end: 40
-    stride: 8
+    candidates: [8, 16, 24, 32, 35, 40]
   numRobEntries:
-    start: 16
-    end: 144
-    stride: 8
+    candidates: [32, 64, 96, 128, 130]
   numRasEntries:
-    start: 8
-    end: 32
-    stride: 8
+    candidates: [16, 24, 32]
   numIntPhysRegisters:
-    start: 36
-    end: 140
-    stride: 4
+    candidates: [48, 64, 80, 96, 112]
   numFpPhysRegisters:
-    start: 36
-    end: 140
-    stride: 4
+    candidates: [48, 64, 80, 96, 112]
   numLdqEntries:
-    start: 4
-    end: 36
-    stride: 2
+    candidates: [8, 16, 24, 32]
   numStqEntries:
-    start: 4
-    end: 36
-    stride: 2
+    candidates: [8, 16, 24, 32]
   maxBrCount:
-    start: 6
-    end: 22
-    stride: 2
+    candidates: [8, 12, 16, 20]
   mem_issueWidth:
     candidates: [1, 2]
   int_issueWidth:
@@ -64,3 +52,6 @@ iteration: 5
 report-output-path: results/result.rpt
 model-output-path: models
 parallel: False
+# Currently only support `random`
+sample-method: random
+sample-size: 200
