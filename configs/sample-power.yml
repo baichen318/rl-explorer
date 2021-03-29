@@ -3,7 +3,7 @@
 ## Parse data
 
 # original data
-data-path: /uac/gds/cbai/cbai/research/synopsys-flow/build/pt-pwr/
+data-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
 # power | latency | area
 mode: power
 # output data

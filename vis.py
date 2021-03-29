@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
 from util import parse_args, get_config, if_exist, read_csv
+from exception import UnDefinedException
 
 markers = [
     '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
@@ -80,6 +81,30 @@ def plot_v2(data, c_name):
     print('[INFO]: save the figure', output)
     plt.savefig(output)
 
+def plot_v3(data, c_name):
+    from mpl_toolkits.mplot3d import Axes3D
+
+    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 300
+    fig = plt.figure()
+    ax = Axes3D(fig)
+
+    i = 0
+    h = []
+    for d in data:
+        for x, y, z in zip(*d):
+            h.append(ax.scatter(x, y, z, s=1, label=c_name[i], marker=markers[2 % len(markers)]))
+        i += 1
+    # plt.legend(handles=h, labels=c_name, loc='best', ncol=1)
+    ax.set_xlabel('Latency')
+    ax.set_ylabel('Power')
+    ax.set_zlabel('Area')
+    plt.title('Latency vs. Power vs. Area (whetstone)')
+    plt.grid()
+    output = os.path.join(config['output-path'], 'whetstone-3d.jpg')
+    print('[INFO]: save the figure', output)
+    plt.savefig(output)
+
 def handle_vis(latency, power):
     for bmark in config['benchmark-name']:
         for name in config['config-name']:
@@ -141,11 +166,52 @@ def handle_vis_v2(latency, power):
 
     plot_v2(ret, c_name)
 
+def handle_vis_v3(latency, power):
+    area = read_csv('data/sample-area.csv')
+    configs = extract_configs(latency, power)
+
+    ret = []
+    c_name = []
+    for c in configs:
+        c_name.append(c)
+        _cx = []
+        _cy = []
+        _cz = []
+        for l in latency:
+            _l = l[0].split('-')
+            if c == _l[0].split('.')[-1].lstrip('BOOM').rstrip('Config'):
+                for p in power:
+                    _p = p[0].split('-')
+                    if (_l[0].split('.')[-1].lstrip('BOOM').rstrip('Config') == _p[0]) and \
+                        (_l[-1] == _p[-1]) and (_l[-1] == 'whetstone.riscv'):
+                        if np.isnan(l[-1]) or np.isnan(p[-1]) or (l[-1] == 0) or (p[-1] == 0):
+                            continue
+                        for a in area:
+                            _a = a[0].split('.')[2].split('-')[0].lstrip('BOOM').rstrip('Config')
+                            if (_p[0] == _a):
+                                _cx.append(l[-1])
+                                _cy.append(p[-1])
+                                _cz.append(a[-1])
+
+        assert len(_cx) == len(_cy), "[ERROR]: assert error. " \
+            "_cx: {}, _cy: {}".format(len(_cx), len(_cy))
+        ret.append((_cx, _cy, _cz))
+
+    # save_mat(ret)
+    print("[INFO]: total points: %d" % len(ret))
+
+    plot_v3(ret, c_name)
+
 def handle():
     latency = read_csv('data/sample-latency.csv')
     power = read_csv('data/sample-power.csv')
     # handle_vis(latency, power)
-    handle_vis_v2(latency, power)
+    if config["mode"] == "2d":
+        handle_vis_v2(latency, power)
+    elif config["mode"] == "3d":
+        handle_vis_v3(latency, power)
+    else:
+        raise UnDefinedException("%s undefined." % config["mode"])
 
 if __name__ == "__main__":
     argv = parse_args()

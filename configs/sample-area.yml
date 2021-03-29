@@ -5,9 +5,9 @@
 # original data
 data-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
 # power | latency | area
-mode: latency
+mode: area
 # output data
-output-path: data/sample-latency.csv
+output-path: data/sample-area.csv
 # configuration name
 config-name:
   - chipyard.TestHarness.BOOMConfig1Config-ChipTop

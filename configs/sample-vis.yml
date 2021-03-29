@@ -203,3 +203,5 @@ config-name:
   - Config200
 benchmark-name:
   - whetstone.riscv
+# 2d | 3d
+mode: 3d
