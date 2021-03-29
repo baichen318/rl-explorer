@@ -3,9 +3,9 @@
 #Author: baichen318@gmail.com
 
 path="/research/dept8/gds/cbai/research/riscv-benchmarks"
-sim_path=${sim_path:-"/research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.SmallBoomConfig-ChipTop/sim-syn-rundir/output"}
-temp_sim_path=${temp_sim_path:-"/research/dept8/gds/cbai/cbai2/temp/SmallBoomConfig"}
-power_path=${power_path:-"/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/SmallBoomConfig-benchmarks"}
+sim_path=${sim_path:-"/research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.PATTERN-ChipTop/sim-syn-rundir/output"}
+temp_sim_path=${temp_sim_path:-"/research/dept8/gds/cbai/cbai2/temp/PATTERN"}
+power_path=${power_path:-"/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/PATTERN-benchmarks"}
 
 function set_env() {
     function handler() {
@@ -70,7 +70,7 @@ function _ptpx() {
         fi
     elif [[ -e ${_sim_path}/vcdplus.vpd ]]
     then
-        cat ${_sim_path}/${bmark}.chipyard.TestHarness.SmallBoomConfig.out | grep "PASSED"
+        cat ${_sim_path}/${bmark}.chipyard.TestHarness.PATTERN.out | grep "PASSED"
 		echo $cmd
         ret=$?
 
