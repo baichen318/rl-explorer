@@ -3,7 +3,8 @@
 import os
 import re
 import pandas as pd
-from util import parse_args, get_config, if_exist
+import numpy as np
+from util import parse_args, get_config, if_exist, read_csv, write_csv
 from exception import UnDefinedException
 
 def handle_power_report(report, root, bmark):
@@ -84,6 +85,66 @@ def handle_area():
         writer = pd.DataFrame(columns=area, data=results)
         writer.to_csv(config['output-path'], index=False)
 
+def _handle_dataset(features, power, latency):
+    FEATURES = [
+        'fetchWidth',
+        'decodeWidth',
+        'numFetchBufferEntries',
+        'numRobEntries',
+        'numRasEntries',
+        'numIntPhysRegisters',
+        'numFpPhysRegisters',
+        'numLdqEntries',
+        'numStqEntries',
+        'maxBrCount',
+        'mem_issueWidth',
+        'int_issueWidth',
+        'fp_issueWidth',
+        'DCacheParams_nWays',
+        'DCacheParams_nMSHRs',
+        'DCacheParams_nTLBEntries',
+        'ICacheParams_nWays',
+        'ICacheParams_nTLBEntries',
+        'ICacheParams_fetchBytes',
+        'latency',
+        'power'
+    ]
+
+    data = []
+    for idx in range(len(features)):
+        _data = features[idx].strip().split('\t')
+        idx += 1
+        c_name = "Config%s" % str(idx)
+        for l in latency:
+            _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+            if (c_name == _l) and (l[0].split('-')[-1] == "whetstone.riscv"):
+                assert (not np.isnan(l[-1])) and (l[-1] != 0)
+                _data.append(l[-1])
+        for p in power:
+            _p = p[0].split('-')
+            if (c_name == _p[0]) and (_p[-1] == "whetstone.riscv"):
+                assert (not np.isnan(p[-1])) and (p[-1] != 0)
+                _data.append(p[-1])
+        data.append(_data)
+
+    write_csv(config["output-path"], data, FEATURES)
+
+
+def handle_dataset():
+    if_exist(config["feature-path"], strict=True)
+    if_exist(config["power-path"], strict=True)
+    if_exist(config["latency-path"], strict=True)
+    # if_exist('data/sample-area.csv', strict=True)
+
+    power = read_csv('data/sample-power.csv')
+    latency = read_csv('data/sample-latency.csv')
+
+    with open('data/sample.txt', 'r') as f:
+        features = f.readlines()
+
+    _handle_dataset(features, power, latency)
+
+
 def handle():
     print("Handling...")
 
@@ -93,6 +154,8 @@ def handle():
         handle_latency()
     elif config['mode'] == 'area':
         handle_area()
+    elif config['mode'] == 'dataset':
+        handle_dataset()
     else:
         raise UnDefinedException(config['mode'])
 

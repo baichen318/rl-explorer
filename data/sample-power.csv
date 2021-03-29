@@ -604,7 +604,7 @@ Config179-benchmarks-mt-vvadd.riscv,5.75e-02,7.51e-03,2.98e-03,6.80e-02
 Config179-benchmarks-h264_dec.riscv,6.53e-02,1.19e-02,2.99e-03,8.02e-02
 Config180-benchmarks-h264_dec.riscv,7.20e-02,1.44e-02,3.92e-03,9.03e-02
 Config180-benchmarks-mt-vvadd.riscv,6.91e-02,1.16e-02,4.01e-03,8.47e-02
-Config180-benchmarks-whetstone.riscv,6.48e-02 7.66e-03,3.95e-03,7.64e-02
+Config180-benchmarks-whetstone.riscv,6.48e-02,7.66e-03,3.95e-03,7.64e-02
 Config181-benchmarks-whetstone.riscv,5.75e-02,6.05e-03,3.22e-03,6.67e-02
 Config181-benchmarks-mt-vvadd.riscv,5.75e-02,7.88e-03,3.20e-03,6.85e-02
 Config181-benchmarks-fft.riscv,5.90e-02,8.20e-03,3.25e-03,7.04e-02

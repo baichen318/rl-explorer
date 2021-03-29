@@ -115,6 +115,16 @@ def is_pow2(num):
 
         return False
 
+def write_csv(path, data, col_name=None):
+    import csv
+
+    print('[INFO]: writing csv to %s' % path)
+    with open(path, 'w') as f:
+        writer = csv.writer(f)
+        if col_name:
+            writer.writerow(col_name)
+        writer.writerows(data)
+
 def write_excel(path, data, features):
     """
         data: np.array
