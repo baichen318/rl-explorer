@@ -128,10 +128,10 @@ def is_pow2(num):
 
         return False
 
-def write_csv(path, data, col_name=None):
+def write_csv(path, data, mode='w', col_name=None):
 
     print('[INFO]: writing csv to %s' % path)
-    with open(path, 'w') as f:
+    with open(path, mode) as f:
         writer = csv.writer(f)
         if col_name:
             writer.writerow(col_name)

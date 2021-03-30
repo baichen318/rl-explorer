@@ -122,7 +122,7 @@ class DesignSpace(Space):
                 self._enumerate_design_space(file, idx + 1, dataset, data)
                 data.pop()
                 if len(dataset) >= 500:
-                    write_csv(file, np.array(dataset))
+                    write_csv(file, np.array(dataset), mode='a')
                     dataset.clear()
 
     def enumerate_design_space(self, file):
