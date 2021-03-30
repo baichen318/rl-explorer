@@ -1,34 +1,35 @@
 
 # Author: baichen318@gmail.com
 
-config-name:
-  - GigaBoomProConfig
-  - GigaBoomConfig
-  - GigaBoomSEConfig
-  - MegaBoomProConfig
-  - MegaBoomConfig
-  - MegaBoomSEConfig
-  - LargeBoomProConfig
-  - LargeBoomConfig
-  - LargeBoomSEConfig
-  - MediumBoomProConfig
-  - MediumBoomConfig
-  - MediumBoomSEConfig
-  - SmallBoomProConfig
-  - SmallBoomConfig
-  - SmallBoomSEConfig
+# config-name:
+#   - GigaBoomProConfig
+#   - GigaBoomConfig
+#   - GigaBoomSEConfig
+#   - MegaBoomProConfig
+#   - MegaBoomConfig
+#   - MegaBoomSEConfig
+#   - LargeBoomProConfig
+#   - LargeBoomConfig
+#   - LargeBoomSEConfig
+#   - MediumBoomProConfig
+#   - MediumBoomConfig
+#   - MediumBoomSEConfig
+#   - SmallBoomProConfig
+#   - SmallBoomConfig
+#   - SmallBoomSEConfig
 
-benchmark-name:
-  - fft.riscv
-  - h264_dec.riscv
-  - mm.riscv
-  - mt-matmul.riscv
-  - mt-vvadd.riscv
-  - qsort.riscv
-  - spmv.riscv
-  - whetstone.riscv
+# benchmark-name:
+#   - fft.riscv
+#   - h264_dec.riscv
+#   - mm.riscv
+#   - mt-matmul.riscv
+#   - mt-vvadd.riscv
+#   - qsort.riscv
+#   - spmv.riscv
+#   - whetstone.riscv
 
-# Use XGB models to predict
-xgb: False
+dataset-path: data/init-dataset.csv
+# xgb | lr | lasso | ridge | svr
+model: xgb
 # output-path: models/xgb_regressor.mdl
-output-path: data/init-model.csv
+# output-path: data/init-model.csv

@@ -3,11 +3,13 @@ import os
 import argparse
 import yaml
 import time
+import csv
 import pandas as pd
 import numpy as np
-from datetime import datetime
-from exception import NotFoundException, UnDefinedException
 import logging
+from datetime import datetime
+from sklearn import metrics
+from exception import NotFoundException, UnDefinedException
 
 def parse_args():
 
@@ -56,6 +58,17 @@ def read_csv(data):
     if if_exist(data, strict=True):
 
         return np.array(pd.read_csv(data))
+
+def read_csv_v2(file):
+    data = []
+    if_exist(file, strict=True)
+    with open(file, 'r') as f:
+        reader = csv.reader(f)
+        title = next(reader)
+        for row in reader:
+            data.append(row)
+
+    return data, title
 
 def calc_mape(x, y):
         return np.mean(np.abs((np.array(x) - np.array(y)) / np.array(y)))
@@ -116,7 +129,6 @@ def is_pow2(num):
         return False
 
 def write_csv(path, data, col_name=None):
-    import csv
 
     print('[INFO]: writing csv to %s' % path)
     with open(path, 'w') as f:
@@ -153,3 +165,13 @@ def load_txt(path, fmt=int):
         return np.loadtxt(path, dtype=fmt)
     else:
         print("[WARN]: cannot load %s" % path)
+
+def mse(gt, predict):
+    # gt: `np.array`
+    # predict: `np.array`
+    return metrics.mean_squared_error(gt, predict)
+
+def r2(gt, predict):
+    # gt: `np.array`
+    # predict: `np.array`
+    return metrics.r2_score(gt, predict)

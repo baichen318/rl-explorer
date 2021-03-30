@@ -6,6 +6,7 @@ import numpy as np
 from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn import metrics
+from sklearn.model_selection import KFold
 
 sys.path.append("BayesianOptimization")
 from bayes_opt import BayesianOptimization
@@ -15,7 +16,8 @@ from collections import OrderedDict
 from multiprocessing import Process, Queue
 from vlsi.vlsi import vlsi_flow
 from util import parse_args, get_config, read_csv, if_exist, calc_mape, point2knob, knob2point, \
-    create_logger, is_pow2, mkdir, execute
+    create_logger, is_pow2, mkdir, execute, mse, r2
+from exception import UnDefinedException
 
 class GP(object):
     FEATURES = []
@@ -454,7 +456,18 @@ def split_dataset(data):
         "target": target
     }
 
-def pareto_model(data):
+def split_dataset_v2(dataset):
+    # split dataset into x label & y label
+    # dataset: `np.array`
+    x = []
+    y = []
+    for data in dataset:
+        x.append(data[0:-2])
+        y.append(data[-2:])
+
+    return np.array(x), np.array(y)
+
+def xgb_pareto_model(data):
     def build_xgb_regrssor():
         # return MultiOutputRegressor(
         #     XGBRegressor(
@@ -603,17 +616,76 @@ def extract_data(data):
     writer = pd.DataFrame(columns=columns, data=results)
     writer.to_csv(configs['output-path'], index=False)
 
-def handle():
-    data = get_data_from_csv()
 
-    if "xgb" in configs.keys() and configs["xgb"]:
+def preprocess(dataset):
+    data = []
+    for item in dataset:
+        _data = []
+        for i in item:
+            if '.' in i:
+                _data.append(float(i))
+            else:
+                _data.append(int(i))
+        data.append(_data)
+    data = np.array(data)
+
+    return data
+
+def kFold():
+    return KFold(n_splits=10)
+
+def linear_regression(method, dataset, index):
+    def create_model(method):
+        if method == "lr":
+            from sklearn.linear_model import LinearRegression
+            model = LinearRegression(n_jobs=-1)
+        elif method == "lasso":
+            from sklearn.linear_model import Lasso
+            model = Lasso()
+        elif method == "ridge":
+            from sklearn.linear_model import Ridge
+            model = Ridge()
+        else:
+            raise UnDefinedException("%s not supported" % method)
+
+    def analysis(model, gt, predict):
+        # coefficients
+        print("[INFO]: coefficients of LinearRegression: %.8f", model.coef_)
+        print("[INFO]: MSE: %.8f", mse(gt, predict))
+        print("[INFO]: R2: %.8f", r2(gt, predict))
+
+    model = create_model(method)
+    for train_index, test_index in index:
+        x_train, y_train = split_dataset_v2(dataset[train_index])
+        x_test, y_test = split_dataset_v2(dataset[test_index])
+        # train
+        model.fit(x_train, y_train)
+        # predict
+        model.predict(x_test)
+
+def handle():
+
+    dataset, title = read_csv_v2(configs["dataset-path"])
+    dataset = validate(dataset)
+    kf = kFold()
+    index = kf.split(dataset)
+
+    if configs["model"] == "xgb":
+        # TODO: re-organize
+        data = get_data_from_csv()
         data = split_dataset(data)
 
-        pareto_model(data)
+        xgb_pareto_model(data)
+    elif configs["model"] == "lr" or \
+        configs["model"] == "lasso" or \
+        configs["model"] == "ridge":
+        linear_regression(configs["model"], dataset, index)
+    elif configs["model"] == "svr":
+        pass
     else:
         # extract data ONLY
+        data = get_data_from_csv()
         extract_data(data)
-
 
 if __name__ == "__main__":
     argv = parse_args()

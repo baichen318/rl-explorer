@@ -27,17 +27,11 @@ $ bash exp/exp-opt.sh
 ```
 
 ## TODO
-- ~~YAML, CSV cleaning~~
-- ~~Report extraction verification~~
-- ~~GP Initialization~~
-- ~~GP models saving~~
-- ~~Optimized point verification~~
-- ~~Duplicated points verification~~
-- VLSI error handler
-- ~~Parallelization~~
-
-## Unresolved Issues
-Parallelization & Sync.
-
-## Notice
-- Pay attention to vlsi/macros.py
+- Baseline design data@2GHz
+- Offline Bayes + GP
+- Linear Regression
+- LASSO
+- Ridge
+- ElasticNet
+- BayesRidge
+- SVR
