@@ -14,9 +14,10 @@ from bayes_opt import UtilityFunction
 
 from collections import OrderedDict
 from multiprocessing import Process, Queue
-from vlsi.vlsi import vlsi_flow
-from util import parse_args, get_config, read_csv, if_exist, calc_mape, point2knob, knob2point, \
-    create_logger, is_pow2, mkdir, execute, mse, r2
+# from vlsi.vlsi import vlsi_flow
+from util import parse_args, get_config, read_csv, read_csv_v2, if_exist, \
+    calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
+    execute, mse, r2, mape
 from exception import UnDefinedException
 
 class GP(object):
@@ -617,7 +618,7 @@ def extract_data(data):
     writer.to_csv(configs['output-path'], index=False)
 
 
-def preprocess(dataset):
+def validate(dataset):
     data = []
     for item in dataset:
         _data = []
@@ -647,21 +648,28 @@ def linear_regression(method, dataset, index):
             model = Ridge()
         else:
             raise UnDefinedException("%s not supported" % method)
+        return model
 
     def analysis(model, gt, predict):
         # coefficients
-        print("[INFO]: coefficients of LinearRegression: %.8f", model.coef_)
-        print("[INFO]: MSE: %.8f", mse(gt, predict))
-        print("[INFO]: R2: %.8f", r2(gt, predict))
+        print("[INFO]: coefficients of LinearRegression:", model.coef_)
+        print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (mse(gt[:,0], predict[:,0]),
+                                                                  mse(gt[:, 1], predict[:, 1])))
+        print("[INFO]: R2 (latency): %.8f, MSE (power): %.8f" % (r2(gt[:,0], predict[:,0]),
+                                                                 r2(gt[:, 1], predict[:, 1])))
+        print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (mape(gt[:,0], predict[:,0]),
+                                                                 mape(gt[:, 1], predict[:, 1])))
 
     model = create_model(method)
     for train_index, test_index in index:
+        print("train:", train_index, "test_index:", test_index)
         x_train, y_train = split_dataset_v2(dataset[train_index])
         x_test, y_test = split_dataset_v2(dataset[test_index])
         # train
         model.fit(x_train, y_train)
         # predict
-        model.predict(x_test)
+        predict = model.predict(x_test)
+        analysis(model, y_test, predict)
 
 def handle():
 

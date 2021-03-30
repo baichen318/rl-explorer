@@ -175,3 +175,8 @@ def r2(gt, predict):
     # gt: `np.array`
     # predict: `np.array`
     return metrics.r2_score(gt, predict)
+
+def mape(gt, predict):
+    # gt: `np.array`
+    # predict: `np.array`
+    return np.mean(np.abs((predict - gt) / gt)) * 100
