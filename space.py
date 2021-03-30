@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 import numpy as np
+from util import write_csv
 
 class Space(object):
     def __init__(self, dims, size):
@@ -90,26 +91,45 @@ class DesignSpace(Space):
         # numFetchBufferEntries > fetchWidth
         if not (_vec[2] > _vec[0]):
             return False
+        # numIntPhysRegisters == numFpPhysRegisters
+        if not (_vec[5] == _vec[6]):
+            return False
+        # numLdqEntries == numStqEntries
+        if not (_vec[7] == _vec[8]):
+            return False
+        # fetchWidth = 4, ICacheParams_fetchBytes = 2
+        # fetchWidth = 8, ICacheParams_fetchBytes = 4
+        if not (_vec[18] * 2 == _vec[0]):
+            return False
         return True
 
-    def _enumerate_design_space(self, idx, dataset, data):
-        if idx > self.n_dim:
+    def _enumerate_design_space(self, file, idx, dataset, data):
+        if idx >= self.n_dim:
             return
         for v in self.bounds[self.features[idx]]:
             data.append(v)
-            if len(data) == self.n_dim:
-                if self.verify_features(np.array(data)):
-                    dataset.append(np.array(data))
-                    data.pop()
-            else:
-                self._enumerate_design_space(idx + 1, dataset, data)
+            if len(data) >= 9 and (data[7] != data[8]):
                 data.pop()
+                continue
+            if len(data) >= 7 and (data[5] != data[6]):
+                data.pop()
+                continue
+            if len(data) == self.n_dim and (self.verify_features(np.array(data))):
+                dataset.append(np.array(data))
+                self.size += 1
+                data.pop()
+            else:
+                self._enumerate_design_space(file, idx + 1, dataset, data)
+                data.pop()
+                if len(dataset) >= 500:
+                    write_csv(file, np.array(dataset))
+                    dataset.clear()
 
     def enumerate_design_space(self, file):
         dataset = []
-
-        self._enumerate_design_space(0, dataset, [])
-        write_csv(file, dataset)
+        self.size = 0
+        self._enumerate_design_space(file, 0, dataset, [])
+        print("[INFO]: the size of the design space:", self.size)
 
     def random_sample(self, batch):
         data = []
