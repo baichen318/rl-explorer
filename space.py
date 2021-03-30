@@ -6,6 +6,7 @@ class Space(object):
     def __init__(self, dims, size):
         self.dims = dims
         self.size = size
+        self.n_dim = len(self.dims)
 
     def point2knob(self, p, dims):
         """convert point form (single integer) to knob form (vector)"""
@@ -48,7 +49,7 @@ class DesignSpace(Space):
             vec: np.array
         """
         ret = []
-        for idx in range(len(vec)):
+        for idx in range(self.n_dim):
             ret.append(
                 np.argwhere(
                     self.bounds[self.features[idx]] == vec[idx]
@@ -91,12 +92,31 @@ class DesignSpace(Space):
             return False
         return True
 
+    def _enumerate_design_space(self, idx, dataset, data):
+        if idx > self.n_dim:
+            return
+        for v in self.bounds[self.features[idx]]:
+            data.append(v)
+            if len(data) == self.n_dim:
+                if self.verify_features(np.array(data)):
+                    dataset.append(np.array(data))
+                    data.pop()
+            else:
+                self._enumerate_design_space(idx + 1, dataset, data)
+                data.pop()
+
+    def enumerate_design_space(self, file):
+        dataset = []
+
+        self._enumerate_design_space(0, dataset, [])
+        write_csv(file, dataset)
+
     def random_sample(self, batch):
         data = []
 
         visited = set()
         for i in range(batch):
-            _data = np.empty((1, len(self.dims)))
+            _data = np.empty((1, self.n_dim))
             for col, candidates in enumerate(self.bounds.values()):
                 if self.features[col] == "numFpPhysRegisters" or \
                     self.features[col] == "numStqEntries":
