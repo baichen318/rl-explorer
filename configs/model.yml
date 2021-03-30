@@ -31,5 +31,5 @@
 dataset-path: data/init-dataset.csv
 # xgb | lr | lasso | ridge | svr
 model: lr
-# output-path: models/xgb_regressor.mdl
+output-path: models/lr.mdl
 # output-path: data/init-model.csv

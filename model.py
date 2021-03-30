@@ -7,6 +7,7 @@ from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn import metrics
 from sklearn.model_selection import KFold
+from sklearn.externals import joblib
 
 sys.path.append("BayesianOptimization")
 from bayes_opt import BayesianOptimization
@@ -670,6 +671,7 @@ def linear_regression(method, dataset, index):
         # predict
         predict = model.predict(x_test)
         analysis(model, y_test, predict)
+    joblib.dump(model, configs["output-path"])
 
 def handle():
 
