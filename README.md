@@ -26,6 +26,8 @@ $ bash exp/exp-sample.sh
 $ bash exp/exp-opt.sh
 ```
 
+## Results
+
 ## TODO
 - Baseline design data@2GHz
 - Offline Bayes + GP
@@ -35,3 +37,4 @@ $ bash exp/exp-opt.sh
 - ElasticNet
 - BayesRidge
 - SVR
+

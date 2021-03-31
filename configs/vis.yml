@@ -20,5 +20,6 @@ config-name:
   - SmallBoomSEConfig
 benchmark-name:
   - h264_dec.riscv
-# 2d | 3d
-mode: 2d
+# v2 | v3 | v4
+mode: v4
+v4-input: data/xgb.predict

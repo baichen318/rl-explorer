@@ -11,6 +11,9 @@ markers = [
     '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
     'X', 'D', 'd', '|', '_'
 ]
+colors = [
+    'c', 'b', 'g', 'r', 'm', 'y', 'k', 'w'
+]
 
 def handle_latency(latency, bmark, name):
     for item in latency:
@@ -105,7 +108,34 @@ def plot_v3(data, c_name):
     print('[INFO]: save the figure', output)
     plt.savefig(output)
 
+def plot_v4(data, baseline=None):
+    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 300
+    cnt = 0
+    for d in data:
+        cnt += 1
+        if cnt % 100 != 0:
+            continue
+        else:
+            plt.scatter(d[0], d[1], s=1, marker=markers[2])
+    if baseline is not None:
+        i = 0
+        h = []
+        for d in baseline["data"]:
+            h.append(plt.scatter(d[0], d[1], s=15, marker=markers[-2], label=baseline["configs"][i]))
+            i += 1
+        plt.legend(handles=h, labels=baseline["configs"], loc='best', ncol=1)
+    plt.xlabel('Latency')
+    plt.ylabel('Power')
+    plt.title('Latency vs. Power (' + os.path.basename(config["v4-input"]).split('.')[0] + '@whetstone)')
+    plt.grid()
+    output = os.path.join(config['output-path'], os.path.basename(config['v4-input']).split('.')[0] \
+        + '-whetstone.jpg')
+    print("[INFO]: save the figure", output)
+    plt.savefig(output)
+
 def handle_vis(latency, power):
+    """ original version (deprecated) """
     for bmark in config['benchmark-name']:
         for name in config['config-name']:
             handle_latency(latency, bmark, name)
@@ -138,6 +168,7 @@ def save_mat(data):
         f.write('\n')
 
 def handle_vis_v2(latency, power):
+    """ 2D plotting from csv """
     configs = extract_configs(latency, power)
 
     ret = []
@@ -167,6 +198,7 @@ def handle_vis_v2(latency, power):
     plot_v2(ret, c_name)
 
 def handle_vis_v3(latency, power):
+    """ 3D plotting """
     area = read_csv('data/sample-area.csv')
     configs = extract_configs(latency, power)
 
@@ -202,14 +234,49 @@ def handle_vis_v3(latency, power):
 
     plot_v3(ret, c_name)
 
+def handle_vis_v4():
+    """ 2D plotting from .predict + baseline """
+    data = read_csv(config["v4-input"])
+    latency = read_csv("data/baseline-latency.csv")
+    power = read_csv("data/baseline-power.csv")
+
+    configs = [
+        "GigaBoomConfig",
+        "MegaBoomConfig",
+        "LargeBoomConfig",
+        "MediumBoomConfig",
+        "SmallBoomConfig"
+    ]
+    baseline = []
+    for c in configs:
+        for l in latency:
+            _l1 = l[0].split('.')[2].split('-')[0]
+            _l2 = l[0].split('.')[2].split('-')[-1]
+            if c == _l1 and _l2 == "whetstone":
+                for p in power:
+                    _p1 = p[0].split('-')[0]
+                    _p2 = p[0].split('-')[-1]
+                    if c == _p1 and "whetstone" in _p2:
+                        baseline.append([l[-1], p[-1]])
+    baseline = np.array(baseline)
+    plot_v4(data,
+        {
+            "data": baseline,
+            "configs": configs
+        }
+    )
+
 def handle():
-    latency = read_csv('data/sample-latency.csv')
-    power = read_csv('data/sample-power.csv')
-    # handle_vis(latency, power)
-    if config["mode"] == "2d":
+    if config["mode"] == "v2":
+        latency = read_csv('data/sample-latency.csv')
+        power = read_csv('data/sample-power.csv')
         handle_vis_v2(latency, power)
-    elif config["mode"] == "3d":
+    elif config["mode"] == "v3":
+        latency = read_csv('data/sample-latency.csv')
+        power = read_csv('data/sample-power.csv')
         handle_vis_v3(latency, power)
+    elif config["mode"] == "v4":
+        handle_vis_v4()
     else:
         raise UnDefinedException("%s undefined." % config["mode"])
 

@@ -139,3 +139,6 @@ results/
 config_*.yml
 Config*.yml
 Config*.csv
+*.ft
+*-model.yml
+*.predict
