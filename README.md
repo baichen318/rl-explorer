@@ -41,7 +41,6 @@ $ bash exp/exp-opt.sh
 
 ## TODO
 - ~~Baseline design data@2GHz~~
-- Offline Bayes + GP
 - ~~Linear Regression~~
 - ~~LASSO~~
 - ~~Ridge~~
@@ -51,4 +50,13 @@ $ bash exp/exp-opt.sh
 - ~~Random Forest~~
 - ~~AdaBoost~~
 - ~~Bagging~~
-
+- Offline Bayes + GP
+- Two stages:
+    * sampling
+    * Searching - SA
+- Performance
+    * Hyper Volume
+    ```c
+        HV = (abs(Latency_i - Latency_0) / Latency_0) * (abs(Power_i - Power_0) / Power_0)
+        s.t. sign(Latency_i - Latency_0) + sign(Power_i - Power_0) = -2
+    ```
