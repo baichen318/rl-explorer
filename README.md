@@ -27,6 +27,12 @@ $ bash exp/exp-opt.sh
 ```
 
 ## Results
+- LR@whetstone
+![Linear Regression](https://gitee.com/baichen318/design-explorer/blob/dev-v4/data/ridge-whetstone.jpg)
+- Ridge@whetstone
+!(Ridge Regression)(https://gitee.com/baichen318/design-explorer/blob/dev-v4/data/ridge-whetstone.jpg)
+- XGB@whetstone
+![XGB Regression](https://gitee.com/baichen318/design-explorer/blob/dev-v4/data/xgb-whetstone.jpg)
 
 ## TODO
 - Baseline design data@2GHz
