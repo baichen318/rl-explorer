@@ -29,21 +29,26 @@ $ bash exp/exp-opt.sh
 ## Results
 - LR@whetstone
 
-![Linear Regression](https://gitee.com/baichen318/design-explorer/blob/dev-v4/data/ridge-whetstone.jpg)
+![Linear Regression](https://gitee.com/baichen318/design-explorer/raw/dev-v4/data/lr-whetstone.jpg "LR")
+
 - Ridge@whetstone
 
-!(Ridge Regression)(https://gitee.com/baichen318/design-explorer/blob/dev-v4/data/ridge-whetstone.jpg)
+![Ridge Regression](https://gitee.com/baichen318/design-explorer/raw/dev-v4/data/ridge-whetstone.jpg "Ridge Regression")
+
 - XGB@whetstone
 
-![XGB Regression](https://gitee.com/baichen318/design-explorer/blob/dev-v4/data/xgb-whetstone.jpg)
+![XGB Regression](https://gitee.com/baichen318/design-explorer/raw/dev-v4/data/xgb-whetstone.jpg "XGB Regression")
 
 ## TODO
-- Baseline design data@2GHz
+- ~~Baseline design data@2GHz~~
 - Offline Bayes + GP
-- Linear Regression
-- LASSO
-- Ridge
-- ElasticNet
-- BayesRidge
-- SVR
+- ~~Linear Regression~~
+- ~~LASSO~~
+- ~~Ridge~~
+- ~~XGB~~
+- ~~SVR~~
+- ~~Linear SVR~~
+- ~~Random Forest~~
+- ~~AdaBoost~~
+- ~~Bagging~~
 
