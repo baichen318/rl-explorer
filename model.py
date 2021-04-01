@@ -18,7 +18,7 @@ from multiprocessing import Process, Queue
 # from vlsi.vlsi import vlsi_flow
 from space import parse_design_space
 from search import sa_search
-from util import parse_args, get_config, read_csv, read_csv_v2, if_exist, \
+from util import parse_args, get_config, get_config_v2, read_csv, read_csv_v2, if_exist, \
     calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
     execute, mse, r2, mape, write_csv
 from exception import UnDefinedException
@@ -744,9 +744,8 @@ def regression(method, dataset, index):
     else:
         assert configs["mode"] == "test"
         model = joblib.load(configs["output-path"])
-        design_space = parse_design_space(configs["design-space"])
         heap = sa_search(model, design_space, logger)
-        write_csv(method + ".predict", heap)
+        write_csv(method + ".predict", heap, mode='a')
 
 def handle():
 
@@ -774,5 +773,8 @@ def handle():
 if __name__ == "__main__":
     argv = parse_args()
     configs = get_config(argv)
+    design_space = parse_design_space(
+        get_config_v2("configs/design-explorer.yml")["design-space"]
+    )
     logger = create_logger("logs", "model")
     handle()

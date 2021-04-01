@@ -27,8 +27,8 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
 
     # build heap and insert initial points
     # `performance, knob`
-    heap_items = [(-1, np.empty(design_space.n_dim)) for i in range(top_k)]
-    heapq.heaptify(heap_items)
+    heap_items = [(-1, list(np.empty(design_space.n_dim))) for i in range(top_k)]
+    heapq.heapify(heap_items)
     in_heap = set()
 
     for p, s in zip(points, scores):
@@ -67,21 +67,21 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
         t -= cool
 
         if log_interval and k % log_interval == 0:
-            t_str = "%.2f" % t
-            msg = "SA iter: %d\tlast update: %d\tmax-0: %.2f\ttemp: %s\t" % (k,
+            t_str = "%.8f" % t
+            msg = "SA iter: %d\tlast update: %d\tmax-0: %.8f\ttemp: %s\t" % (k,
                 k_last_modify, heap_items[0][0], t_str)
             logger.info("[INFO]: %s" % msg)
 
     # big -> small
-    heap_items.sort(key=lambda item: -item)
+    heap_items.sort(key=lambda item: -item[0])
 
     return heap_items
 
 reference = [
     # Small
-    np.array([40912, 0.133])
+    np.array([40912, 0.133]),
     # Medium
-    np.array([40924, 0.136])
+    np.array([40924, 0.136]),
     # Large
     np.array([41190, 9.45e-02]),
     # Mega

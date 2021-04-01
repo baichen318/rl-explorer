@@ -154,12 +154,7 @@ class DesignSpace(Space):
                     continue
                 _data.T[col] = self.random_state.choice(candidates, size=1)
             while (not self.verify_features(_data[0])) and \
-                (not self.knob2point(
-                    self.features2knob(
-                        self.round_vec(_data.ravel())
-                    ),
-                    self.dims
-                ) in visited):
+                (not self.knob2point(_data.ravel()) in visited):
                 for col, candidates in enumerate(self.bounds.values()):
                     if self.features[col] == "numFpPhysRegisters" or \
                         self.features[col] == "numStqEntries":
@@ -177,12 +172,7 @@ class DesignSpace(Space):
                     _data.T[col] = self.random_state.choice(candidates, size=1)
             _data = self.round_vec(_data.ravel())
             data.append(_data)
-            visited.add(
-                self.knob2point(
-                    self.features2knob(_data),
-                    self.dims
-                )
-            )
+            visited.add(self.knob2point(_data))
 
         return np.array(data)
 

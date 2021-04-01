@@ -36,6 +36,12 @@ def get_config(argv):
     else:
         raise UnDefinedException('config')
 
+def get_config_v2(file):
+    with open(file, 'r') as f:
+        configs = yaml.load(f)
+
+    return configs
+
 def if_exist(path, strict=False):
     try:
         if os.path.exists(path):
