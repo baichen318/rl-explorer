@@ -133,6 +133,9 @@ class DesignSpace(Space):
         print("[INFO]: the size of the design space:", self.size)
 
     def random_sample(self, batch):
+        """
+            It cannot sample some configs. frequently
+        """
         data = []
 
         visited = set()
@@ -175,6 +178,39 @@ class DesignSpace(Space):
             visited.add(self.knob2point(_data))
 
         return np.array(data)
+
+    for random_sample_v2(self, batch):
+        data = []
+        visited = set()
+
+        def get_feature_from_file(line):
+            f = open("data/design-space.ft", "r")
+            cnt = 0
+            data = None
+            for i in f:
+                cnt += 1
+                if i % line == 0:
+                    data = i
+            f.close()
+
+            return data
+
+        # line indicator to `data/design-space.ft`
+        stage = [
+            # `decodeWidth` == 1
+            (1, ),
+            # `decodeWidth` == 2
+            (),
+            # `decodeWidth` == 3
+            (),
+            # `decodeWidth` == 4
+            (),
+            # `decodeWidth` == 5
+            ()
+        ]
+
+        for 
+        np.random.uniform()
 
     def knob2point(self, vec):
         """
