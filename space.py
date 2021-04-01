@@ -142,6 +142,12 @@ class DesignSpace(Space):
         for i in range(batch):
             _data = np.empty((1, self.n_dim))
             for col, candidates in enumerate(self.bounds.values()):
+                if self.features[col] == "numFetchBufferEntries" and \
+                    _data.T[-1] == 5:
+                    candidates = [35, 40]
+                if self.features[col] == "numFetchBufferEntries" and \
+                    _data.T[-1] == 3:
+                    candidates = [8, 24]
                 if self.features[col] == "numFpPhysRegisters" or \
                     self.features[col] == "numStqEntries":
                     _data.T[col] = _data.T[col - 1]
@@ -159,6 +165,12 @@ class DesignSpace(Space):
             while (not self.verify_features(_data[0])) and \
                 (not self.knob2point(_data.ravel()) in visited):
                 for col, candidates in enumerate(self.bounds.values()):
+                    if self.features[col] == "numFetchBufferEntries" and \
+                        _data.T[-1] == 5:
+                        candidates = [35, 40]
+                    if self.features[col] == "numFetchBufferEntries" and \
+                        _data.T[-1] == 3:
+                        candidates = [8, 24]
                     if self.features[col] == "numFpPhysRegisters" or \
                         self.features[col] == "numStqEntries":
                         _data.T[col] = _data.T[col - 1]
@@ -179,38 +191,57 @@ class DesignSpace(Space):
 
         return np.array(data)
 
-    for random_sample_v2(self, batch):
-        data = []
-        visited = set()
-
+    def random_sample_v2(self, batch):
+        # line indicator to `data/design-space.ft`
+        stage = [
+            # `decodeWidth` == 1 & `fetchWdith` == 4
+            (1, 34992195),
+            # `decodeWidth` == 2 & `fetchWdith` == 4
+            (34992196, 64091596),
+            # `decodeWidth` == 3 & `fetchWdith` == 4
+            (64567822, 65305196),
+            # `decodeWidth` == 4 & `fetchWdith` == 4
+            (65500000, 88646595),
+            # `decodeWidth` == 1 & `fetchWdith` == 8
+            (88646596, 100000027),
+            # `decodeWidth` == 2 & `fetchWdith` == 8
+            (124999979, 140367842),
+            # `decodeWidth` == 3 & `fetchWdith` == 8
+            (141134596, 142300995),
+            # `decodeWidth` == 4 & `fetchWdith` == 8
+            (142300996, 160001118),
+            # `decodeWidth` == 5 & `fetchWdith` == 5
+            (163296195, 161999974)
+        ]
         def get_feature_from_file(line):
             f = open("data/design-space.ft", "r")
             cnt = 0
             data = None
-            for i in f:
-                cnt += 1
-                if i % line == 0:
-                    data = i
-            f.close()
 
+            for i in range(1, line):
+                _ = next(f)
+            for i in f:
+                data = i
+            f.close()
+            data = self.round_vec(data.strip().split(','))
             return data
 
-        # line indicator to `data/design-space.ft`
-        stage = [
-            # `decodeWidth` == 1
-            (1, ),
-            # `decodeWidth` == 2
-            (),
-            # `decodeWidth` == 3
-            (),
-            # `decodeWidth` == 4
-            (),
-            # `decodeWidth` == 5
-            ()
-        ]
+        data = []
+        visited = set()
+        cnt = 0
 
-        for 
-        np.random.uniform()
+        while cnt < batch:
+            s = stage[cnt % len(stage)]
+            line = round(np.random.uniform(s[0], s[1]))
+            _data = get_feature_from_file(line)
+            while self.knob2point(np.arange(_data)) in visited:
+                line = round(np.random.uniform(s[0], s[1]))
+                _data = get_feature_from_file(line)
+            visited.add(self.knob2point(np.array(_data)))
+            data.append(_data)
+            cnt += 1
+
+        return np.array(data)
 
     def knob2point(self, vec):
         """
