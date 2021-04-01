@@ -134,6 +134,27 @@ def plot_v4(data, baseline=None):
     print("[INFO]: save the figure", output)
     plt.savefig(output)
 
+def plot_v5(data, baseline, title):
+    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 300
+    cnt = 0
+    for d in data:
+        plt.scatter(d[0], d[1], s=1, marker=markers[2])
+    if baseline is not None:
+        i = 0
+        h = []
+        for d in baseline["data"]:
+            h.append(plt.scatter(d[0], d[1], s=15, marker=markers[-2], label=baseline["configs"][i]))
+            i += 1
+        plt.legend(handles=h, labels=baseline["configs"], loc='best', ncol=1)
+    plt.xlabel('Latency')
+    plt.ylabel('Power')
+    plt.title('Latency vs. Power (' + title + '@whetstone)')
+    plt.grid()
+    output = os.path.join(title + '-whetstone.jpg')
+    print("[INFO]: save the figure", output)
+    plt.savefig(output)
+
 def handle_vis(latency, power):
     """ original version (deprecated) """
     for bmark in config['benchmark-name']:
@@ -264,6 +285,42 @@ def handle_vis_v4():
             "data": baseline,
             "configs": configs
         }
+    )
+
+def handle_vis_v5(data, title):
+    """ 2D plotting from .predict + baseline
+        API for `model.py`
+    """
+    latency = read_csv("data/baseline-latency.csv")
+    power = read_csv("data/baseline-power.csv")
+
+    configs = [
+        "GigaBoomConfig",
+        "MegaBoomConfig",
+        "LargeBoomConfig",
+        "MediumBoomConfig",
+        "SmallBoomConfig"
+    ]
+    baseline = []
+    for c in configs:
+        for l in latency:
+            _l1 = l[0].split('.')[2].split('-')[0]
+            _l2 = l[0].split('.')[2].split('-')[-1]
+            if c == _l1 and _l2 == "whetstone":
+                for p in power:
+                    _p1 = p[0].split('-')[0]
+                    _p2 = p[0].split('-')[-1]
+                    if c == _p1 and "whetstone" in _p2:
+                        baseline.append([l[-1], p[-1]])
+    baseline = np.array(baseline)
+
+    plot_v5(
+        data,
+        {
+            "data": baseline,
+            "configs": configs
+        },
+        title
     )
 
 def handle():

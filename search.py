@@ -13,6 +13,17 @@ def perfcmp(point, score):
     """
     return hyper_volume(reference[point[1] - 1], score)
 
+def _exist_duplicate(s, heap):
+    """
+        s: `float`
+        heap: `list`
+    """
+    for item in heap:
+        if s == item[0]:
+            return True
+
+    return False
+
 def sa_search(model, design_space, logger, top_k=5, n_iter=500,
     early_stop=100, parallel_size=128, log_interval=50):
     """
@@ -58,6 +69,8 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
         for p, s in zip(new_points, new_scores):
             _p = design_space.knob2point(p)
             if s > heap_items[0][0] and _p not in visited:
+                if _exist_duplicate(s, heap_items):
+                    continue
                 pop = heapq.heapreplace(heap_items, (s, p))
                 visited.add(_p)
                 k_last_modify = k
@@ -78,13 +91,13 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
 
 reference = [
     # Small
-    np.array([40912, 0.133]),
+    np.array([41742, 4.63e-02]),
     # Medium
-    np.array([40924, 0.136]),
+    np.array([41438, 5.83e-02]),
     # Large
     np.array([41190, 9.45e-02]),
     # Mega
-    np.array([41438, 5.83e-02]),
+    np.array([40924, 0.136]),
     # Giga
-    np.array([41742, 4.63e-02])
+    np.array([40912, 0.133])
 ]

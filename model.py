@@ -21,6 +21,7 @@ from search import sa_search
 from util import parse_args, get_config, get_config_v2, read_csv, read_csv_v2, if_exist, \
     calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
     execute, mse, r2, mape, write_csv
+from vis import handle_vis_v5
 from exception import UnDefinedException
 
 class GP(object):
@@ -744,10 +745,22 @@ def regression(method, dataset, index):
     else:
         assert configs["mode"] == "test"
         model = joblib.load(configs["output-path"])
-        heap = sa_search(model, design_space, logger, top_k=10,
-            n_iter=2000, early_stop=800,
-            parallel_size=128, log_interval=100)
+        heap = sa_search(model, design_space, logger, top_k=50,
+            n_iter=5000, early_stop=2000,
+            parallel_size=128, log_interval=50)
+        # saving results
         write_csv(method + ".predict", heap, mode='a')
+        # get the metris
+        perf = []
+        for (hv, p) in heap:
+            if hv != -1:
+                perf.append(model.predict(p.reshape(1, -1)).ravel())
+        assert len(perf) > 0, "[ERROR]: SA cannot find a good point"
+        # visualize
+        handle_vis_v5(perf,
+            os.path.basename(
+                configs["output-path"]).split('.')[0]
+            )
 
 def handle():
 

@@ -193,11 +193,11 @@ def hyper_volume(reference, point):
         point: `np.array`
         (latency, power)
     """
-    sign = np.sign(reference[0] - point[0]) + \
-        np.sign(reference[1] - point[1])
+    sign = np.sign(point[0] - reference[0]) + \
+        np.sign(point[1] - reference[1])
     if sign != -2:
         return -1
     else:
-        hv = (np.abs(reference[0] - point[0]) / point[0]) * \
-            (np.abs(reference[1] - point[1]) / point[1])
+        hv = (np.abs(reference[0] - point[0]) / reference[0]) * \
+            (np.abs(reference[1] - point[1]) / reference[1])
         return hv
