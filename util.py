@@ -180,3 +180,18 @@ def mape(gt, predict):
     # gt: `np.array`
     # predict: `np.array`
     return np.mean(np.abs((predict - gt) / gt)) * 100
+
+def hyper_volume(reference, point):
+    """
+        reference: `np.array`
+        point: `np.array`
+        (latency, power)
+    """
+    sign = np.sign(reference[0] - point[0]) + \
+        np.sign(reference[1] - point[1])
+    if sign != -2:
+        return -1
+    else:
+        hv = (np.abs(reference[0] - point[0]) / point[0]) * \
+            (np.abs(reference[1] - point[1]) / point[1])
+        return hv

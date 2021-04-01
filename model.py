@@ -16,6 +16,8 @@ from bayes_opt import UtilityFunction
 from collections import OrderedDict
 from multiprocessing import Process, Queue
 # from vlsi.vlsi import vlsi_flow
+from space import parse_design_space
+from search import sa_search
 from util import parse_args, get_config, read_csv, read_csv_v2, if_exist, \
     calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
     execute, mse, r2, mape, write_csv
@@ -694,13 +696,13 @@ def regression(method, dataset, index):
         elif hasattr(model, "feature_importances_"):
             print("[INFO]: significance of features:\n", model.feature_importances_)
 
-        print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (mse(gt[:,0], predict[:,0]),
+        logger.info("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (mse(gt[:,0], predict[:,0]),
                                                                   mse(gt[:, 1], predict[:, 1])))
-        print("[INFO]: R2 (latency): %.8f, MSE (power): %.8f" % (r2(gt[:,0], predict[:,0]),
+        logger.info("[INFO]: R2 (latency): %.8f, MSE (power): %.8f" % (r2(gt[:,0], predict[:,0]),
                                                                  r2(gt[:, 1], predict[:, 1])))
         mape_l = mape(gt[:, 0], predict[:, 0])
         mape_p = mape(gt[:, 1], predict[:, 1])
-        print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (mape_l, mape_p))
+        logger.info("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (mape_l, mape_p))
 
         return mape_l, mape_p
 
@@ -715,8 +717,8 @@ def regression(method, dataset, index):
         min_test_index = []
         cnt = 0
         for train_index, test_index in index:
-            print("train:\n", train_index)
-            print("test:\n", test_index)
+            logger.info("train:\n%s" % str(train_index))
+            logger.info("test:\n%s" % str(test_index))
             x_train, y_train = split_dataset_v2(dataset[train_index])
             x_test, y_test = split_dataset_v2(dataset[test_index])
             # train
@@ -734,22 +736,17 @@ def regression(method, dataset, index):
                 min_test_index = test_index
                 perf = (0.5 * mape_l + 0.5 * mape_p)
                 joblib.dump(model, configs["output-path"])
-        print("[INFO]: achieve the best performance. train:\n", min_train_index, "\ntest:\n", min_test_index)
-        print("[INFO]: achieve the best performance. MAPE (latency): %.8f, MAPE (power): %.8f" % (mape_l, mape_p))
-        print("[INFO]: average MAPE (latency): %.8f, average MAPE (power): %.8f" % (avg_mape_l / cnt, avg_mape_p / cnt))
+        logger.info("[INFO]: achieve the best performance. train:\n%s\ntest:\n" % \
+            (str(min_train_index), str(min_test_index)))
+        logger.info("[INFO]: achieve the best performance. MAPE (latency): %.8f, MAPE (power): %.8f" % \
+            (mape_l, mape_p))
+        logger.info("[INFO]: average MAPE (latency): %.8f, average MAPE (power): %.8f" % (avg_mape_l / cnt, avg_mape_p / cnt))
     else:
         assert configs["mode"] == "test"
         model = joblib.load(configs["output-path"])
-        cnt = 0
-        with open("data/design-space.ft", 'r') as f:
-            for feature in f:
-                cnt += 1
-                if cnt % 1000 != 0:
-                    continue
-                else:
-                    feature = np.array(list(map(int, feature.strip().split(',')))).reshape(1, -1)
-                    ret = model.predict(feature)
-                    write_csv("data/" + method + ".predict", ret, mode='a')
+        design_space = parse_design_space(configs["design-space"])
+        heap = sa_search(model, design_space, logger)
+        write_csv(method + ".predict", heap)
 
 def handle():
 
@@ -777,4 +774,5 @@ def handle():
 if __name__ == "__main__":
     argv = parse_args()
     configs = get_config(argv)
+    logger = create_logger("logs", "model")
     handle()

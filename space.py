@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 import numpy as np
+from collections import OrderedDict
 from util import write_csv
 
 class Space(object):
@@ -184,3 +185,62 @@ class DesignSpace(Space):
             )
 
         return np.array(data)
+
+    def knob2point(self, vec):
+        """
+            vec: `np.array`
+        """
+        return super().knob2point(
+            self.features2knob(
+                self.round_vec(vec)
+            ),
+            self.dims
+        )
+
+    def random_walk(self, vec):
+        """
+            vec: `np.array`
+        """
+        old = list(vec).copy()
+        new = list(vec)
+
+        cnt = 0
+        while new != old and cnt < 2:
+            from_i = np.random.randint(len(old))
+            to_v = np.random.choice(self.bounds[from_i])
+            new[from_i] = to_v
+            while self.verify_features(np.array(new)):
+                to_v = np.random.choice(self.bounds[from_i])
+                new[from_i] = to_v
+            if new != old:
+                cnt += 1
+
+        return np.array(new)
+
+def parse_design_space(design_space):
+    bounds = OrderedDict()
+    dims = []
+    size = 1
+    features = []
+    for k, v in design_space.items():
+        # add `features`
+        features.append(k)
+        # calculate the size of the design space
+        if 'candidates' in v.keys():
+            temp = v['candidates']
+            size *= len(temp)
+            # generate bounds
+            bounds[k] = np.array(temp)
+            # generate dims
+            dims.append(len(temp))
+        else:
+            assert 'start' in v.keys() and 'end' in v.keys() and \
+                'stride' in v.keys(), "[ERROR]: assert failed. YAML includes errors."
+            temp = np.arange(v['start'], v['end'] + 1, v['stride'])
+            size *= len(temp)
+            # generate bounds
+            bounds[k] = temp
+            # generate dims
+            dims.append(len(temp))
+
+    return DesignSpace(features, bounds, dims, size)
