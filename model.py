@@ -736,7 +736,7 @@ def regression(method, dataset, index):
                 min_test_index = test_index
                 perf = (0.5 * mape_l + 0.5 * mape_p)
                 joblib.dump(model, configs["output-path"])
-        logger.info("[INFO]: achieve the best performance. train:\n%s\ntest:\n" % \
+        logger.info("[INFO]: achieve the best performance. train:\n%s\ntest:%s\n" % \
             (str(min_train_index), str(min_test_index)))
         logger.info("[INFO]: achieve the best performance. MAPE (latency): %.8f, MAPE (power): %.8f" % \
             (mape_l, mape_p))
@@ -744,7 +744,9 @@ def regression(method, dataset, index):
     else:
         assert configs["mode"] == "test"
         model = joblib.load(configs["output-path"])
-        heap = sa_search(model, design_space, logger)
+        heap = sa_search(model, design_space, logger, top_k=10,
+            n_iter=2000, early_stop=800,
+            parallel_size=128, log_interval=100)
         write_csv(method + ".predict", heap, mode='a')
 
 def handle():

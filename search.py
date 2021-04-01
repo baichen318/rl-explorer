@@ -29,16 +29,16 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
     # `performance, knob`
     heap_items = [(-1, list(np.empty(design_space.n_dim))) for i in range(top_k)]
     heapq.heapify(heap_items)
-    in_heap = set()
+    visited = set()
 
     for p, s in zip(points, scores):
         _p = design_space.knob2point(p)
-        if s > heap_items[0][0] and _p not in in_heap:
+        if s > heap_items[0][0] and _p not in visited:
             pop = heapq.heapreplace(heap_items, (s, p))
-            in_heap.add(_p)
+            visited.add(_p)
 
     temp = (1, 0)
-    cool = 1.0 * (temp[1] - temp[0]) / (n_iter + 1)
+    cool = 1.0 * (temp[0] - temp[1]) / (n_iter + 1)
     t = temp[0]
     k_last_modify = 0
     k = 0
@@ -57,10 +57,9 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
 
         for p, s in zip(new_points, new_scores):
             _p = design_space.knob2point(p)
-            if s > heap_items[0][0] and _p not in in_heap:
+            if s > heap_items[0][0] and _p not in visited:
                 pop = heapq.heapreplace(heap_items, (s, p))
-                in_heap.remove(design_space.knob2point(pop[1]))
-                in_heap.add(_p)
+                visited.add(_p)
                 k_last_modify = k
 
         k += 1

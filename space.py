@@ -2,6 +2,7 @@
 
 import numpy as np
 from collections import OrderedDict
+from time import time
 from util import write_csv
 
 class Space(object):
@@ -260,18 +261,41 @@ class DesignSpace(Space):
         """
         old = list(vec).copy()
         new = list(vec)
+        _new = old.copy()
 
-        cnt = 0
-        while new != old and cnt < 2:
+        while new == old:
             from_i = np.random.randint(len(old))
-            to_v = np.random.choice(self.bounds[from_i])
+            to_v = np.random.choice(self.bounds[self.features[from_i]])
             new[from_i] = to_v
-            while self.verify_features(np.array(new)):
-                to_v = np.random.choice(self.bounds[from_i])
+            if from_i == 5:
+                new[6] = to_v
+            if from_i == 6:
+                new[5] = to_v
+            if from_i == 7:
+                new[8] = to_v
+            if from_i == 8:
+                new[7] = to_v
+            if from_i == 10:
+                new[12] = to_v
+            if from_i == 12:
+                new[10] = to_v
+            while not self.verify_features(np.array(new)):
+                new = _new.copy()
+                from_i = np.random.randint(len(old))
+                to_v = np.random.choice(self.bounds[self.features[from_i]])
                 new[from_i] = to_v
-            if new != old:
-                cnt += 1
-
+                if from_i == 5:
+                    new[6] = to_v
+                if from_i == 6:
+                    new[5] = to_v
+                if from_i == 7:
+                    new[8] = to_v
+                if from_i == 8:
+                    new[7] = to_v
+                if from_i == 10:
+                    new[12] = to_v
+                if from_i == 12:
+                    new[10] = to_v
         return np.array(new)
 
 def parse_design_space(design_space):
@@ -300,4 +324,4 @@ def parse_design_space(design_space):
             # generate dims
             dims.append(len(temp))
 
-    return DesignSpace(features, bounds, dims, size)
+    return DesignSpace(features, bounds, dims, size, random_state=round(time()))
