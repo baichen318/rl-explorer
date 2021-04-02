@@ -685,6 +685,17 @@ def create_model(method):
         model = MultiOutputRegressor(
             BaggingRegressor()
         )
+    elif method == "gp":
+        from sklearn.gaussian_process import GaussianProcessRegressor
+        from sklearn.gaussian_process.kernels import WhiteKernel, RationalQuadratic, \
+            ExpSineSquared , DotProduct, ConstantKernel
+        # kernel = ConstantKernel(1.0, (1e-3, 1000)) * \
+        #     RationalQuadratic(1.0, 1.0, (1e-5, 1e5), (1e-5, 1e5)) + WhiteKernel(0, (1e-3, 1000))
+        kernel = ConstantKernel(1.0, (1e-3, 1000)) * \
+            DotProduct(1.0,(1e-5, 1e5)) + WhiteKernel(0.1, (1e-3, 1000))
+        model = MultiOutputRegressor(
+            GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b')
+        )
     else:
         raise UnDefinedException("%s not supported" % method)
     return model
@@ -697,15 +708,16 @@ def regression(method, dataset, index):
         elif hasattr(model, "feature_importances_"):
             print("[INFO]: significance of features:\n", model.feature_importances_)
 
+        r2_l = r2(gt[:, 0], predict[:, 0])
+        r2_p = r2(gt[:, 1], predict[:, 1])
         logger.info("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (mse(gt[:,0], predict[:,0]),
                                                                   mse(gt[:, 1], predict[:, 1])))
-        logger.info("[INFO]: R2 (latency): %.8f, MSE (power): %.8f" % (r2(gt[:,0], predict[:,0]),
-                                                                 r2(gt[:, 1], predict[:, 1])))
+        logger.info("[INFO]: R2 (latency): %.8f, MSE (power): %.8f" % (r2_l, r2_p))
         mape_l = mape(gt[:, 0], predict[:, 0])
         mape_p = mape(gt[:, 1], predict[:, 1])
         logger.info("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (mape_l, mape_p))
 
-        return mape_l, mape_p
+        return mape_l, mape_p, r2_l, r2_p
 
     if configs["mode"] == "train":
         model = create_model(method)
@@ -714,6 +726,8 @@ def regression(method, dataset, index):
         min_mape_p = 0
         avg_mape_l = 0
         avg_mape_p = 0
+        avg_r2_l = 0
+        avg_r2_p = 0
         min_train_index = []
         min_test_index = []
         cnt = 0
@@ -726,9 +740,11 @@ def regression(method, dataset, index):
             model.fit(x_train, y_train)
             # predict
             predict = model.predict(x_test)
-            mape_l, mape_p = analysis(model, y_test, predict)
+            mape_l, mape_p, r2_l, r2_p = analysis(model, y_test, predict)
             avg_mape_l += mape_l
             avg_mape_p += mape_p
+            avg_r2_l += r2_l
+            avg_r2_p += r2_p
             cnt += 1
             if (0.5 * mape_l + 0.5 * mape_p) < perf:
                 min_mape_l = mape_l
@@ -740,8 +756,11 @@ def regression(method, dataset, index):
         logger.info("[INFO]: achieve the best performance. train:\n%s\ntest:%s\n" % \
             (str(min_train_index), str(min_test_index)))
         logger.info("[INFO]: achieve the best performance. MAPE (latency): %.8f, MAPE (power): %.8f" % \
-            (mape_l, mape_p))
-        logger.info("[INFO]: average MAPE (latency): %.8f, average MAPE (power): %.8f" % (avg_mape_l / cnt, avg_mape_p / cnt))
+            (min_mape_l, min_mape_p))
+        logger.info("[INFO]: average MAPE (latency): %.8f, average MAPE (power): %.8f" % \
+            (avg_mape_l / cnt, avg_mape_p / cnt))
+        logger.info("[INFO]: average R2 (latency): %.8f, average R2 (power): %.8f" % \
+            (avg_r2_l / cnt, avg_r2_p / cnt))
     else:
         assert configs["mode"] == "test"
         model = joblib.load(configs["output-path"])
@@ -778,7 +797,8 @@ def handle():
         configs["model"] == "rf" or \
         configs["model"] == "ab" or \
         configs["model"] == "gb" or \
-        configs["model"] == "bg":
+        configs["model"] == "bg" or \
+        configs["model"] == "gp":
         regression(configs["model"], dataset, index)
     else:
         # extract data ONLY
