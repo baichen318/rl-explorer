@@ -696,6 +696,11 @@ def create_model(method):
         model = MultiOutputRegressor(
             GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b')
         )
+    elif method == "br":
+        from sklearn.linear_model import BayesianRidge
+        model = MultiOutputRegressor(
+            BayesianRidge()
+        )
     else:
         raise UnDefinedException("%s not supported" % method)
     return model
@@ -798,7 +803,8 @@ def handle():
         configs["model"] == "ab" or \
         configs["model"] == "gb" or \
         configs["model"] == "bg" or \
-        configs["model"] == "gp":
+        configs["model"] == "gp" or \
+        configs["model"] == "br":
         regression(configs["model"], dataset, index)
     else:
         # extract data ONLY
