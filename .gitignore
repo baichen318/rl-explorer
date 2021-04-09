@@ -142,3 +142,4 @@ Config*.csv
 *.ft
 *-model.yml
 *.predict
+img/
