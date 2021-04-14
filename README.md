@@ -26,7 +26,7 @@ $ bash exp/exp-sample.sh
 $ bash exp/exp-opt.sh
 ```
 
-## Results
+<!-- ## Results
 - LR@whetstone
 
 ![Linear Regression](https://gitee.com/baichen318/design-explorer/raw/dev-v4/data/img/lr-whetstone.jpg "LR")
@@ -38,9 +38,10 @@ $ bash exp/exp-opt.sh
 - XGB@whetstone
 
 ![XGB Regression](https://gitee.com/baichen318/design-explorer/raw/dev-v4/data/img/xgb-whetstone.jpg "XGB Regression")
+ -->
 
 ## TODO
-- ~~Baseline design data@2GHz~~
+<!-- - ~~Baseline design data@2GHz~~
 - ~~Linear Regression~~
 - ~~LASSO~~
 - ~~Ridge~~
@@ -50,10 +51,19 @@ $ bash exp/exp-opt.sh
 - ~~Random Forest~~
 - ~~AdaBoost~~
 - ~~Bagging~~
-- Offline Bayes + GP
+- Offline Bayes + GP -->
 - Two stages:
-    * sampling
+    * initialization
     * Searching - SA
+- Initialization:
+    * Configuration generation
+    * Offline VLSI flow scripts
+    * Automatic model training
+    * Plotting
+        * Sampling plotting
+        * Prediction Plotting
+        * VLSI verification plotting
+        * Comparison between models & references
 - Performance
     * Hyper Volume
     ```c
