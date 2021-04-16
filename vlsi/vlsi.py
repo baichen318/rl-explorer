@@ -14,7 +14,7 @@ class VLSI(object):
         self.configs = kwargs["configs"]
         self.idx = str(kwargs['idx'])
         self.core_name = "Config" + self.idx
-        self.soc_name = "BOOM" + self.core_name + "Config"
+        self.soc_name = "BOOM" +  kwargs["prefix"] + self.core_name + "Config"
         self.logger = kwargs['logger']
         if_exist(MACROS['config-mixins'], strict=True)
         if_exist(MACROS['boom-configs'], strict=True)
@@ -27,7 +27,14 @@ class VLSI(object):
 
     def steps(self):
         return [
-            'generate_design'
+            'generate_design',
+            # Only used in offline VLSI
+            'generate_compilation',
+            # 'compilation',
+            # 'synthesis',
+            # 'generate_simv',
+            # 'simulation',
+            # 'record'
         ]
 
     def run(self):
@@ -238,6 +245,12 @@ class %s extends Config(
             f.writelines(codes)
 
         self.logger.info("generate design done.")
+
+    def generate_compilation(self):
+        # TODO: Split files
+
+        # TODO: bash compile.sh
+        pass
 
     def compilation(self):
         cmd = "cp -f %s %s" % (
@@ -484,16 +497,18 @@ def vlsi_flow(kwargs, queue=None):
         return ret
 
 def offline_vlsi_flow():
+    fout = configs["initialize-output-path"] + ".txt"
     if_exist(
-        configs["sample-output-path"] + ".txt",
+        fout,
         strict=True
     )
-    dataset = load_txt(configs["sample-output-path"] + ".txt")
+    dataset = load_txt(fout)
 
     for idx, data in enumerate(dataset):
         kwargs = {
             "configs": data,
-            "idx": idx + 1,
+            "idx": configs["idx"] + 1,
+            "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper()
             "logger": create_logger("logs", "vlsi"),
         }
         vlsi = VLSI(kwargs)
@@ -501,5 +516,5 @@ def offline_vlsi_flow():
 
 if __name__ == "__main__":
     argv = parse_args()
-    configs = get_config(argv)
+    configs = get_configs(argv.configs)
     offline_vlsi_flow()

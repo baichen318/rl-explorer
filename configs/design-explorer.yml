@@ -1,9 +1,35 @@
 # Author: baichen318@gmail.com
 
-# `numIntPhysRegisters` = `numFpPhysRegisters`
-# `numLdqEntries` = `numStqEntries`
-# `mem_issueWidth` = `fp_issueWidth`
+# Total constraints:
+#   1. isPow2(fetchWidth)
+#   2. decodeWidth <= fetchWidth
+#   3. icacheParams.nSets <= 64
+#   4. numIntPhysRegisters >= (32 + decodeWidth)
+#   5. numFpPhysRegisters >= (32 + decodeWidth)
+#   6. maxBrCount >= 2
+#   7. numRobEntries % decodeWidth == 0
+#   8. (numLdqEntries - 1) > decodeWidth
+#   9. (numStqEntries - 1) > decodeWidth
+#   10. numFetchBufferEntries > fetchWidth
+#   11. numFetchBufferEntries % decodeWidth == 0
+#   12. fetchWidth = 4, icacheParams.fetchBytes = 2
+#       fetchWidth = 8, icacheParams.fetchBytes = 4
+#   13. numIntPhysRegisters == numFpPhysRegisters
+#   14. numLdqEntries == numStqEntries
+#   15. mem_issueWidth == fp_issueWidth
 
+# Merged constraints (under this design space):
+#   1. decodeWidth <= fetchWidth
+#   2. numRobEntries % decodeWidth == 0
+#   3. numFetchBufferEntries > fetchWidth &&
+#      numFetchBufferEntries % decodeWidth == 0
+#   4. fetchWidth = 4, ICacheParams_fetchBytes = 2
+#      fetchWidth = 8, ICacheParams_fetchBytes = 4
+#   5. numIntPhysRegisters == numFpPhysRegisters
+#   6. numLdqEntries == numStqEntries
+#   7. mem_issueWidth == fp_issueWidth
+
+# Design space
 design-space:
   fetchWidth:
     candidates: [4, 8]
@@ -48,12 +74,25 @@ design-space:
   ICacheParams_fetchBytes:
     candidates: [2, 4]
 
+# Flow: all | initialize | search
+flow: all
+
+# Currently only support `random`
+initialize-method: random
+# Size
+initialize-size: 200
+# Record samples
+initialize-output-path: data/sample
+
+# Index for the first config.
+idx: 1
+
+# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg
+model:  lr
+
 iteration: 5
 report-output-path: results/result.rpt
 model-output-path: models
 parallel: False
-# Currently only support `random`
-sample-method: random
-sample-size: 200
 # Ouput two formats: xlsx & txt
 sample-output-path: data/sample

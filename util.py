@@ -14,10 +14,10 @@ from exception import NotFoundException, UnDefinedException
 def parse_args():
 
     def initialize_parser(parser):
-        parser.add_argument('-c', '--config',
+        parser.add_argument('-c', '--configs',
             required=True,
             type=str,
-            default='config.yml',
+            default='configs.yml',
             help='YAML file to be handled')
 
         return parser
@@ -27,14 +27,12 @@ def parse_args():
 
     return parser.parse_args()
 
-def get_config(argv):
-    if hasattr(argv, 'config'):
-        with open(argv.config, 'r') as f:
-            configs = yaml.load(f)
+def get_configs(fyaml):
+    if_exist(fyaml, strict=True)
+    with open(fyaml, 'r') as f:
+        configs = yaml.load(f)
 
-        return configs
-    else:
-        raise UnDefinedException('config')
+    return configs
 
 def get_config_v2(file):
     with open(file, 'r') as f:
@@ -109,6 +107,10 @@ def execute(cmd, logger=None):
     os.system(cmd)
 
 def create_logger(path, name):
+    """
+        path: path to logs. directory
+        name: prefix name of a log file
+    """
     time_str = time.strftime("%Y-%m-%d-%H-%M")
     log_file = '{}_{}.log'.format(name, time_str)
     mkdir(path)
@@ -119,6 +121,7 @@ def create_logger(path, name):
     logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
     logging.getLogger('').addHandler(console)
+    logger.info("[INFO]: create logger: %s/%s" % (path, name))
 
     return logger
 
@@ -145,7 +148,9 @@ def write_csv(path, data, mode='w', col_name=None):
 
 def write_excel(path, data, features):
     """
-        data: np.array
+        `path`: path to the output file
+        `data`: <np.array>
+        `features`: <list> column names
     """
     writer = pd.ExcelWriter(path)
     _data = pd.DataFrame(data)
@@ -156,7 +161,8 @@ def write_excel(path, data, features):
 
 def write_txt(path, data, fmt='%i'):
     """
-        data: np.array
+        `path`: path to the output path
+        `data`: <np.array>
     """
     dims = len(data.shape)
     if dims > 2:

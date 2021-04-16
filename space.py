@@ -30,6 +30,10 @@ class Space(object):
 
 class DesignSpace(Space):
     def __init__(self, features, bounds, dims, size, random_state=1):
+        """
+            `features`: <list>
+            `bounds`: <OrderedDict>: <str> - <np.array>
+        """
         self.features = features
         self.bounds = bounds
         # handle `size`
@@ -63,184 +67,115 @@ class DesignSpace(Space):
 
     def verify_features(self, vec):
         """
-            vec: np.array
+            vec: <np.array>
         """
         _vec = self.round_vec(vec)
-        # fetchWidth = 2^x
+        # constraint #1
         if (_vec[0] & (_vec[0] - 1)):
             return False
-        # numFetchBufferEntries % decodeWidth
-        if not (_vec[2] % _vec[1] == 0):
-            return False
-        # decodeWidth <= fetchWidth
+        # constraint #2
         if not (_vec[1] <= _vec[0]):
             return False
-        # numIntPhysRegisters >= (32 + decodeWidth)
+        # constraint #4
         if not (_vec[5] >= 32 + _vec[1]):
             return False
-        # numFpPhysRegisters >= (32 + decodeWidth)
+        # constraint #5
         if not (_vec[6] >= 32 + _vec[1]):
             return False
-        # numRobEntries % coreWidth == 0
+        # constraint #7
         if not (_vec[3] % _vec[1] == 0):
             return False
-        # (numLdqEntries - 1) > decodeWidth
+        # constraint #8
         if not ((_vec[7] - 1) > _vec[1]):
             return False
-        # (numStqEntries - 1) > decodeWidth
+        # constraint #9
         if not ((_vec[8] - 1) > _vec[1]):
             return False
-        # numFetchBufferEntries > fetchWidth
+        # constraint #10
         if not (_vec[2] > _vec[0]):
             return False
-        # numIntPhysRegisters == numFpPhysRegisters
+        # constraint #11
+        if not (_vec[2] % _vec[1] == 0):
+            return False
+        # constraint #12
+        if not (_vec[18] * 2 == _vec[0]):
+            return False
+        # constraint #13
         if not (_vec[5] == _vec[6]):
             return False
-        # numLdqEntries == numStqEntries
+        # constraint #14
         if not (_vec[7] == _vec[8]):
             return False
-        # fetchWidth = 4, ICacheParams_fetchBytes = 2
-        # fetchWidth = 8, ICacheParams_fetchBytes = 4
-        if not (_vec[18] * 2 == _vec[0]):
+        # constraint #15
+        if not (_vec[10] == _vec[12]):
             return False
         return True
 
-    def _enumerate_design_space(self, file, idx, dataset, data):
-        if idx >= self.n_dim:
-            return
-        for v in self.bounds[self.features[idx]]:
-            data.append(v)
-            if len(data) >= 9 and (data[7] != data[8]):
-                data.pop()
-                continue
-            if len(data) >= 7 and (data[5] != data[6]):
-                data.pop()
-                continue
-            if len(data) == self.n_dim and (self.verify_features(np.array(data))):
-                dataset.append(np.array(data))
-                self.size += 1
-                data.pop()
-            else:
-                self._enumerate_design_space(file, idx + 1, dataset, data)
-                data.pop()
-                if len(dataset) >= 500:
-                    write_csv(file, np.array(dataset), mode='a')
-                    dataset.clear()
-
-    def enumerate_design_space(self, file):
-        dataset = []
-        self.size = 0
-        self._enumerate_design_space(file, 0, dataset, [])
-        print("[INFO]: the size of the design space:", self.size)
-
     def random_sample(self, batch):
         """
-            It cannot sample some configs. frequently
+            It cannot sample some configs. uniformly accorting to
+            micro-architectural structures.
+            Use `helper` functions to accept a configuration
+            as much as possible.
         """
+        def helper(feature, data, candidates):
+            _candidates = np.array([], dtype=int)
+            if features == "decodeWidth":
+                # merged constraint #1
+                for c in candidates:
+                    if c <= data[0]:
+                        _candidates = np.insert(_candidates, c)
+                return _candidates
+            elif features == "numRobEntries":
+                # merged constraint #2
+                for c in candidates:
+                    if c % data[1] == 0:
+                        _candidates = np.insert(_candidates, c)
+                return _candidates
+            elif features == "numFetchBufferEntries":
+                # merged constraint #3
+                for c in candidates:
+                    if c > data[0] && c % data[1] == 0:
+                        _candidates = np.insert(_candidates, c)
+                return _candidates
+            elif features == "ICacheParams_fetchBytes":
+                # merged constraint #4
+                if data[0] == 4:
+                    _candidates = np.insert(_candidates, 2)
+                else:
+                    assert data[0] == 8
+                    _candidates = np.insert(_candidates, 4)
+                return _candidates
+            elif features == "numFpPhysRegisters":
+                # merged constraint #5
+                _candidates = np.insert(_candidates, data[5])
+                return _candidates
+            elif features == "numStqEntries":
+                # merged constraint #6
+                _candidates = np.insert(_candidates, data[7])
+                return _candidates
+            elif features == "fp_issueWidth":
+                # merged constraint #7
+                _candidates = np.insert(_candidates, data[10])
+                return _candidates
+            return candidates
+
         data = []
 
         visited = set()
         for i in range(batch):
             _data = np.empty((1, self.n_dim))
             for col, candidates in enumerate(self.bounds.values()):
-                if self.features[col] == "numFetchBufferEntries" and \
-                    _data.T[-1] == 5:
-                    candidates = [35, 40]
-                if self.features[col] == "numFetchBufferEntries" and \
-                    _data.T[-1] == 3:
-                    candidates = [8, 24]
-                if self.features[col] == "numFpPhysRegisters" or \
-                    self.features[col] == "numStqEntries":
-                    _data.T[col] = _data.T[col - 1]
-                    continue
-                if self.features[col] == "fp_issueWidth":
-                    _data.T[col] = _data.T[col - 2]
-                    continue
-                if self.features[col] == "ICacheParams_fetchBytes":
-                    if _data.T[0] == 8:
-                        _data.T[col] = 4
-                    else:
-                        _data.T[col] = 2
-                    continue
+                candidates = helper(self.features[col], _data, candidates)
                 _data.T[col] = self.random_state.choice(candidates, size=1)
             while (not self.verify_features(_data[0])) and \
                 (not self.knob2point(_data.ravel()) in visited):
                 for col, candidates in enumerate(self.bounds.values()):
-                    if self.features[col] == "numFetchBufferEntries" and \
-                        _data.T[-1] == 5:
-                        candidates = [35, 40]
-                    if self.features[col] == "numFetchBufferEntries" and \
-                        _data.T[-1] == 3:
-                        candidates = [8, 24]
-                    if self.features[col] == "numFpPhysRegisters" or \
-                        self.features[col] == "numStqEntries":
-                        _data.T[col] = _data.T[col - 1]
-                        continue
-                    if self.features[col] == "fp_issueWidth":
-                        _data.T[col] = _data.T[col - 2]
-                        continue
-                    if self.features[col] == "ICacheParams_fetchBytes":
-                        if _data.T[0] == 8:
-                            _data.T[col] = 4
-                        else:
-                            _data.T[col] = 2
-                        continue
+                    candidates = helper(self.features[col], _data, candidates)
                     _data.T[col] = self.random_state.choice(candidates, size=1)
             _data = self.round_vec(_data.ravel())
             data.append(_data)
             visited.add(self.knob2point(_data))
-
-        return np.array(data)
-
-    def random_sample_v2(self, batch):
-        # line indicator to `data/design-space.ft`
-        stage = [
-            # `decodeWidth` == 1 & `fetchWdith` == 4
-            (1, 34992195),
-            # `decodeWidth` == 2 & `fetchWdith` == 4
-            (34992196, 64091596),
-            # `decodeWidth` == 3 & `fetchWdith` == 4
-            (64567822, 65305196),
-            # `decodeWidth` == 4 & `fetchWdith` == 4
-            (65500000, 88646595),
-            # `decodeWidth` == 1 & `fetchWdith` == 8
-            (88646596, 100000027),
-            # `decodeWidth` == 2 & `fetchWdith` == 8
-            (124999979, 140367842),
-            # `decodeWidth` == 3 & `fetchWdith` == 8
-            (141134596, 142300995),
-            # `decodeWidth` == 4 & `fetchWdith` == 8
-            (142300996, 160001118),
-            # `decodeWidth` == 5 & `fetchWdith` == 5
-            (163296195, 161999974)
-        ]
-        def get_feature_from_file(line):
-            f = open("data/design-space.ft", "r")
-            cnt = 0
-            data = None
-
-            for i in range(1, line):
-                _ = next(f)
-            for i in f:
-                data = i
-            f.close()
-            data = self.round_vec(data.strip().split(','))
-            return data
-
-        data = []
-        visited = set()
-        cnt = 0
-
-        while cnt < batch:
-            s = stage[cnt % len(stage)]
-            line = round(np.random.uniform(s[0], s[1]))
-            _data = get_feature_from_file(line)
-            while self.knob2point(np.arange(_data)) in visited:
-                line = round(np.random.uniform(s[0], s[1]))
-                _data = get_feature_from_file(line)
-            visited.add(self.knob2point(np.array(_data)))
-            data.append(_data)
-            cnt += 1
 
         return np.array(data)
 

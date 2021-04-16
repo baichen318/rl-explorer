@@ -16,7 +16,7 @@ def handle_power_report(report, root, bmark):
                 line = line.strip()
                 if line[0:9] == "boom_tile":
                     result += (line.split()[2:6])
-        results.append(result)
+        results.append (result)
 
 def handle_latency_report(report, root, bmark):
     if if_exist(report):
