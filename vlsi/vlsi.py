@@ -15,6 +15,7 @@ class VLSI(object):
         self.idx = str(kwargs['idx'])
         self.core_name = "Config" + self.idx
         self.soc_name = "BOOM" +  kwargs["prefix"] + self.core_name + "Config"
+        self.mode = kwargs["mode"]
         self.logger = kwargs['logger']
         if_exist(MACROS['config-mixins'], strict=True)
         if_exist(MACROS['boom-configs'], strict=True)
@@ -26,16 +27,20 @@ class VLSI(object):
         self.area = None
 
     def steps(self):
-        return [
-            'generate_design',
-            # Only used in offline VLSI
-            'generate_compilation',
-            # 'compilation',
-            # 'synthesis',
-            # 'generate_simv',
-            # 'simulation',
-            # 'record'
-        ]
+        if self.mode == "online":
+            return [
+                'generate_design',
+                'compilation',
+                'synthesis',
+                'generate_simv',
+                'simulation',
+                'record'
+            ]
+        else:
+            assert self.mode == "offline"
+            return [
+                'generate_design'
+            ]
 
     def run(self):
         for func in self.steps():
@@ -246,11 +251,41 @@ class %s extends Config(
 
         self.logger.info("generate design done.")
 
-    def generate_compilation(self):
-        # TODO: Split files
-
-        # TODO: bash compile.sh
-        pass
+    def generate_batch_compilation_script(self, batch, start):
+        """
+            `batch`: <int>
+            `start`: <int>
+            `config_name`: <list>
+        """
+        # split files: we have: 10 servers (hpc8 is reserved)
+        #   hpc1, hpc2, hpc3, hpc4, hpc5, hpc6, hpc7, hpc9,
+        #   hpc10, hpc15
+        servers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 15]
+        _batch = batch // 10
+        remainder = batch % 10
+        for i in range(9):
+            s = start
+            e = start + _batch - 1
+            if e < s:
+                continue
+            f = os.path.join(
+                MACROS["chipyard-vlsi-root"],
+                "compile-%s.bash" % servers[i]
+            )
+            cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
+                s, e, configs["model"], f)
+            execute(cmd, self.logger)
+            start = e + 1
+        # the remainders are left to hpc15
+        s = start
+        e = start + _batch + remainder - 1
+        f = os.path.join(
+            MACROS["chipyard-vlsi-root"],
+            "compile-%s.bash" % servers[-1]
+        )
+        cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
+            s, e, configs["model"], f)
+        execute(cmd, self.logger)
 
     def compilation(self):
         cmd = "cp -f %s %s" % (
@@ -481,6 +516,7 @@ class %s extends Config(
         # cmd = "rm -f %s" % MACROS["temp-area-csv"]
         # execute(cmd, self.logger)
 
+# Deprecated!
 def vlsi_flow(kwargs, queue=None):
     vlsi = VLSI(kwargs)
     vlsi.run()
@@ -507,12 +543,14 @@ def offline_vlsi_flow():
     for idx, data in enumerate(dataset):
         kwargs = {
             "configs": data,
-            "idx": configs["idx"] + 1,
-            "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper()
+            "idx": configs["idx"],
+            "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper(),
+            "mode": "offline",
             "logger": create_logger("logs", "vlsi"),
         }
         vlsi = VLSI(kwargs)
         vlsi.run()
+    vlsi.generate_batch_compilation_script(len(dataset), configs["idx"], config_name)
 
 if __name__ == "__main__":
     argv = parse_args()

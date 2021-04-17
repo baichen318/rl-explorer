@@ -87,7 +87,7 @@ initialize-output-path: data/sample
 # Index for the first config.
 idx: 1
 
-# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg
+# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model:  lr
 
 iteration: 5
