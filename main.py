@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 import os
+from util import execute
 
 # from model import GP
 # from util import parse_args, get_config, if_exist, timer
@@ -32,21 +33,20 @@ import os
 #     design_explorer()
 
 def design_explorer():
-    if configs["flow"] == "initialize" or \
-        configs["flow"] == "all":
+    if configs["flow"] == "initialize":
         # initialize
         cmd = "python sample.py -c configs/design-explorer.yml"
-        print("[INFO]: executing: %s" % cmd)
-        os.system(cmd)
+        execute(cmd)
         # offline VLSI flow
         cmd = "python vlsi/vlsi.py -c configs/design-explorer.yml"
-        print("[INFO]: executing: %s" % cmd)
-        os.system(cmd)
-    if configs["flow"] == "search" or \
-        configs["flow"] == "all":
-        # TODO: search
-        # TODO: plot
-        pass
+        execute(cmd)
+    if configs["flow"] == "search":
+        # data collection
+        cmd = "python handle-data.py -c configs/design-explorer.yml"
+        execute(cmd)
+        # training, testing visualization & offline VLSI
+        cmd = "python model.py -c configs/design-explorer.yml"
+        execute(cmd)
 
 if __name__ == "__main__":
     argv = parse_args()

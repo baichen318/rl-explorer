@@ -5,7 +5,6 @@ import os
 import numpy as np
 from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn import metrics
 from sklearn.model_selection import KFold
 from sklearn.externals import joblib
 
@@ -21,8 +20,9 @@ from search import sa_search
 from util import parse_args, get_config, get_config_v2, read_csv, read_csv_v2, if_exist, \
     calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
     execute, mse, r2, mape, write_csv
-from vis import handle_vis_v5
+from vis import handle_vis
 from exception import UnDefinedException
+from vlsi.vlsi import offline_vlsi_flow_v2
 
 class GP(object):
     FEATURES = []
@@ -329,139 +329,7 @@ The best result is: %s
 
         return 1e-7 * latency + power
 
-def get_feature_from_csv():
-
-    return read_csv('data/micro-features.csv').T
-
-def get_latency_from_csv():
-
-    return read_csv('data/latency.csv')
-
-def get_power_from_csv():
-
-    return read_csv('data/power.csv')
-
-def get_data_from_csv():
-    features = get_feature_from_csv()
-    latency = get_latency_from_csv()
-    power = get_power_from_csv()
-
-    return {
-        "features": features,
-        "latency": latency,
-        "power": power
-    }
-
-def get_latency_dataset(data):
-    train_latency_data = []
-    test_latency_data = []
-
-    for config in configs['config-name']:
-        _latency = 0
-        cnt = 0
-        for item in data:
-            if config in item[0]:
-                for bmark in configs['benchmark-name']:
-                    if bmark in item[0]:
-                        if not np.isnan(item[1]):
-                            _latency += item[1]
-                            cnt += 1
-        _latency /= cnt
-        if configs['config-name'].index(config) < 12:
-            train_latency_data.append(_latency)
-        else:
-            test_latency_data.append(_latency)
-
-    assert (len(train_latency_data) + len(test_latency_data) == len(configs['config-name'])), \
-        "[ERROR]: assert failed. " \
-        "train_latency_data: {}, test_latency_data: {}, configs: {}".format(len(train_latency_data),
-            len(test_latency_data), len(configs['config-name']))
-
-    return {
-        "train": train_latency_data,
-        "test": test_latency_data
-    }
-
-def get_power_dataset(data):
-    train_power_data = []
-    test_power_data = []
-
-    for config in configs['config-name']:
-        _power = 0
-        cnt = 0
-        for item in data:
-            if config in item[0]:
-                for bmark in configs['benchmark-name']:
-                    if bmark in item[0]:
-                        _power += item[-1]
-                        cnt += 1
-        _power /= cnt
-        if configs['config-name'].index(config) < 12:
-            train_power_data.append(_power)
-        else:
-            test_power_data.append(_power)
-
-    assert (len(train_power_data) + len(test_power_data) == len(configs['config-name'])), \
-        "[ERROR]: assert failed. " \
-        "train_power_data: {}, test_power_data: {}, configs: {}".format(len(train_power_data),
-            len(test_power_data), len(configs['config-name']))
-
-    return {
-        "train": train_power_data,
-        "test": test_power_data
-    }
-
-def get_feature_dataset(data):
-    train_features_data = []
-    test_features_data = []
-
-    for config in configs['config-name']:
-        _features = []
-        for item in data:
-            if config in item[0]:
-                for i in item[1:]:
-                    _features.append(int(i))
-        if configs['config-name'].index(config) < 12:
-            train_features_data.append(_features)
-        else:
-            test_features_data.append(_features)
-
-    assert (len(train_features_data) + len(test_features_data) == len(configs['config-name'])), \
-        "[ERROR]: assert failed. " \
-        "train_features_data: {}, test_features_data: {}, configs: {}".format(len(train_features_data),
-            len(test_features_data), len(configs['config-name']))
-
-    return {
-        "train": np.array(train_features_data),
-        "test": np.array(test_features_data)
-    }
-
-def combine_target(latency, power):
-    train_data, test_data = [], []
-    for i in range(len(latency['train'])):
-        train_data.append([latency['train'][i], power['train'][i]])
-    for i in range(len(latency['test'])):
-        test_data.append([latency['test'][i], power['test'][i]])
-
-    return {
-        "train": np.array(train_data),
-        "test": np.array(test_data)
-    }
-
-def split_dataset(data):
-    # train: 1-13 & test: 14-15
-    latency = get_latency_dataset(data["latency"])
-    power = get_power_dataset(data["power"])
-    features = get_feature_dataset(data['features'])
-
-    target = combine_target(latency, power)
-
-    return {
-        "features": features,
-        "target": target
-    }
-
-def split_dataset_v2(dataset):
+def split_dataset(dataset):
     # split dataset into x label & y label
     # dataset: `np.array`
     x = []
@@ -471,156 +339,6 @@ def split_dataset_v2(dataset):
         y.append(data[-2:])
 
     return np.array(x), np.array(y)
-
-def xgb_pareto_model(data):
-    def build_xgb_regrssor():
-        # return MultiOutputRegressor(
-        #     XGBRegressor(
-        #         reg_alpha=3,
-        #         reg_lambda=2,
-        #         gamma=0,
-        #         min_child_weight=1,
-        #         colsample_bytree=1,
-        #         learning_rate=0.02,
-        #         max_depth=4,
-        #         n_estimators=10000,
-        #         subsample=0.1
-        #     )
-        # )
-        return MultiOutputRegressor(
-            XGBRegressor(
-                n_estimators=100
-            )
-        )
-
-    model = build_xgb_regrssor()
-    model.fit(
-        data['features']['train'],
-        data['target']['train'],
-    )
-
-    # test
-    pred = model.predict(data['features']['test'])
-    MSE_latency = metrics.mean_squared_error(pred[:, 0], data['target']['test'][:, 0])
-    MSE_power = metrics.mean_squared_error(pred[:, 1], data['target']['test'][:, 1])
-    MAPE_latency = calc_mape(pred[:, 0], data['target']['test'][:, 0])
-    MAPE_power = calc_mape(pred[:, 1], data['target']['test'][:, 1])
-
-    # save
-    self.optimizer.savegp(self.model_output_path)
-
-    print("[INFO]: MSE of latency: %.8f, MSE of power: %.8f" % (MSE_latency, MSE_power),
-          "MAPE of latency: %.8f, MAPE of power: %.8f" % (MAPE_latency, MAPE_power))
-
-def extract_features(data):
-    features = []
-
-    for config in configs['config-name']:
-        _feature = []
-        for item in data:
-            if config in item[0]:
-                for f in item[1:]:
-                    _feature.append(int(f))
-        features.append(_feature)
-
-    assert (len(features) == len(configs['config-name'])), \
-    "[ERROR]: assert failed. " \
-    "features: {}, configs: {}".format(len(features), len(configs['config-name']))
-
-    return features
-
-def extract_latency(data):
-    latency = []
-
-    for config in configs['config-name']:
-        _latency = 0
-        cnt = 0
-        for item in data:
-            if config in item[0]:
-                for bmark in configs['benchmark-name']:
-                    if bmark in item[0]:
-                        if not np.isnan(item[1]):
-                            _latency += item[1]
-                            cnt += 1
-        _latency /= cnt
-        latency.append(_latency)
-
-    assert (len(latency) == len(configs['config-name'])), \
-        "[ERROR]: assert failed. " \
-        "latency: {}, configs: {}".format(len(latency), len(configs['config-name']))
-
-    return latency
-
-def extract_power(data):
-    power = []
-
-    for config in configs['config-name']:
-        _power = 0
-        cnt = 0
-        for item in data:
-            if config in item[0]:
-                for bmark in configs['benchmark-name']:
-                    if bmark in item[0]:
-                        _power += item[-1]
-                        cnt += 1
-        _power /= cnt
-        power.append(_power)
-
-    assert (len(power) == len(configs['config-name'])), \
-        "[ERROR]: assert failed. " \
-        "power: {}, configs: {}".format(len(power), len(configs['config-name']))
-
-    return power
-
-def merge_data(features, latency, power):
-    results = []
-    for idx in range(len(features)):
-        result = []
-        # features
-        for _idx in range(len(features[idx])):
-            result.append(features[idx][_idx])
-        # latency
-        result.append(latency[idx])
-        result.append(power[idx])
-        results.append(result)
-
-    return results
-
-def extract_data(data):
-    import pandas as pd
-
-    features = extract_features(data["features"])
-    latency = extract_latency(data["latency"])
-    power = extract_power(data["power"])
-
-    results = merge_data(features, latency, power)
-
-    columns = [
-        "fetchWidth",
-        "decodeWidth",
-        "numFetchBufferEntries",
-        "numRobEntries",
-        "numRasEntries",
-        "numIntPhysRegisters",
-        "numFpPhysRegisters",
-        "numLdqEntries",
-        "numStqEntries",
-        "maxBrCount",
-        "mem_issueWidth",
-        "int_issueWidth",
-        "fp_issueWidth",
-        "DCacheParams_nWays",
-        "DCacheParams_nMSHRs",
-        "DCacheParams_nTLBEntries",
-        "ICacheParams_nWays",
-        "ICacheParams_nTLBEntries",
-        "ICacheParams_fetchBytes",
-        "latency",
-        "power"
-    ]
-    writer = pd.DataFrame(columns=columns, data=results)
-    writer.to_csv(configs['output-path'], index=False)
-
 
 def validate(dataset):
     data = []
@@ -713,82 +431,86 @@ def regression(method, dataset, index):
         elif hasattr(model, "feature_importances_"):
             print("[INFO]: significance of features:\n", model.feature_importances_)
 
+        mse_l = mse(gt[:, 0], predict[:, 0])
+        mse_p = mse(gt[:, 1], predict[:, 1])
         r2_l = r2(gt[:, 0], predict[:, 0])
         r2_p = r2(gt[:, 1], predict[:, 1])
-        logger.info("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (mse(gt[:,0], predict[:,0]),
-                                                                  mse(gt[:, 1], predict[:, 1])))
-        logger.info("[INFO]: R2 (latency): %.8f, MSE (power): %.8f" % (r2_l, r2_p))
         mape_l = mape(gt[:, 0], predict[:, 0])
         mape_p = mape(gt[:, 1], predict[:, 1])
+        logger.info("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (mse_l, mse_p))
+        logger.info("[INFO]: R2 (latency): %.8f, R2 (power): %.8f" % (r2_l, r2_p))
         logger.info("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (mape_l, mape_p))
 
-        return mape_l, mape_p, r2_l, r2_p
+        return mse_l, mse_p, r2_l, r2_p, mape_l, mape_p
 
-    if configs["mode"] == "train":
-        model = create_model(method)
-        perf = float('inf')
-        min_mape_l = 0
-        min_mape_p = 0
-        avg_mape_l = 0
-        avg_mape_p = 0
-        avg_r2_l = 0
-        avg_r2_p = 0
-        min_train_index = []
-        min_test_index = []
-        cnt = 0
-        for train_index, test_index in index:
-            logger.info("train:\n%s" % str(train_index))
-            logger.info("test:\n%s" % str(test_index))
-            x_train, y_train = split_dataset_v2(dataset[train_index])
-            x_test, y_test = split_dataset_v2(dataset[test_index])
-            # train
-            model.fit(x_train, y_train)
-            # predict
-            predict = model.predict(x_test)
-            mape_l, mape_p, r2_l, r2_p = analysis(model, y_test, predict)
-            avg_mape_l += mape_l
-            avg_mape_p += mape_p
-            avg_r2_l += r2_l
-            avg_r2_p += r2_p
-            cnt += 1
-            if (0.5 * mape_l + 0.5 * mape_p) < perf:
-                min_mape_l = mape_l
-                min_mape_p = mape_p
-                min_train_index = train_index
-                min_test_index = test_index
-                perf = (0.5 * mape_l + 0.5 * mape_p)
-                joblib.dump(model, configs["output-path"])
-        logger.info("[INFO]: achieve the best performance. train:\n%s\ntest:%s\n" % \
-            (str(min_train_index), str(min_test_index)))
-        logger.info("[INFO]: achieve the best performance. MAPE (latency): %.8f, MAPE (power): %.8f" % \
-            (min_mape_l, min_mape_p))
-        logger.info("[INFO]: average MAPE (latency): %.8f, average MAPE (power): %.8f" % \
-            (avg_mape_l / cnt, avg_mape_p / cnt))
-        logger.info("[INFO]: average R2 (latency): %.8f, average R2 (power): %.8f" % \
-            (avg_r2_l / cnt, avg_r2_p / cnt))
-    else:
-        assert configs["mode"] == "test"
-        model = joblib.load(configs["output-path"])
-        heap = sa_search(model, design_space, logger, top_k=50,
-            n_iter=5000, early_stop=2000,
-            parallel_size=128, log_interval=50)
-        # saving results
-        write_csv(method + ".predict", heap, mode='a')
-        # get the metris
-        perf = []
-        for (hv, p) in heap:
-            if hv != -1:
-                perf.append(model.predict(p.reshape(1, -1)).ravel())
-        assert len(perf) > 0, "[ERROR]: SA cannot find a good point"
-        # visualize
-        handle_vis_v5(perf,
-            os.path.basename(
-                configs["output-path"]).split('.')[0]
-            )
+    model = create_model(method)
+    # MSE, R2, MAPE for latency and power
+    avg_metrics = [0 for i in range(6)]
+    perf = float('inf')
+    cnt = 0
+    for train_index, test_index in index:
+        logger.info("train:\n%s" % str(train_index))
+        logger.info("test:\n%s" % str(test_index))
+        x_train, y_train = split_dataset(dataset[train_index])
+        x_test, y_test = split_dataset(dataset[test_index])
+        # train
+        model.fit(x_train, y_train)
+        # predict
+        predict = model.predict(x_test)
+        metrics = analysis(model, y_test, predict)
+        for i in range(len(avg_metrics)):
+            avg_metrics[i] += metrics[i]
+        cnt += 1
+        if (0.5 * metrics[4] + 0.5 * metrics[5]) < perf:
+            perf = 0.5 * metrics[4] + 0.5 * metrics[5]
+            # achieve the average minimum in one round
+            min_mape_l, min_mape_p = metrics[4], metrics[5]
+            joblib.dump(model, configs["model-output-path"])
+    msg = "[INFO]: achieve the best performance: MAPE (latency): %.8f, " + \
+        "MAPE (power): %.8f in one round. Average MAPE (latency): %.8f, " + \
+        "average MAPE (power): %.8f " + "average R2 (latency): %.8f, " + \
+        "average R2 (power): %.8f" % (min_mape_l, min_mape_p, avg_metrics[4],
+            avg_metrics[5], avg_metrics[2], avg_metrics[3])
+    logger.info(msg)
+
+    # test
+    model = joblib.load(configs["model-output-path"])
+    heap = sa_search(model, design_space, logger, top_k=50,
+        n_iter=5000, early_stop=2000, parallel_size=128, log_interval=50)
+    # saving results
+    write_csv(method + ".predict", heap, mode='a')
+    # get the metris
+    perf = []
+    for (hv, p) in heap:
+        if hv != -1:
+            perf.append(model.predict(p.reshape(1, -1)).ravel())
+    assert len(perf) > 0, "[ERROR]: SA cannot find a good point"
+    # visualize
+    handle_vis(
+        perf,
+        os.path.basename(
+            configs["model-output-path"]
+        ).split('.')[0],
+        configs
+    )
+
+    return heap
+
+def verify(heap):
+    """
+        `heap`: <list> (<tuple> in <list>), specifically,
+        <tuple> is (<int>, <list>) or (hv, configurations)
+        We only extract the first 3 points to verify
+    """
+    dataset = []
+    for (hv, p) in heap:
+        if hv != -1:
+            dataset.append(p)
+    dataset = np.array(dataset)[:3]
+    offline_vlsi_flow_v2(dataset)
 
 def handle():
-
-    dataset, title = read_csv_v2(configs["dataset-path"])
+    dataset, title = read_csv_v2(configs["dataset-output-path"])
     dataset = validate(dataset)
     kf = kFold()
     index = kf.split(dataset)
@@ -805,15 +527,15 @@ def handle():
         configs["model"] == "bg" or \
         configs["model"] == "gp" or \
         configs["model"] == "br":
-        regression(configs["model"], dataset, index)
+        heap = regression(configs["model"], dataset, index)
     else:
-        # extract data ONLY
-        data = get_data_from_csv()
-        extract_data(data)
+        raise UnDefinedException("%s undefined" % configs["model"])
+
+    verify(heap)
 
 if __name__ == "__main__":
     argv = parse_args()
-    configs = get_config(argv)
+    configs = get_configs(argv.configs)
     design_space = parse_design_space(
         get_config_v2("configs/design-explorer.yml")["design-space"]
     )

@@ -16,7 +16,7 @@ def handle_power_report(report, root, bmark):
                 line = line.strip()
                 if line[0:9] == "boom_tile":
                     result += (line.split()[2:6])
-        results.append (result)
+        results.append(result)
 
 def handle_latency_report(report, root, bmark):
     if if_exist(report):
@@ -41,10 +41,10 @@ def handle_area_report(report, root):
         results.append(result)
 
 def handle_power():
-    if if_exist(config['data-path']):
-        for root in config['config-name']:
-            for bmark in os.listdir(os.path.join(config['data-path'], root)):
-                report = os.path.join(config['data-path'],
+    if if_exist(configs['data-path']):
+        for root in configs['config-name']:
+            for bmark in os.listdir(os.path.join(configs['pt-pwr-path'], root)):
+                report = os.path.join(configs['pt-pwr-path'],
                     root,
                     bmark,
                     'reports',
@@ -53,14 +53,14 @@ def handle_power():
                 handle_power_report(report, root, bmark)
         power = ['Configure', 'Int Power', 'Switch Power', 'Leak Power', 'Total Power']
         writer = pd.DataFrame(columns=power, data=results)
-        writer.to_csv(config['output-path'], index=False)
+        writer.to_csv(configs['power-output-path'], index=False)
 
 def handle_latency():
-    if if_exist(config['data-path']):
-        for root in config['config-name']:
-            bmarks = os.path.join(config['data-path'], root, 'sim-syn-rundir', 'output')
+    if if_exist(configs['vlsi-build-path']):
+        for root in configs['config-name']:
+            bmarks = os.path.join(configs['vlsi-build-path'], root, 'sim-syn-rundir', 'output')
             for bmark in os.listdir(bmarks):
-                report = os.path.join(config['data-path'],
+                report = os.path.join(configs['vlsi-build-path'],
                     root,
                     'sim-syn-rundir',
                     'output',
@@ -70,12 +70,12 @@ def handle_latency():
                 handle_latency_report(report, root, bmark)
         latency = ['Configure', 'Cycles']
         writer = pd.DataFrame(columns=latency, data=results)
-        writer.to_csv(config['output-path'], index=False)
+        writer.to_csv(configs['latency-output-path'], index=False)
 
 def handle_area():
-    if if_exist(config['data-path']):
-        for root in config['config-name']:
-            report = os.path.join(config['data-path'],
+    if if_exist(configs['vlsi-build-path']):
+        for root in configs['config-name']:
+            report = os.path.join(configs['vlsi-build-path'],
                 root,
                 'syn-rundir',
                 'reports',
@@ -83,7 +83,7 @@ def handle_area():
             handle_area_report(report, root)
         area = ['Configure', 'Area']
         writer = pd.DataFrame(columns=area, data=results)
-        writer.to_csv(config['output-path'], index=False)
+        writer.to_csv(configs['area-output-path'], index=False)
 
 def _handle_dataset(features, power, latency):
     FEATURES = [
@@ -113,58 +113,44 @@ def _handle_dataset(features, power, latency):
     data = []
     for idx in range(len(features)):
         _data = features[idx].strip().split('\t')
-        idx += 1
-        c_name = "Config%s" % str(idx)
+        idx += idx + configs['idx']
+        c_name = "%sConfig%s" % (configs['model'], str(idx))
         for l in latency:
             _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
-            if (c_name == _l) and (l[0].split('-')[-1] == "whetstone.riscv"):
+            if (c_name == _l) and (l[0].split('-')[-1] == configs['benchmark']):
                 assert (not np.isnan(l[-1])) and (l[-1] != 0)
+                # insert latency
                 _data.append(l[-1])
         for p in power:
             _p = p[0].split('-')
-            if (c_name == _p[0]) and (_p[-1] == "whetstone.riscv"):
+            if (c_name == _p[0]) and (_p[-1] == configs['benchmark']):
                 assert (not np.isnan(p[-1])) and (p[-1] != 0)
+                # insert power
                 _data.append(p[-1])
         data.append(_data)
-
-    write_csv(config["output-path"], data, FEATURES)
-
+    write_csv(config["dataset-output-path"], data, FEATURES)
 
 def handle_dataset():
-    if_exist(config["feature-path"], strict=True)
-    if_exist(config["power-path"], strict=True)
-    if_exist(config["latency-path"], strict=True)
-    # if_exist('data/sample-area.csv', strict=True)
-
-    power = read_csv('data/sample-power.csv')
-    latency = read_csv('data/sample-latency.csv')
-
-    with open('data/sample.txt', 'r') as f:
+    with open(configs['initialize-output-path'], 'r') as f:
         features = f.readlines()
-
+    power = read_csv(configs['power-output-path'])
+    latency = read_csv('latency-output-path')
+    # area = read_csv(configs['area-output-path'])
     _handle_dataset(features, power, latency)
-
 
 def handle():
     print("Handling...")
 
-    if config['mode'] == 'power':
-        handle_power()
-    elif config['mode'] == 'latency':
-        handle_latency()
-    elif config['mode'] == 'area':
-        handle_area()
-    elif config['mode'] == 'dataset':
-        handle_dataset()
-    else:
-        raise UnDefinedException(config['mode'])
+    handle_power()
+    handle_latency()
+    handle_area()
+    handle_dataset()
 
     print("Done.")
 
 if __name__ == "__main__":
     argv = parse_args()
-    config = get_config(argv)
+    configs = get_configs(argv.configs)
     # define the global variable `results`
     results = []
     handle()
-

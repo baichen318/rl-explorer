@@ -59,11 +59,17 @@ def mkdir(path):
         os.makedirs(path, exist_ok=True)
 
 def read_csv(data):
-    if if_exist(data, strict=True):
-
-        return np.array(pd.read_csv(data))
+    """
+        data: <str>
+    """
+    if_exist(data, strict=True):
+    return np.array(pd.read_csv(data))
 
 def read_csv_v2(file):
+    """
+        data: <str>
+        filter the first row as the title
+    """
     data = []
     if_exist(file, strict=True)
     with open(file, 'r') as f:

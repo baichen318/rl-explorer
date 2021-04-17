@@ -319,7 +319,7 @@ class %s extends Config(
             MACROS["chipyard-vlsi-root"],
             "vcs-%s.bash" % servers[-1]
         )
-        cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
+        cmd = "bash vlsi/scripts/vcs.sh -s %s -e %s -m %s -f %s" % (
             s, e, configs["model"], f)
         execute(cmd, self.logger)
 
@@ -568,7 +568,10 @@ def vlsi_flow(kwargs, queue=None):
     else:
         return ret
 
-def offline_vlsi_flow():
+def offline_vlsi_flow_v1():
+    """
+        V1: read from `configs["initialize-output-path"]`
+    """
     fout = configs["initialize-output-path"] + ".txt"
     if_exist(
         fout,
@@ -589,7 +592,25 @@ def offline_vlsi_flow():
     vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
     vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
 
+def offline_vlsi_flow_v2(dataset):
+    """
+        V2: read from <np.array>
+        `dataset`: <np.array>
+    """
+    for idx, data in enumerate(dataset):
+        kwargs = {
+            "configs": data,
+            "idx": configs["idx"],
+            "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper(),
+            "mode": "offline",
+            "logger": create_logger("logs", "vlsi"),
+        }
+        vlsi = VLSI(kwargs)
+        vlsi.run()
+    vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
+    vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
+
 if __name__ == "__main__":
     argv = parse_args()
     configs = get_configs(argv.configs)
-    offline_vlsi_flow()
+    offline_vlsi_flow_v1()

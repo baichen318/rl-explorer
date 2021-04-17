@@ -74,25 +74,55 @@ design-space:
   ICacheParams_fetchBytes:
     candidates: [2, 4]
 
-# Flow: all | initialize | search
-flow: all
+# Flow: initialize | search
+# search includes data collection
+# run VLSI flow manually!
+flow: search
 
 # Currently only support `random`
 initialize-method: random
+
 # Size
 initialize-size: 200
+
 # Record samples
 initialize-output-path: data/sample
 
 # Index for the first config.
 idx: 1
 
+# Collect area & Latency
+vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
+
+# Output path for latency
+latency-output-path: data/latency.csv
+
+# Output path for area
+area-output-path: data/area.csv
+
+# Collect power
+pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
+
+# Output path for power
+power-output-path: data/power.csv
+
+# Filter configuration
+benchmark: whetstone.riscv
+
+# Config. name
+config-name:
+  - chipyard.TestHarness.BOOMConfig1Config-ChipTop
+  - chipyard.TestHarness.BOOMConfig2Config-ChipTop
+  - chipyard.TestHarness.BOOMConfig3Config-ChipTop
+
+# Output path for final training set
+dataset-output-path: data/dataset.csv
+
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model:  lr
 
-iteration: 5
-report-output-path: results/result.rpt
-model-output-path: models
-parallel: False
-# Ouput two formats: xlsx & txt
-sample-output-path: data/sample
+# Output path for models
+model-output-path: model/lr.mdl
+
+# Output path for fig.
+fig-output-path: data
