@@ -287,6 +287,42 @@ class %s extends Config(
             s, e, configs["model"], f)
         execute(cmd, self.logger)
 
+    def generate_batch_vcs_script(self, batch, start):
+        """
+            `batch`: <int>
+            `start`: <int>
+            `config_name`: <list>
+        """
+        # split files: we have: 10 servers (hpc8 is reserved)
+        #   hpc1, hpc2, hpc3, hpc4, hpc5, hpc6, hpc7, hpc9,
+        #   hpc10, hpc15
+        servers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 15]
+        _batch = batch // 10
+        remainder = batch % 10
+        for i in range(9):
+            s = start
+            e = start + _batch - 1
+            if e < s:
+                continue
+            f = os.path.join(
+                MACROS["chipyard-vlsi-root"],
+                "vcs-%s.bash" % servers[i]
+            )
+            cmd = "bash vlsi/scripts/vcs.sh -s %s -e %s -m %s -f %s" % (
+                s, e, configs["model"], f)
+            execute(cmd, self.logger)
+            start = e + 1
+        # the remainders are left to hpc15
+        s = start
+        e = start + _batch + remainder - 1
+        f = os.path.join(
+            MACROS["chipyard-vlsi-root"],
+            "vcs-%s.bash" % servers[-1]
+        )
+        cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
+            s, e, configs["model"], f)
+        execute(cmd, self.logger)
+
     def compilation(self):
         cmd = "cp -f %s %s" % (
             os.path.join(MACROS["scripts"], "compile.sh"),
@@ -550,7 +586,8 @@ def offline_vlsi_flow():
         }
         vlsi = VLSI(kwargs)
         vlsi.run()
-    vlsi.generate_batch_compilation_script(len(dataset), configs["idx"], config_name)
+    vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
+    vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
 
 if __name__ == "__main__":
     argv = parse_args()

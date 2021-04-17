@@ -51,4 +51,5 @@ do
     esac
 done
 
+set_env
 generate_compilation
