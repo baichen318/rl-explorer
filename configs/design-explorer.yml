@@ -79,8 +79,15 @@ design-space:
 # run VLSI flow manually!
 flow: search
 
-# Currently only support `random`
+# Choose random | cbted
 initialize-method: random
+
+# ClustringBootstrapTED:
+Nrted: 100
+mu: 0.1
+sig: 0.1
+Batch: 1000
+batch: 60
 
 # Size
 initialize-size: 200

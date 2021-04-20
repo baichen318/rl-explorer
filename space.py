@@ -111,14 +111,15 @@ class DesignSpace(Space):
             return False
         return True
 
+
     def random_sample(self, batch):
         """
             It cannot sample some configs. uniformly accorting to
             micro-architectural structures.
-            Use `helper` functions to accept a configuration
+            Use `_helper` functions to accept a configuration
             as much as possible.
         """
-        def helper(feature, data, candidates):
+        def _helper(feature, data, candidates):
             _candidates = np.array([], dtype=int)
             if features == "decodeWidth":
                 # merged constraint #1
@@ -166,12 +167,82 @@ class DesignSpace(Space):
         for i in range(batch):
             _data = np.empty((1, self.n_dim))
             for col, candidates in enumerate(self.bounds.values()):
-                candidates = helper(self.features[col], _data, candidates)
+                candidates = _helper(self.features[col], _data, candidates)
                 _data.T[col] = self.random_state.choice(candidates, size=1)
             while (not self.verify_features(_data[0])) and \
                 (not self.knob2point(_data.ravel()) in visited):
                 for col, candidates in enumerate(self.bounds.values()):
-                    candidates = helper(self.features[col], _data, candidates)
+                    candidates = _helper(self.features[col], _data, candidates)
+                    _data.T[col] = self.random_state.choice(candidates, size=1)
+            _data = self.round_vec(_data.ravel())
+            data.append(_data)
+            visited.add(self.knob2point(_data))
+
+        return np.array(data)
+
+    def random_sample_v2(self, decodeWidth, batch):
+        """
+            V2: random sample batches w.r.t. decodeWidth
+        """
+        def _helper(feature, data, candidates):
+            _candidates = np.array([], dtype=int)
+            if features == "fetchWidth":
+                # merged constraint #1
+                for c in candidates:
+                    if c >= data[1]:
+                        _candidates = np.insert(_candidates, c)
+                return _candidates
+            elif features == "numRobEntries":
+                # merged constraint #2
+                for c in candidates:
+                    if c % data[1] == 0:
+                        _candidates = np.insert(_candidates, c)
+                return _candidates
+            elif features == "numFetchBufferEntries":
+                # merged constraint #3
+                for c in candidates:
+                    if c > data[0] && c % data[1] == 0:
+                        _candidates = np.insert(_candidates, c)
+                return _candidates
+            elif features == "ICacheParams_fetchBytes":
+                # merged constraint #4
+                if data[0] == 4:
+                    _candidates = np.insert(_candidates, 2)
+                else:
+                    assert data[0] == 8
+                    _candidates = np.insert(_candidates, 4)
+                return _candidates
+            elif features == "numFpPhysRegisters":
+                # merged constraint #5
+                _candidates = np.insert(_candidates, data[5])
+                return _candidates
+            elif features == "numStqEntries":
+                # merged constraint #6
+                _candidates = np.insert(_candidates, data[7])
+                return _candidates
+            elif features == "fp_issueWidth":
+                # merged constraint #7
+                _candidates = np.insert(_candidates, data[10])
+                return _candidates
+            return candidates
+
+        data = []
+
+        visited = set()
+        for i in range(batch):
+            _data = np.empty((1, self.n_dim))
+            _data[1] = decodeWidth
+            for col, candidates in enumerate(self.bounds.values()):
+                if self.features[col] == "decodeWidth":
+                    continue
+                candidates = _helper(self.features[col], _data, candidates)
+                _data.T[col] = self.random_state.choice(candidates, size=1)
+            while (not self.verify_features(_data[0])) and \
+                (not self.knob2point(_data.ravel()) in visited):
+                for col, candidates in enumerate(self.bounds.values()):
+                    if self.features[col] == "decodeWidth":
+                        continue
+                    candidates = _helper(self.features[col], _data, candidates)
                     _data.T[col] = self.random_state.choice(candidates, size=1)
             _data = self.round_vec(_data.ravel())
             data.append(_data)
