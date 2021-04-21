@@ -5,7 +5,7 @@ import sys
 sys.path.append(os.path.dirname(__file__) + os.sep + '../')
 from glob import glob
 import numpy as np
-from util import parse_args, get_config, if_exist, \
+from util import parse_args, get_configs, if_exist, \
     execute, create_logger, mkdir, dump_yaml, read_csv, load_txt
 from macros import MACROS, modify_macros
 
@@ -13,8 +13,9 @@ class VLSI(object):
     def __init__(self, kwargs):
         self.configs = kwargs["configs"]
         self.idx = str(kwargs['idx'])
-        self.core_name = "Config" + self.idx
-        self.soc_name = "BOOM" +  kwargs["prefix"] + self.core_name + "Config"
+        self.prefix = kwargs["prefix"]
+        self.core_name = self.prefix + "Config" + self.idx
+        self.soc_name = "BOOM" + self.core_name + "Config"
         self.mode = kwargs["mode"]
         self.logger = kwargs['logger']
         if_exist(MACROS['config-mixins'], strict=True)
@@ -270,10 +271,10 @@ class %s extends Config(
                 continue
             f = os.path.join(
                 MACROS["chipyard-vlsi-root"],
-                "compile-%s.bash" % servers[i]
+                "compile-%s.sh" % servers[i]
             )
             cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
-                s, e, configs["model"], f)
+                s, e, self.prefix.upper(), f)
             execute(cmd, self.logger)
             start = e + 1
         # the remainders are left to hpc15
@@ -281,10 +282,10 @@ class %s extends Config(
         e = start + _batch + remainder - 1
         f = os.path.join(
             MACROS["chipyard-vlsi-root"],
-            "compile-%s.bash" % servers[-1]
+            "compile-%s.sh" % servers[-1]
         )
         cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
-            s, e, configs["model"], f)
+            s, e, self.prefix.upper(), f)
         execute(cmd, self.logger)
 
     def generate_batch_vcs_script(self, batch, start):
@@ -306,10 +307,10 @@ class %s extends Config(
                 continue
             f = os.path.join(
                 MACROS["chipyard-vlsi-root"],
-                "vcs-%s.bash" % servers[i]
+                "vcs-%s.sh" % servers[i]
             )
             cmd = "bash vlsi/scripts/vcs.sh -s %s -e %s -m %s -f %s" % (
-                s, e, configs["model"], f)
+                s, e, self.prefix.upper(), f)
             execute(cmd, self.logger)
             start = e + 1
         # the remainders are left to hpc15
@@ -317,10 +318,10 @@ class %s extends Config(
         e = start + _batch + remainder - 1
         f = os.path.join(
             MACROS["chipyard-vlsi-root"],
-            "vcs-%s.bash" % servers[-1]
+            "vcs-%s.sh" % servers[-1]
         )
         cmd = "bash vlsi/scripts/vcs.sh -s %s -e %s -m %s -f %s" % (
-            s, e, configs["model"], f)
+            s, e, self.prefix.upper(), f)
         execute(cmd, self.logger)
 
     def compilation(self):
@@ -582,13 +583,14 @@ def offline_vlsi_flow_v1():
     for idx, data in enumerate(dataset):
         kwargs = {
             "configs": data,
-            "idx": configs["idx"],
-            "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper(),
+            "idx": idx + configs["idx"],
+            "prefix": configs["initialize-method"].upper(),
             "mode": "offline",
             "logger": create_logger("logs", "vlsi"),
         }
         vlsi = VLSI(kwargs)
         vlsi.run()
+    vlsi = VLSI(kwargs)
     vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
     vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
 
@@ -600,7 +602,7 @@ def offline_vlsi_flow_v2(dataset):
     for idx, data in enumerate(dataset):
         kwargs = {
             "configs": data,
-            "idx": configs["idx"],
+            "idx": idx + configs["idx"],
             "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper(),
             "mode": "offline",
             "logger": create_logger("logs", "vlsi"),
@@ -614,3 +616,4 @@ if __name__ == "__main__":
     argv = parse_args()
     configs = get_configs(argv.configs)
     offline_vlsi_flow_v1()
+

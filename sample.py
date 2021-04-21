@@ -95,7 +95,7 @@ class ClusteringRandomizedTED(RandomizedTED):
                 )
             )
 
-        return np.array(x).reshape((len(decodeWidth), -1))
+        return np.array(x).reshape((-1, self.design_space.n_dim))
 
 def create_design_space():
     logger = create_logger("logs", configs["initialize-method"])

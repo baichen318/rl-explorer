@@ -38,8 +38,8 @@ def design_explorer():
         cmd = "python sample.py -c " + argv.configs
         execute(cmd)
         # offline VLSI flow
-        # cmd = "python vlsi/vlsi.py -c configs/design-explorer.yml"
-        # execute(cmd)
+        cmd = "python vlsi/vlsi.py -c " + argv.configs
+        execute(cmd)
     if configs["flow"] == "search":
         # data collection
         cmd = "python handle-data.py -c " + argv.configs
