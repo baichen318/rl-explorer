@@ -1,7 +1,7 @@
 # Author: baichen318@gmail.com
 
 import os
-from util import execute
+from util import parse_args, get_configs, execute
 
 # from model import GP
 # from util import parse_args, get_config, if_exist, timer
@@ -35,17 +35,17 @@ from util import execute
 def design_explorer():
     if configs["flow"] == "initialize":
         # initialize
-        cmd = "python sample.py -c configs/design-explorer.yml"
+        cmd = "python sample.py -c " + argv.configs
         execute(cmd)
         # offline VLSI flow
-        cmd = "python vlsi/vlsi.py -c configs/design-explorer.yml"
-        execute(cmd)
+        # cmd = "python vlsi/vlsi.py -c configs/design-explorer.yml"
+        # execute(cmd)
     if configs["flow"] == "search":
         # data collection
-        cmd = "python handle-data.py -c configs/design-explorer.yml"
+        cmd = "python handle-data.py -c " + argv.configs
         execute(cmd)
         # training, testing visualization & offline VLSI
-        cmd = "python model.py -c configs/design-explorer.yml"
+        cmd = "python model.py -c " + argv.configs
         execute(cmd)
 
 if __name__ == "__main__":

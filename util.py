@@ -62,7 +62,7 @@ def read_csv(data):
     """
         data: <str>
     """
-    if_exist(data, strict=True):
+    if_exist(data, strict=True)
     return np.array(pd.read_csv(data))
 
 def read_csv_v2(file):

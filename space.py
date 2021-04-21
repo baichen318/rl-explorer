@@ -121,43 +121,43 @@ class DesignSpace(Space):
         """
         def _helper(feature, data, candidates):
             _candidates = np.array([], dtype=int)
-            if features == "decodeWidth":
+            if feature == "decodeWidth":
                 # merged constraint #1
                 for c in candidates:
                     if c <= data[0]:
-                        _candidates = np.insert(_candidates, c)
+                        _candidates = np.append(_candidates, c)
                 return _candidates
-            elif features == "numRobEntries":
+            elif feature == "numRobEntries":
                 # merged constraint #2
                 for c in candidates:
                     if c % data[1] == 0:
-                        _candidates = np.insert(_candidates, c)
+                        _candidates = np.append(_candidates, c)
                 return _candidates
-            elif features == "numFetchBufferEntries":
+            elif feature == "numFetchBufferEntries":
                 # merged constraint #3
                 for c in candidates:
-                    if c > data[0] && c % data[1] == 0:
-                        _candidates = np.insert(_candidates, c)
+                    if c > data[0] and c % data[1] == 0:
+                        _candidates = np.append(_candidates, c)
                 return _candidates
-            elif features == "ICacheParams_fetchBytes":
+            elif feature == "ICacheParams_fetchBytes":
                 # merged constraint #4
                 if data[0] == 4:
-                    _candidates = np.insert(_candidates, 2)
+                    _candidates = np.append(_candidates, 2)
                 else:
                     assert data[0] == 8
-                    _candidates = np.insert(_candidates, 4)
+                    _candidates = np.append(_candidates, 4)
                 return _candidates
-            elif features == "numFpPhysRegisters":
+            elif feature == "numFpPhysRegisters":
                 # merged constraint #5
-                _candidates = np.insert(_candidates, data[5])
+                _candidates = np.append(_candidates, data[5])
                 return _candidates
-            elif features == "numStqEntries":
+            elif feature == "numStqEntries":
                 # merged constraint #6
-                _candidates = np.insert(_candidates, data[7])
+                _candidates = np.append(_candidates, data[7])
                 return _candidates
-            elif features == "fp_issueWidth":
+            elif feature == "fp_issueWidth":
                 # merged constraint #7
-                _candidates = np.insert(_candidates, data[10])
+                _candidates = np.append(_candidates, data[10])
                 return _candidates
             return candidates
 
@@ -186,43 +186,43 @@ class DesignSpace(Space):
         """
         def _helper(feature, data, candidates):
             _candidates = np.array([], dtype=int)
-            if features == "fetchWidth":
+            if feature == "fetchWidth":
                 # merged constraint #1
                 for c in candidates:
                     if c >= data[1]:
-                        _candidates = np.insert(_candidates, c)
+                        _candidates = np.append(_candidates, c)
                 return _candidates
-            elif features == "numRobEntries":
+            elif feature == "numRobEntries":
                 # merged constraint #2
                 for c in candidates:
                     if c % data[1] == 0:
-                        _candidates = np.insert(_candidates, c)
+                        _candidates = np.append(_candidates, c)
                 return _candidates
-            elif features == "numFetchBufferEntries":
+            elif feature == "numFetchBufferEntries":
                 # merged constraint #3
                 for c in candidates:
-                    if c > data[0] && c % data[1] == 0:
-                        _candidates = np.insert(_candidates, c)
+                    if c > data[0] and c % data[1] == 0:
+                        _candidates = np.append(_candidates, c)
                 return _candidates
-            elif features == "ICacheParams_fetchBytes":
+            elif feature == "ICacheParams_fetchBytes":
                 # merged constraint #4
                 if data[0] == 4:
-                    _candidates = np.insert(_candidates, 2)
+                    _candidates = np.append(_candidates, 2)
                 else:
                     assert data[0] == 8
-                    _candidates = np.insert(_candidates, 4)
+                    _candidates = np.append(_candidates, 4)
                 return _candidates
-            elif features == "numFpPhysRegisters":
+            elif feature == "numFpPhysRegisters":
                 # merged constraint #5
-                _candidates = np.insert(_candidates, data[5])
+                _candidates = np.append(_candidates, data[5])
                 return _candidates
-            elif features == "numStqEntries":
+            elif feature == "numStqEntries":
                 # merged constraint #6
-                _candidates = np.insert(_candidates, data[7])
+                _candidates = np.append(_candidates, data[7])
                 return _candidates
-            elif features == "fp_issueWidth":
+            elif feature == "fp_issueWidth":
                 # merged constraint #7
-                _candidates = np.insert(_candidates, data[10])
+                _candidates = np.append(_candidates, data[10])
                 return _candidates
             return candidates
 
@@ -230,21 +230,21 @@ class DesignSpace(Space):
 
         visited = set()
         for i in range(batch):
-            _data = np.empty((1, self.n_dim))
+            _data = np.empty(self.n_dim)
             _data[1] = decodeWidth
             for col, candidates in enumerate(self.bounds.values()):
                 if self.features[col] == "decodeWidth":
                     continue
                 candidates = _helper(self.features[col], _data, candidates)
                 _data.T[col] = self.random_state.choice(candidates, size=1)
-            while (not self.verify_features(_data[0])) and \
+            while (not self.verify_features(_data)) and \
                 (not self.knob2point(_data.ravel()) in visited):
                 for col, candidates in enumerate(self.bounds.values()):
                     if self.features[col] == "decodeWidth":
                         continue
                     candidates = _helper(self.features[col], _data, candidates)
                     _data.T[col] = self.random_state.choice(candidates, size=1)
-            _data = self.round_vec(_data.ravel())
+            _data = self.round_vec(_data)
             data.append(_data)
             visited.add(self.knob2point(_data))
 
