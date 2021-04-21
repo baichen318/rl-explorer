@@ -63,15 +63,6 @@ class RandomizedTED(object):
             vec: <np.array>
             m: <int>: number of a batch
         """
-        # NOTICE: `rted` may select duplicated points,
-        # in order to avoid this problem, we delete 80%
-        # some points randomly
-        def _delete_duplicate(vec):
-            """
-                `vec`: <list>
-            """
-            return [list(v) for v in set([tuple(v) for v in vec])]
-
         K_ = []
         for i in range(m):
             M_ = random.sample(list(vec), self.Nrted)
@@ -81,7 +72,7 @@ class RandomizedTED(object):
             F = self.f_same(M_)
             self.update_f(F, M_)
             K_.append(self.select_mi(M_, F))
-        return _delete_duplicate(K_)
+        return K_
 
 class ClusteringRandomizedTED(RandomizedTED):
     """
@@ -95,6 +86,15 @@ class ClusteringRandomizedTED(RandomizedTED):
         assert self.Batch > self.batch, "[ERROR] require self.Batch > self.batch"
 
     def cbted(self):
+        # NOTICE: `rted` may select duplicated points,
+        # in order to avoid this problem, we delete 80%
+        # some points randomly
+        def _delete_duplicate(vec):
+            """
+                `vec`: <list>
+            """
+            return [list(v) for v in set([tuple(v) for v in vec])]
+
         x = []
         decodeWidth = self.design_space.bounds["decodeWidth"]
         for i in decodeWidth:
@@ -105,11 +105,15 @@ class ClusteringRandomizedTED(RandomizedTED):
                     self.design_space.random_sample_v2(i, self.Batch),
                     self.batch - cnt
                 )
-                cnt += len(candidates)
                 for c in candidates:
                     _x.append(c)
-                self.design_space.set_random_state(round(time()))
-            x.append(_x)
+                _x = _delete_duplicate(_x)
+                cnt += len(_x)
+                self.design_space.set_random_state(
+                    random.randint(1, round(time()))
+                )
+            for c in _x:
+                x.append(c)
 
         return np.array(x).reshape((-1, self.design_space.n_dim))
 
