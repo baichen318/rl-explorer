@@ -65,6 +65,10 @@ class RandomizedTED(object):
         K_ = []
         for i in range(m):
             M_ = random.sample(list(vec), self.Nrted)
+            # NOTICE: `rted` may select duplicated points,
+            # in order to avoid this problem, we delete 80%
+            # some points randomly
+            K_ = random.sample(K_, int(len(K_) * 0.2))
             M_ = M_ + K_
             M_ = [tuple(M_[j]) for j in range(len(M_))]
             M_ = list(set(M_))
