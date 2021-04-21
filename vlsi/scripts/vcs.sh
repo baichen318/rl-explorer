@@ -19,8 +19,8 @@ function generate_vcs() {
 arr=\`seq ${start} ${end}\` \n
 
 function pre_work() { \n
-    idx=\$1 \n
-    mv /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.BOOM${model}Config\${idx}Config-ChipTop/sim-syn-rundir/dhrystone.riscv/dramsim2_ini \ \n
+	idx=\$1 \n
+	mv /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.BOOM${model}Config\${idx}Config-ChipTop/sim-syn-rundir/dhrystone.riscv/dramsim2_ini \ \n
         /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.BOOM${model}Config\${idx}Config-ChipTop/sim-syn-rundir/ \n
     rm -rf /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.BOOM${model}Config\${idx}Config-ChipTop/sim-syn-rundir/dhrystone.riscv/ \n
     cp run.tcl /research/dept8/gds/cbai/research/chipyard/vlsi/build/chipyard.TestHarness.BOOM${model}Config\${idx}Config-ChipTop/sim-syn-rundir/ \n
@@ -33,10 +33,10 @@ function simv() { \n
     for idx in \${arr[@]}
     do \n
         echo running \${idx} \n
-        pre_work \${idx} \n
+		pre_work \${idx} \n
         /opt2/synopsys/vcs/bin/vcs -full64 -line -timescale=1ns/10ps \ \n
-            -CC -I/opt/synopsys/vcs/include -CC -I/research/dept8/gds/cbai/demo/chipyard/riscv-tools-install/include -CC -I/research/dept8/gds/cbai/research/chipyard/tools/DRAMSim2 \ \n
-            -CC -std=c++11 /research/dept8/gds/cbai/research/chipyard/tools/DRAMSim2/libdramsim.a \ \n
+			-CC -I/opt/synopsys/vcs/include -CC -I/research/dept8/gds/cbai/demo/chipyard/riscv-tools-install/include -CC -I/research/dept8/gds/cbai/research/chipyard/tools/DRAMSim2 \ \n
+			-CC -std=c++11 /research/dept8/gds/cbai/research/chipyard/tools/DRAMSim2/libdramsim.a \ \n
             /research/dept8/gds/cbai/demo/chipyard/riscv-tools-install/lib/libfesvr.a +lint=all,noVCDE,noONGS,noUI -error=PCWM-L -error=noZMMCM -timescale=1ns/10ps -quiet -q +rad +v2k +vcs+lic+wait +vc+list \ \n
             -f /research/dept8/gds/cbai/research/chipyard/vlsi/generated-src/chipyard.TestHarness.BOOM${model}Config\${idx}Config/sim_files.common.f \ \n
             -sverilog +systemverilogext+.sv+.svi+.svh+.svt -assert svaext +libext+.sv +v2k +verilog2001ext+.v95+.vt+.vp +libext+.v -debug_pp \ \n
