@@ -2,6 +2,7 @@
 
 import random
 import math
+from time import time
 import numpy as np
 from space import parse_design_space
 from util import parse_args, get_configs, create_logger, write_excel, write_txt
@@ -62,20 +63,25 @@ class RandomizedTED(object):
             vec: <np.array>
             m: <int>: number of a batch
         """
+        # NOTICE: `rted` may select duplicated points,
+        # in order to avoid this problem, we delete 80%
+        # some points randomly
+        def _delete_duplicate(vec):
+            """
+                `vec`: <list>
+            """
+            return [list(v) for v in set([tuple(v) for v in vec])]
+
         K_ = []
         for i in range(m):
             M_ = random.sample(list(vec), self.Nrted)
-            # NOTICE: `rted` may select duplicated points,
-            # in order to avoid this problem, we delete 80%
-            # some points randomly
-            K_ = random.sample(K_, int(len(K_) * 0.2))
             M_ = M_ + K_
             M_ = [tuple(M_[j]) for j in range(len(M_))]
             M_ = list(set(M_))
             F = self.f_same(M_)
             self.update_f(F, M_)
             K_.append(self.select_mi(M_, F))
-        return K_
+        return _delete_duplicate(K_)
 
 class ClusteringRandomizedTED(RandomizedTED):
     """
@@ -92,12 +98,18 @@ class ClusteringRandomizedTED(RandomizedTED):
         x = []
         decodeWidth = self.design_space.bounds["decodeWidth"]
         for i in decodeWidth:
-            x.append(
-                self.rted(
+            cnt = 0
+            _x = []
+            while cnt < self.batch:
+                candidates = self.rted(
                     self.design_space.random_sample_v2(i, self.Batch),
-                    self.batch
+                    self.batch - cnt
                 )
-            )
+                cnt += len(candidates)
+                for c in candidates:
+                    _x.append(c)
+                self.design_space.set_random_state(round(time()))
+            x.append(_x)
 
         return np.array(x).reshape((-1, self.design_space.n_dim))
 

@@ -44,6 +44,9 @@ class DesignSpace(Space):
         super().__init__(dims, size)
         self.random_state = np.random.RandomState(random_state)
 
+    def set_random_state(self, random_state):
+        self.random_state = np.random.RandomState(random_state)
+
     def round_vec(self, vec):
         _vec = []
         for item in vec:
