@@ -13,8 +13,11 @@
 	* dataset-boom-random-2ghz-whetstone.riscv.csv
 	* source data are in dataset-random-1/
 
-- 100 *random* BOOM @ 2GHz
+- *dataset* of 100 *random*  BOOM @ 2GHz
 	* source data are in dataset-random-2/
+
+- *dataset* of 300 *random* BOOM @ 2GHz
+	* *merge* dataset-random-1/ & dataset-random-2/
 
 - BOOM @ 500MHz
 	* latency: boom-500mhz-latency.csv

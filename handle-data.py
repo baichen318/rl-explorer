@@ -4,7 +4,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
-from util import parse_args, get_config, if_exist, read_csv, write_csv
+from util import parse_args, get_configs, if_exist, read_csv, write_csv
 from exception import UnDefinedException
 
 def handle_power_report(report, root, bmark):
@@ -41,8 +41,9 @@ def handle_area_report(report, root):
         results.append(result)
 
 def handle_power():
-    if if_exist(configs['data-path']):
+    if if_exist(configs['pt-pwr-path']):
         for root in configs['config-name']:
+            root = 'Config' + root.split('Config')[1] + '-benchmarks'
             for bmark in os.listdir(os.path.join(configs['pt-pwr-path'], root)):
                 report = os.path.join(configs['pt-pwr-path'],
                     root,
@@ -54,6 +55,7 @@ def handle_power():
         power = ['Configure', 'Int Power', 'Switch Power', 'Leak Power', 'Total Power']
         writer = pd.DataFrame(columns=power, data=results)
         writer.to_csv(configs['power-output-path'], index=False)
+        results.clear()
 
 def handle_latency():
     if if_exist(configs['vlsi-build-path']):
@@ -71,6 +73,7 @@ def handle_latency():
         latency = ['Configure', 'Cycles']
         writer = pd.DataFrame(columns=latency, data=results)
         writer.to_csv(configs['latency-output-path'], index=False)
+        results.clear()
 
 def handle_area():
     if if_exist(configs['vlsi-build-path']):
@@ -84,6 +87,7 @@ def handle_area():
         area = ['Configure', 'Area']
         writer = pd.DataFrame(columns=area, data=results)
         writer.to_csv(configs['area-output-path'], index=False)
+        results.clear()
 
 def _handle_dataset(features, power, latency):
     FEATURES = [
@@ -111,9 +115,9 @@ def _handle_dataset(features, power, latency):
     ]
 
     data = []
-    for idx in range(len(features)):
-        _data = features[idx].strip().split('\t')
-        idx += idx + configs['idx']
+    for i in range(len(features)):
+        _data = features[i].strip().split('\t')
+        idx = i + configs['idx']
         c_name = "%sConfig%s" % (configs['model'], str(idx))
         for l in latency:
             _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
@@ -128,13 +132,13 @@ def _handle_dataset(features, power, latency):
                 # insert power
                 _data.append(p[-1])
         data.append(_data)
-    write_csv(config["dataset-output-path"], data, FEATURES)
+    write_csv(configs["dataset-output-path"], data, col_name=FEATURES)
 
 def handle_dataset():
     with open(configs['initialize-output-path'], 'r') as f:
         features = f.readlines()
     power = read_csv(configs['power-output-path'])
-    latency = read_csv('latency-output-path')
+    latency = read_csv(configs['latency-output-path'])
     # area = read_csv(configs['area-output-path'])
     _handle_dataset(features, power, latency)
 
@@ -154,3 +158,4 @@ if __name__ == "__main__":
     # define the global variable `results`
     results = []
     handle()
+
