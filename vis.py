@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
-from util import parse_args, get_config, if_exist, read_csv
+from util import parse_args, get_configs, if_exist, read_csv, read_csv_v2
 from exception import UnDefinedException
 
 markers = [
@@ -17,10 +17,28 @@ colors = [
     'c', 'b', 'g', 'r', 'm', 'y', 'k', 'w'
 ]
 
-def plot(data, title, **kwargs):
+def validate(dataset):
+    """
+        `dataset`: <tuple>
+    """
+    data = []
+    for item in dataset:
+        _data = []
+        f = item[0].split(' ')
+        for i in f:
+            _data.append(int(i))
+        for i in item[1:]:
+            _data.append(float(i))
+        data.append(_data)
+    data = np.array(data)
+
+    return data
+
+def plot(data, title, kwargs):
     plt.rcParams['savefig.dpi'] = 300
     plt.rcParams['figure.dpi'] = 300
     cnt = 0
+    print("[INFO]: data points: ", len(data))
     for d in data:
         plt.scatter(d[0], d[1], s=1, marker=markers[2])
     if kwargs is not None:
@@ -41,7 +59,8 @@ def plot(data, title, **kwargs):
     plt.xlabel('Latency')
     plt.ylabel('Power')
     plt.title('Latency vs. Power (' + title + '@' + '%s)' % kwargs["configs"]["benchmark"])
-    plt.grid()
+    plt.title('Latency vs. Power ' + title)
+    # plt.grid()
     output = os.path.join(
         kwargs["configs"]["fig-output-path"],
         title + '-' + '%s-predict.jpg' % kwargs["configs"]["benchmark"]
@@ -51,7 +70,7 @@ def plot(data, title, **kwargs):
 
 def handle_vis(data, title, configs):
     """
-        API for visualize: baseline + prediction
+        API for visualization: baseline + prediction
         data: <list> (<np.array> in <list>)
     """
     latency = read_csv("data/baseline-latency.csv")
@@ -87,6 +106,22 @@ def handle_vis(data, title, configs):
         }
     )
 
+def handle():
+    """
+        API for visualization: baseline + design space
+    """
+    dataset, title = read_csv_v2(configs["dataset-output-path"])
+    dataset = validate(dataset)
+    _data = []
+    for data in dataset:
+        if isinstance(data[-2], float) and isinstance(data[-1], float) :
+            _data.append((data[-2], data[-1]))
+    handle_vis(_data, "Design-Space", configs)
+
 if __name__ == "__main__":
     # TODO: verify plot
-    pass
+    # plot original design space
+    argv = parse_args()
+    configs = get_configs(argv.configs)
+    handle()
+

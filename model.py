@@ -17,7 +17,7 @@ from multiprocessing import Process, Queue
 # from vlsi.vlsi import vlsi_flow
 from space import parse_design_space
 from search import sa_search
-from util import parse_args, get_config, get_config_v2, read_csv, read_csv_v2, if_exist, \
+from util import parse_args, get_configs, get_config_v2, read_csv, read_csv_v2, if_exist, \
     calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
     execute, mse, r2, mape, write_csv
 from vis import handle_vis
