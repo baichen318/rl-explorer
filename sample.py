@@ -98,17 +98,15 @@ class ClusteringRandomizedTED(RandomizedTED):
         x = []
         decodeWidth = self.design_space.bounds["decodeWidth"]
         for i in decodeWidth:
-            cnt = 0
             _x = []
-            while cnt < self.batch:
+            while len(_x) < self.batch:
                 candidates = self.rted(
                     self.design_space.random_sample_v2(i, self.Batch),
-                    self.batch - cnt
+                    self.batch - len(_x)
                 )
                 for c in candidates:
                     _x.append(c)
                 _x = _delete_duplicate(_x)
-                cnt += len(_x)
                 self.design_space.set_random_state(
                     random.randint(1, round(time()))
                 )
@@ -125,7 +123,6 @@ def create_design_space():
     return design_space
 
 def record_sample(design_space, data):
-    print(data)
     write_excel(configs["initialize-output-path"] + ".xlsx", data, design_space.features)
     write_txt(configs["initialize-output-path"] + ".txt", data)
 
