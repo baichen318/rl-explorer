@@ -143,3 +143,8 @@ Config*.csv
 *-model.yml
 *.predict
 img/
+baseline-exp.yml
+exp.yml
+power.csv
+latency.csv
+area.csv
