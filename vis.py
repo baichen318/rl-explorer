@@ -60,10 +60,10 @@ def plot(data, title, kwargs):
     plt.ylabel('Power')
     plt.title('Latency vs. Power (' + title + '@' + '%s)' % kwargs["configs"]["benchmark"])
     plt.title('Latency vs. Power ' + title)
-    # plt.grid()
+    plt.grid()
     output = os.path.join(
         kwargs["configs"]["fig-output-path"],
-        title + '-' + '%s-predict.jpg' % kwargs["configs"]["benchmark"]
+        title + '-' + '%s.jpg' % kwargs["configs"]["benchmark"]
     )
     print("[INFO]: save the figure", output)
     plt.savefig(output)
@@ -114,7 +114,7 @@ def handle():
     dataset = validate(dataset)
     _data = []
     for data in dataset:
-        if isinstance(data[-2], float) and isinstance(data[-1], float) :
+        if isinstance(data[-2], float) and isinstance(data[-1], float):
             _data.append((data[-2], data[-1]))
     handle_vis(_data, "Design-Space", configs)
 

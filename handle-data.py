@@ -42,8 +42,10 @@ def handle_area_report(report, root):
 
 def handle_power():
     if if_exist(configs['pt-pwr-path']):
+        prefix = "" if configs['initialize-method'] == "random" \
+            else configs['initialize-method'].upper()
         for root in configs['config-name']:
-            root = 'Config' + root.split('Config')[1] + '-benchmarks'
+            root = prefix + 'Config' + root.split('Config')[1] + '-benchmarks'
             for bmark in os.listdir(os.path.join(configs['pt-pwr-path'], root)):
                 report = os.path.join(configs['pt-pwr-path'],
                     root,
@@ -118,7 +120,11 @@ def _handle_dataset(features, power, latency):
     for i in range(len(features)):
         _data = features[i].strip().split('\t')
         idx = i + configs['idx']
-        c_name = "%sConfig%s" % (configs['model'], str(idx))
+        prefix = "" if configs['initialize-method'] == "random" \
+            else configs['initialize-method'].upper()
+        prefix = prefix if configs["flow"] == "initialize" \
+            else configs["model"]
+        c_name = "%sConfig%s" % (prefix, str(idx))
         for l in latency:
             _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
             if (c_name == _l) and (l[0].split('-')[-1] == configs['benchmark']):
