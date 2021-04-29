@@ -79,7 +79,7 @@ class PureRandomizedTED(RandomizedTED):
         `design_space`: <DesignSpace>
     """
     def __init__(self, kwargs, design_space):
-        super(ClusteringRandomizedTED, self).__init__(kwargs)
+        super(PureRandomizedTED, self).__init__(kwargs)
         self.design_space = design_space
         self.Batch = kwargs["Batch"]
         self.batch = kwargs["batch"]
@@ -96,16 +96,16 @@ class PureRandomizedTED(RandomizedTED):
             return [list(v) for v in set([tuple(v) for v in vec])]
 
         x = []
-        while len(x) < self.configs["initialize-size"]:
+        while len(x) < configs["initialize-size"]:
             candidates = super().rted(
                 self.design_space.random_sample(self.Batch),
-                self.configs["initialize-size"] - len(x)
+                configs["initialize-size"] - len(x)
             )
             for c in candidates:
                 x.append(c)
             x = _delete_duplicate(x)
 
-    return np.array(x).reshape((-1, self.design_space.n_dim))
+        return np.array(x).reshape((-1, self.design_space.n_dim))
 
 class ClusteringRandomizedTED(RandomizedTED):
     """

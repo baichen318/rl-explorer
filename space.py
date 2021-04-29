@@ -168,16 +168,16 @@ class DesignSpace(Space):
 
         visited = set()
         for i in range(batch):
-            _data = np.empty((1, self.n_dim))
+            _data = np.empty(self.n_dim)
             for col, candidates in enumerate(self.bounds.values()):
                 candidates = _helper(self.features[col], _data, candidates)
                 _data.T[col] = self.random_state.choice(candidates, size=1)
-            while (not self.verify_features(_data[0])) and \
-                (not self.knob2point(_data.ravel()) in visited):
+            while (not self.verify_features(_data)) and \
+                (not self.knob2point(_data) in visited):
                 for col, candidates in enumerate(self.bounds.values()):
                     candidates = _helper(self.features[col], _data, candidates)
                     _data.T[col] = self.random_state.choice(candidates, size=1)
-            _data = self.round_vec(_data.ravel())
+            _data = self.round_vec(_data)
             data.append(_data)
             visited.add(self.knob2point(_data))
 
