@@ -74,6 +74,39 @@ class RandomizedTED(object):
             K_.append(self.select_mi(M_, F))
         return K_
 
+class PureRandomizedTED(RandomizedTED):
+    """
+        `design_space`: <DesignSpace>
+    """
+    def __init__(self, kwargs, design_space):
+        super(ClusteringRandomizedTED, self).__init__(kwargs)
+        self.design_space = design_space
+        self.Batch = kwargs["Batch"]
+        self.batch = kwargs["batch"]
+        assert self.Batch > self.batch, "[ERROR] require self.Batch > self.batch"
+
+    def rted(self):
+        # NOTICE: `rted` may select duplicated points,
+        # in order to avoid this problem, we delete 80%
+        # some points randomly
+        def _delete_duplicate(vec):
+            """
+                `vec`: <list>
+            """
+            return [list(v) for v in set([tuple(v) for v in vec])]
+
+        x = []
+        while len(x) < self.configs["initialize-size"]:
+            candidates = super().rted(
+                self.design_space.random_sample(self.Batch),
+                self.configs["initialize-size"] - len(x)
+            )
+            for c in candidates:
+                x.append(c)
+            x = _delete_duplicate(x)
+
+    return np.array(x).reshape((-1, self.design_space.n_dim))
+
 class ClusteringRandomizedTED(RandomizedTED):
     """
         `design_space`: <DesignSpace>
@@ -131,6 +164,9 @@ def initialize(method):
 
     if method == "random":
         data = design_space.random_sample(configs["initialize-size"])
+    elif method == "prted":
+        prted = PureRandomizedTED(configs, design_space)
+        data = prted.rted()
     elif method == "crted":
         cbted = ClusteringRandomizedTED(configs, design_space)
         data = cbted.cbted()
