@@ -30,7 +30,10 @@ def parse_args():
 def get_configs(fyaml):
     if_exist(fyaml, strict=True)
     with open(fyaml, 'r') as f:
-        configs = yaml.load(f, Loader=yaml.FullLoader)
+        try:
+            configs = yaml.load(f, Loader=yaml.FullLoader)
+        except AttributeError:
+            configs = yaml.load(f)
 
     return configs
 

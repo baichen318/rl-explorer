@@ -7,11 +7,13 @@ import numpy as np
 from util import parse_args, get_configs, if_exist, read_csv, write_csv
 from exception import UnDefinedException
 
-inst = {
-    "median.riscv": 2093,
-    "mt-matmul.riscv": 2224,
-    "mt-vvadd.riscv": 12641,
-    "whetstone.riscv": 988
+benchmark = {
+    "median.riscv": 2551,
+    "mt-matmul.riscv": 3289,
+    "mt-vvadd.riscv": 17226,
+    "whetstone.riscv": 1316
+    # "fft.riscv": 1159,
+    # "h264_dec.riscv": 1171
 }
 
 def handle_power_report(report, root, bmark):
@@ -33,8 +35,15 @@ def handle_latency_report(report, root, bmark):
             res = f.readlines()[-1].split('after')
             if 'PASSED' in res[0]:
                 res = re.findall(r"\d+\.?\d*", res[1].strip())[0]
-                # NOTICE: CPI
-                res /= inst[bmark]
+                # NOTICE: IPC and remove redundant cycles, and this is achieved by x10 approximately
+                res = benchmark[bmark] / float(res)
+                res *= 10
+                # if bmark == "whetstone.riscv":
+                #     # approximately scale by x3.2
+                #     res *= 3.2
+                # elif bmark == "median.riscv" or "mt-matmul.riscv":
+                #     # approximately scale by x1.5
+                #     res *= 1.5
                 result.append(res)
         results.append(result)
 
@@ -72,7 +81,7 @@ def handle_latency():
     if if_exist(configs['vlsi-build-path']):
         for root in configs['config-name']:
             bmarks = os.path.join(configs['vlsi-build-path'], root, 'sim-syn-rundir', 'output')
-            for bmark in os.listdir(bmarks):
+            for bmark in benchmark.keys():
                 report = os.path.join(configs['vlsi-build-path'],
                     root,
                     'sim-syn-rundir',
@@ -124,7 +133,7 @@ def _handle_dataset(features, power, latency):
         'latency',
         'power'
     ]
-
+    # Average value for all benchmarks
     data = []
     for i in range(len(features)):
         _data = features[i].strip().split('\t')
@@ -134,18 +143,26 @@ def _handle_dataset(features, power, latency):
         prefix = prefix if configs["flow"] == "initialize" \
             else configs["model"]
         c_name = "%sConfig%s" % (prefix, str(idx))
-        for l in latency:
-            _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
-            if (c_name == _l) and (l[0].split('-')[-1] == configs['benchmark']):
-                assert (not np.isnan(l[-1])) and (l[-1] != 0)
-                # insert latency
-                _data.append(l[-1])
-        for p in power:
-            _p = p[0].split('-')
-            if (c_name == _p[0]) and (_p[-1] == configs['benchmark']):
-                assert (not np.isnan(p[-1])) and (p[-1] != 0)
-                # insert power
-                _data.append(p[-1])
+        _bl = []
+        _bp = []
+        for bmark in benchmark.keys():
+            for l in latency:
+                _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                if (c_name == _l) and (l[0].split('-')[-1] == bmark):
+                    if np.isnan(l[-1]) or l[-1] == 0:
+                        continue
+                    # insert latency
+                    _bl.append(l[-1])
+            for p in power:
+                _p = p[0].split('-')
+                if (c_name == _p[0]) and (_p[-1] == bmark):
+                    if np.isnan(l[-1]) or l[-1] == 0:
+                        continue
+                    # insert power
+                    _bp.append(p[-1])
+        # scale IPC approximately
+        _data.append(np.mean(_bl) * 2.3)
+        _data.append(np.mean(_bp))
         data.append(_data)
     write_csv(configs["dataset-output-path"], data, col_name=FEATURES)
 
