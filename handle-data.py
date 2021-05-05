@@ -7,6 +7,13 @@ import numpy as np
 from util import parse_args, get_configs, if_exist, read_csv, write_csv
 from exception import UnDefinedException
 
+inst = {
+    "median.riscv": 2093,
+    "mt-matmul.riscv": 2224,
+    "mt-vvadd.riscv": 12641,
+    "whetstone.riscv": 988
+}
+
 def handle_power_report(report, root, bmark):
     if if_exist(report):
         result = []
@@ -26,6 +33,8 @@ def handle_latency_report(report, root, bmark):
             res = f.readlines()[-1].split('after')
             if 'PASSED' in res[0]:
                 res = re.findall(r"\d+\.?\d*", res[1].strip())[0]
+                # NOTICE: CPI
+                res /= inst[bmark]
                 result.append(res)
         results.append(result)
 
