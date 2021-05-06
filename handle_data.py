@@ -4,14 +4,14 @@ import os
 import re
 import pandas as pd
 import numpy as np
-from util import parse_args, get_configs, if_exist, read_csv, write_csv
+from util import parse_args, get_configs, if_exist, read_csv, write_csv, write_txt
 from exception import UnDefinedException
 
-benchmark = {
-    "median.riscv": 2551,
-    "mt-matmul.riscv": 3289,
-    "mt-vvadd.riscv": 17226,
-    "whetstone.riscv": 1316
+benchmarks = {
+    "median.riscv": 2455,
+    "mt-matmul.riscv": 2508,
+    "mt-vvadd.riscv": 12454,
+    "whetstone.riscv": 1184
     # "fft.riscv": 1159,
     # "h264_dec.riscv": 1171
 }
@@ -56,15 +56,9 @@ def handle_latency_report(report, root, bmark):
             res = f.readlines()[-1].split('after')
             if 'PASSED' in res[0]:
                 res = re.findall(r"\d+\.?\d*", res[1].strip())[0]
-                # NOTICE: IPC and remove redundant cycles, and this is achieved by x10 approximately
-                res = benchmark[bmark] / float(res)
-                res *= 10
-                # if bmark == "whetstone.riscv":
-                #     # approximately scale by x3.2
-                #     res *= 3.2
-                # elif bmark == "median.riscv" or "mt-matmul.riscv":
-                #     # approximately scale by x1.5
-                #     res *= 1.5
+                # NOTICE: CPI
+                # `CPI = (c_i - alpha) / #inst`
+                res = (float(res) - 10000) / benchmarks[bmark]
                 result.append(res)
         results.append(result)
 
@@ -111,7 +105,7 @@ def handle_latency():
     if if_exist(configs['vlsi-build-path']):
         for root in configs['config-name']:
             bmarks = os.path.join(configs['vlsi-build-path'], root, 'sim-syn-rundir', 'output')
-            for bmark in benchmark.keys():
+            for bmark in benchmarks.keys():
                 report = os.path.join(configs['vlsi-build-path'],
                     root,
                     'sim-syn-rundir',
@@ -139,7 +133,49 @@ def handle_area():
         writer.to_csv(configs['area-output-path'], index=False)
         results.clear()
 
-def _handle_dataset(features, power, latency):
+def normalize(power, latency):
+    # Get max & min from power and latency
+    extl = []
+    for bmark in benchmarks.keys():
+        _data = []
+        for l in latency:
+            if l[0].split('ChipTop-')[-1] == bmark:
+                if np.isnan(l[-1]) or l[-1] == 0:
+                    continue
+                _data.append(l[-1])
+        extl.append((np.min(_data), np.max(_data)))
+
+    extp = []
+    for bmark in benchmarks.keys():
+        _data = []
+        for p in power:
+            if p[0].split('benchmarks-')[-1] == bmark:
+                if np.isnan(p[-1]) or p[-1] == 0:
+                    continue
+                _data.append(p[-1])
+        extp.append((np.min(_data), np.max(_data)))
+
+    # save the extreme value for data recovery
+    write_txt(
+        os.path.join(
+            os.path.dirname(configs["dataset-output-path"]),
+            "extp.txt"
+        ),
+        np.array(extp),
+        fmt="%.8f"
+    )
+    write_txt(
+        os.path.join(
+            os.path.dirname(configs["dataset-output-path"]),
+            "extl.txt"
+        ),
+        np.array(extl),
+        fmt="%.8f"
+    )
+
+    return extp, extl
+
+def _handle_dataset(features, power, latency, extp, extl):
     FEATURES = [
         'fetchWidth',
         'decodeWidth',
@@ -175,24 +211,24 @@ def _handle_dataset(features, power, latency):
         c_name = "%sConfig%s" % (prefix, str(idx))
         _bl = []
         _bp = []
-        for bmark in benchmark.keys():
+        for bmark in benchmarks.keys():
             for l in latency:
                 _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
-                if (c_name == _l) and (l[0].split('-')[-1] == bmark):
+                if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
                     if np.isnan(l[-1]) or l[-1] == 0:
                         continue
-                    # insert latency
-                    _bl.append(l[-1])
+                    # insert latency with normalization
+                    _idx = list(benchmarks.keys()).index(bmark)
+                    _bl.append((l[-1] - extl[_idx][0]) / (extl[_idx][1] - extl[_idx][0]))
             for p in power:
                 _p = p[0].split('-')
-                if (c_name == _p[0]) and (_p[-1] == bmark):
+                if (c_name == p[0].split('-')[0]) and (p[0].split('benchmarks-')[-1] == bmark):
                     if np.isnan(p[-1]) or p[-1] == 0:
                         continue
-                    # insert power
-                    _bp.append(p[-1])
-        # NOTICE: scale IPC approximately
-        # IPC -> CPI
-        _data.append(1 / (np.mean(_bl) * 2.3))
+                    # insert power with normalization
+                    _idx = list(benchmarks.keys()).index(bmark)
+                    _bp.append((p[-1] - extp[_idx][0]) / (extp[_idx][1] - extp[_idx][0]))
+        _data.append(np.mean(_bl))
         _data.append(np.mean(_bp))
         data.append(_data)
     write_csv(configs["dataset-output-path"], data, col_name=FEATURES)
@@ -203,7 +239,9 @@ def handle_dataset():
     power = read_csv(configs['power-output-path'])
     latency = read_csv(configs['latency-output-path'])
     # area = read_csv(configs['area-output-path'])
-    _handle_dataset(features, power, latency)
+    # Normalize CPI
+    extp, extl = normalize(power, latency)
+    _handle_dataset(features, power, latency, extp, extl)
 
 def handle():
     print("Handling...")
