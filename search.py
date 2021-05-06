@@ -105,16 +105,3 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
 #     np.array([40912, 0.133])
 # ]
 
-reference = [
-    # Small
-    np.array([1.3790802167305407, 4.63e-02]),
-    # Medium
-    np.array([1.3690366063169026, 5.83e-02]),
-    # Large
-    np.array([1.3608431346636713, 9.45e-02]),
-    # Mega
-    np.array([1.352054975551738, 0.136]),
-    # Giga
-    np.array([1.351658517245936, 0.133])
-]
-
