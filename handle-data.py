@@ -177,8 +177,9 @@ def _handle_dataset(features, power, latency):
                         continue
                     # insert power
                     _bp.append(p[-1])
-        # scale IPC approximately
-        _data.append(np.mean(_bl) * 2.3)
+        # NOTICE: scale IPC approximately
+        # IPC -> CPI
+        _data.append(1 / (np.mean(_bl) * 2.3))
         _data.append(np.mean(_bp))
         data.append(_data)
     write_csv(configs["dataset-output-path"], data, col_name=FEATURES)
