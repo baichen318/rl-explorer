@@ -1,6 +1,0 @@
-Configure,Int Power,Switch Power,Leak Power,Total Power
-GigaBoomConfig-benchmarks-whetstone.riscv,0.113,1.33e-02,6.77e-03,0.133
-MegaBoomConfig-benchmarks-whetstone.riscv,0.116,1.42e-02,6.40e-03,0.136
-LargeBoomConfig-benchmarks-whetstone.riscv,8.02e-02,1.04e-02,3.88e-03,9.45e-02
-MediumBoomConfig-benchmarks-whetstone.riscv,5.00e-02,5.78e-03,2.52e-03,5.83e-02
-SmallBoomConfig-benchmarks-whetstone.riscv,3.96e-02,4.86e-03,1.84e-03,4.63e-02

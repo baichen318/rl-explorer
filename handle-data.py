@@ -16,6 +16,14 @@ benchmark = {
     # "h264_dec.riscv": 1171
 }
 
+baseline = {
+    "Small",
+    "Medium",
+    "Large",
+    "Mega",
+    "Giga"
+}
+
 def handle_power_report(report, root, bmark):
     if if_exist(report):
         result = []
@@ -63,7 +71,16 @@ def handle_power():
         prefix = "" if configs['initialize-method'] == "random" \
             else configs['initialize-method'].upper()
         for root in configs['config-name']:
-            root = prefix + 'Config' + root.split('Config')[1] + '-benchmarks'
+            for base in baseline:
+                if base in root:
+                    base = True
+                    break
+                else:
+                    base = False
+            if base:
+                root = root.split('.')[-1].split('-')[0] + '-benchmarks'
+            else:
+                root = prefix + 'Config' + root.split('Config')[1] + '-benchmarks'
             for bmark in os.listdir(os.path.join(configs['pt-pwr-path'], root)):
                 report = os.path.join(configs['pt-pwr-path'],
                     root,
@@ -156,7 +173,7 @@ def _handle_dataset(features, power, latency):
             for p in power:
                 _p = p[0].split('-')
                 if (c_name == _p[0]) and (_p[-1] == bmark):
-                    if np.isnan(l[-1]) or l[-1] == 0:
+                    if np.isnan(p[-1]) or p[-1] == 0:
                         continue
                     # insert power
                     _bp.append(p[-1])

@@ -92,15 +92,29 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
 
     return heap_items
 
+# reference = [
+#     # Small
+#     np.array([41742, 4.63e-02]),
+#     # Medium
+#     np.array([41438, 5.83e-02]),
+#     # Large
+#     np.array([41190, 9.45e-02]),
+#     # Mega
+#     np.array([40924, 0.136]),
+#     # Giga
+#     np.array([40912, 0.133])
+# ]
+
 reference = [
     # Small
-    np.array([41742, 4.63e-02]),
+    np.array([0.7251209812658712, 4.63e-02]),
     # Medium
-    np.array([41438, 5.83e-02]),
+    np.array([0.730440658332931, 5.83e-02]),
     # Large
-    np.array([41190, 9.45e-02]),
+    np.array([0.734838553046856, 9.45e-02]),
     # Mega
-    np.array([40924, 0.136]),
+    np.array([0.7396148959046036, 0.136]),
     # Giga
-    np.array([40912, 0.133])
+    np.array([0.7398318341806805, 0.133])
 ]
+
