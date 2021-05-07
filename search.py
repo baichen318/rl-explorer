@@ -5,6 +5,7 @@ import logging
 import time
 import numpy as np
 from util import hyper_volume
+from handle_data import reference
 
 def perfcmp(point, score):
     """

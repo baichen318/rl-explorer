@@ -594,7 +594,7 @@ def offline_vlsi_flow_v1():
     vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
     vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
 
-def offline_vlsi_flow_v2(dataset):
+def offline_vlsi_flow_v2(dataset, configs):
     """
         V2: read from <np.array>
         `dataset`: <np.array>

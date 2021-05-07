@@ -57,10 +57,13 @@ def plot(data, title, kwargs):
     #         )
     #         i += 1
     #     plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1)
+    if "data" in kwargs.keys():
+        for d in kwargs["data"]:
+            plt.scatter(d[0], d[1], s=2, marker=markers[-2])
     plt.xlabel('Latency (CPI)')
     plt.ylabel('Power')
     plt.title('Latency (CPI) vs. Power ' + title)
-    plt.grid()
+    # plt.grid()
     output = os.path.join(
         kwargs["configs"]["fig-output-path"],
         title  + '.jpg'
@@ -68,7 +71,7 @@ def plot(data, title, kwargs):
     print("[INFO]: save the figure", output)
     plt.savefig(output)
 
-def handle():
+def handle_v1():
     """
         API for visualization: baseline + design space
     """
@@ -84,19 +87,38 @@ def handle():
         {
             "data": reference,
             "baseline_config_name": [
-                "GigaBoomConfig",
-                "MegaBoomConfig",
-                "LargeBoomConfig",
-                "MediumBoomConfig",
                 "SmallBoomConfig"
+                "MediumBoomConfig",
+                "LargeBoomConfig",
+                "MegaBoomConfig",
+                "GigaBoomConfig",
             ],
             "configs": configs
         }
     )
 
+def handle_v2(data, title, configs):
+    """
+        API for visulization: design space + prediction
+        data: <list> with <tuple> as elements
+    """
+    dataset, _ = read_csv_v2(configs["dataset-output-path"])
+    dataset = validate(dataset)
+    _data = []
+    for d in dataset:
+        if isinstance(d[-2], float) and isinstance(d[-1], float):
+            _data.append((d[-2], d[-1]))
+    plot(
+        data,
+        title,
+        {
+            "data": _data,
+            "configs": configs
+        }
+    )
 if __name__ == "__main__":
     # TODO: verify plot
     # plot original design space
     argv = parse_args()
     configs = get_configs(argv.configs)
-    handle()
+    handle_v1()

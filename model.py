@@ -4,6 +4,7 @@ import sys
 import os
 import numpy as np
 from xgboost import XGBRegressor
+import sklearn
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import KFold
 try:
@@ -18,7 +19,7 @@ from search import sa_search
 from util import parse_args, get_configs, read_csv, read_csv_v2, if_exist, \
     calc_mape, point2knob, knob2point, create_logger, is_pow2, mkdir, \
     execute, mse, r2, mape, write_csv
-from vis import handle_vis
+from vis import handle_v2
 from exception import UnDefinedException
 from vlsi.vlsi import offline_vlsi_flow_v2
 
@@ -51,11 +52,10 @@ def validate(dataset):
     data = []
     for item in dataset:
         _data = []
-        for i in item:
-            if '.' in i:
-                _data.append(float(i))
-            else:
-                _data.append(int(i))
+        for i in item[0].split(' '):
+            _data.append(int(i))
+        for i in item[-2:]:
+            _data.append(float(i))
         data.append(_data)
     data = np.array(data)
 
@@ -175,7 +175,13 @@ def regression(method, dataset, index):
             perf = 0.5 * metrics[4] + 0.5 * metrics[5]
             # achieve the average minimum in one round
             min_mape_l, min_mape_p = metrics[4], metrics[5]
-            joblib.dump(model, configs["model-output-path"])
+            joblib.dump(
+                model,
+                os.path.join(
+                    configs["model-output-path"],
+                    configs["model"] + ".mdl"
+                )
+            )
     msg = "[INFO]: achieve the best performance: MAPE (latency): %.8f " %  min_mape_l + \
         "MAPE (power): %.8f in one round. " % min_mape_p + \
         "Average MAPE (latency): %.8f, " % avg_metrics[4] + \
@@ -185,11 +191,27 @@ def regression(method, dataset, index):
     logger.info(msg)
 
     # test
-    model = joblib.load(configs["model-output-path"])
+    try:
+        model = joblib.load(
+            os.path.join(
+                configs["model-output-path"],
+                configs["model"] + ".mdl"
+            )
+        )
+    except Exception:
+        pass
     heap = sa_search(model, design_space, logger, top_k=50,
-        n_iter=5000, early_stop=2000, parallel_size=128, log_interval=50)
+        n_iter=5000, early_stop=3000, parallel_size=128, log_interval=50)
     # saving results
-    write_csv(method + ".predict", heap, mode='a')
+    mkdir(configs["rpt-output-path"])
+    write_csv(
+        os.path.join(
+            configs["rpt-output-path"],
+            configs["model"] + '-prediction.rpt'
+        ),
+        heap,
+        mode='a'
+    )
     # get the metris
     perf = []
     for (hv, p) in heap:
@@ -197,11 +219,9 @@ def regression(method, dataset, index):
             perf.append(model.predict(p.reshape(1, -1)).ravel())
     assert len(perf) > 0, "[ERROR]: SA cannot find a good point"
     # visualize
-    handle_vis(
+    handle_v2(
         perf,
-        os.path.basename(
-            configs["model-output-path"]
-        ).split('.')[0],
+        configs["model"] + '-prediction',
         configs
     )
 
@@ -218,7 +238,7 @@ def verify(heap):
         if hv != -1:
             dataset.append(p)
     dataset = np.array(dataset)[:3]
-    offline_vlsi_flow_v2(dataset)
+    offline_vlsi_flow_v2(dataset, configs)
 
 def handle():
     dataset, title = read_csv_v2(configs["dataset-output-path"])
@@ -231,7 +251,7 @@ def handle():
     else:
         raise UnDefinedException("%s undefined" % configs["model"])
 
-    verify(heap)
+    # verify(heap)
 
 if __name__ == "__main__":
     argv = parse_args()

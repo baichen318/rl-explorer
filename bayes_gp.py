@@ -10,7 +10,6 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from botorch.utils.multi_objective.box_decompositions.non_dominated import NondominatedPartitioning
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
 from time import time
-from search import reference
 from util import create_logger, read_csv
 from exception import UnDefinedException
 
@@ -18,6 +17,10 @@ class DNNGP():
     """
         DNN-GP
     """
+        # temporary cached
+    cached_x = None
+    cached_y = None
+
     class MLP(nn.Sequential):
         """
             MLP as preprocessor of DNNGP
@@ -37,16 +40,19 @@ class DNNGP():
 
         # NOTICE: 19 micro-architectural structures & 2 interesting metrics
         # TODO: MLP output dimensions
-        self.mlp = DNNGP.MLP(19, 19)
+        self.mlp = DNNGP.MLP(19, 6)
         self.learning_rate = self.configs["learning-rate"]
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.display_iter = self.configs["max-epoch"] // 10
         # other variables
         self.optimizer = None
         self.gp = None
 
     def set_train(self, x, y):
+        _x = self.transform_xlayout(self.mlp(x))
         x, y = self.transform_xlayout(x), self.transform_ylayout(y)
-        self.gp = MultiTaskGP(x, y, task_feature=-1)
+        DNNGP.cached_x, DNNGP.cached_y = _x, y
+        self.gp = MultiTaskGP(_x, y, task_feature=-1, mean_type="linear")
         self.gp.train()
         self.gp.likelihood.train()
         self.mlp.train()
@@ -90,7 +96,6 @@ class DNNGP():
         task_index = torch.zeros(nsample, 1).to(x.device)
         task_index = torch.cat([task_index, 1 * torch.ones(nsample, 1).to(x.device)], dim=0)
         x = torch.cat([x, task_index], dim=1)
-
         return x
 
     def transform_ylayout(self, y):
@@ -101,7 +106,6 @@ class DNNGP():
         """
         y = y.chunk(2, dim=1)
         y = torch.cat([y[i] for i in range(len(y))], dim=0)
-
         return y
 
     def train(self, x, y):
@@ -124,25 +128,26 @@ class DNNGP():
             # BP
             loss.backward()
             self.optimizer.step()
-            print("[INFO]: %d iter. Loss: %.8f" % (i + 1, loss))
+            if (i + 1) % self.display_iter == 0:
+                print("[INFO]: %d iter. Loss: %.8f" % (i + 1, loss))
 
     def sample(self, x, y):
         """
             x: <list>
             y: <list>
         """
-        # TODO: normalize + ref-point
+        # TODO: normalize + ref-poi
         acq_func = ExpectedHypervolumeImprovement(
             model=self.gp,
-            ref_point=reference,
-            partition=NondominatedPartitioning(
-                ref_point=reference,
+            ref_point=torch.tensor([1, 1]).to(self.device),
+            partitioning=NondominatedPartitioning(
+                ref_point=torch.tensor([1, 1]).to(self.device),
                 Y=y.to(self.device)
             )
         ).to(self.device)
-        _x = self.mlp(x.to(self.device))
+        _x = self.mlp(x.to(self.device).float())
         acqv = acq_func(_x.unsqueeze(1).to(self.device))
-        top_k, idx = torch.topk(acqv, k=1)
+        top_k, idx = torch.topk(acqv, k=5)
         new_x = x[idx]
         new_y = y[idx]
 
@@ -162,13 +167,25 @@ class DNNGP():
         self.train(x, y)
         self.set_eval()
 
-    def predict(self):
+    def predict(self, x):
         """
             test the model
+            x: <torch.tensor>
         """
-        print("predict")
-        pass
-        exit()
+        def _transfrom_ylayout(y):
+            """
+                y: <torch.Tensor>
+            """
+            y = y.chunk(2, dim=0)
+
+            return torch.cat([y[i].unsqueeze(1) for i in range(2)], dim=1)
+
+        with torch.no_grad():
+            _x = self.mlp(x)
+            _x = self.transform_xlayout(_x)
+            y = self.gp(_x)
+        y = _transfrom_ylayout(y.mean)
+        return y.numpy()
 
     def save(self, path):
         state_dict = {
@@ -179,9 +196,10 @@ class DNNGP():
 
     def load(self, mdl):
         state_dict = torch.load(mdl)
+        self.gp = MultiTaskGP(DNNGP.cached_x, DNNGP.cached_y, task_feature=-1)
         self.mlp.load_state_dict(state_dict["mlp"])
         self.gp.load_state_dict(state_dict["gp"])
-        
+        self.set_eval()
 
 class BayesianOptimization(object):
     """
@@ -203,12 +221,15 @@ class BayesianOptimization(object):
         x = []
         y = []
 
-        sidx = self.random_state.randint(1, len(self.x))
-        x.append(self.x[sidx])
-        y.append(self.y[sidx])
-        self.x.pop(sidx)
-        self.y.pop(sidx)
+        for i in range(8):
+            idx = self.random_state.randint(1, len(self.x))
+            x.append(self.x[idx])
+            y.append(self.y[idx])
+            self.x.pop(idx)
+            self.y.pop(idx)
+
         for step in range(1, self.configs["max-bo-steps"] + 1):
+            print("[INFO]: Training size: %d" % len(x))
             model = DNNGP(self.configs)
             # train `DNNGP`
             model.fit(
@@ -220,15 +241,22 @@ class BayesianOptimization(object):
                 torch.tensor(self.x),
                 torch.tensor(self.y)
             )
-            # add new samples
+            # add new samples and remove sampled ones
+            pidx = []
             for item in new_x:
                 x.append(item)
-                self.x.pop(self.x.index(item))
+                idx = self.x.index(item.tolist())
+                self.x.pop(idx)
+                self.y.pop(idx)
             for item in new_y:
                 y.append(item)
-                self.y.pop(self.y.index(item))
 
-        model.save(self.configs["model-output-path"])
+        model.save(
+            os.path.join(
+                self.configs["model-output-path"],
+                self.configs["model"] + ".mdl"
+            )
+        )
 
     def fit(self, x, y):
         """
@@ -236,3 +264,13 @@ class BayesianOptimization(object):
         """
         self.set_input(x, y)
         self.run()
+
+    def predict(self, x):
+        model = DNNGP(self.configs)
+        model.load(
+            os.path.join(
+                self.configs["model-output-path"],
+                self.configs["model"] + ".mdl"
+            )
+        )
+        return model.predict(torch.tensor(x).float())
