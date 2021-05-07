@@ -26,15 +26,15 @@ baseline = [
 
 reference = [
     # Small
-    np.array([1.3790802167305407, 4.63e-02]),
+    np.array([82216.5, 0.045950000000000005]),
     # Medium
-    np.array([1.3690366063169026, 5.83e-02]),
+    np.array([73558.0, 0.058649999999999994]),
     # Large
-    np.array([1.3608431346636713, 9.45e-02]),
+    np.array([65552.0, 0.09605]),
     # Mega
-    np.array([1.352054975551738, 0.136]),
+    np.array([63763.5, 0.1395]),
     # Giga
-    np.array([1.351658517245936, 0.133])
+    np.array([63539.0, 0.14650000000000002])
 ]
 
 def handle_power_report(report, root, bmark):

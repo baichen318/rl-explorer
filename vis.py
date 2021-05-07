@@ -42,22 +42,22 @@ def plot(data, title, kwargs):
     print("[INFO]: data points: ", len(data))
     for d in data:
         plt.scatter(d[0], d[1], s=1, marker=markers[2])
-    # if "data" in kwargs.keys() and "baseline_config_name" in kwargs.keys():
-    #     i = 0
-    #     h = []
-    #     for d in kwargs["data"]:
-    #         h.append(
-    #             plt.scatter(
-    #                 d[0],
-    #                 d[1],
-    #                 s=15,
-    #                 marker=markers[-2],
-    #                 label=kwargs["baseline_config_name"][i]
-    #             )
-    #         )
-    #         i += 1
-    #     plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1)
-    if "data" in kwargs.keys():
+    if "data" in kwargs.keys() and "baseline_config_name" in kwargs.keys():
+        i = 0
+        h = []
+        for d in kwargs["data"]:
+            h.append(
+                plt.scatter(
+                    d[0],
+                    d[1],
+                    s=15,
+                    marker=markers[-2],
+                    label=kwargs["baseline_config_name"][i]
+                )
+            )
+            i += 1
+        plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1)
+    elif "data" in kwargs.keys():
         for d in kwargs["data"]:
             plt.scatter(d[0], d[1], s=2, marker=markers[-2])
     plt.xlabel('Latency (CPI)')
@@ -87,11 +87,11 @@ def handle_v1():
         {
             "data": reference,
             "baseline_config_name": [
-                "SmallBoomConfig"
+                "SmallBoomConfig",
                 "MediumBoomConfig",
                 "LargeBoomConfig",
                 "MegaBoomConfig",
-                "GigaBoomConfig",
+                "GigaBoomConfig"
             ],
             "configs": configs
         }
