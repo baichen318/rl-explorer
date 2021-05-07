@@ -113,9 +113,6 @@ pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
 # Output path for power
 power-output-path: data/power.csv
 
-# Filter configuration
-benchmark: whetstone.riscv
-
 # Config. name
 config-name:
   - chipyard.TestHarness.BOOMConfig1Config-ChipTop
@@ -141,7 +138,7 @@ max-epoch: 150
 max-bo-steps: 5
 
 # Output path for models
-model-output-path: model/lr.mdl
+model-output-path: model
 
 # Output path for results
 rpt-output-path: rpts
