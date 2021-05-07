@@ -16,13 +16,13 @@ benchmarks = {
     # "h264_dec.riscv": 1171
 }
 
-baseline = {
+baseline = [
     "Small",
     "Medium",
     "Large",
     "Mega",
     "Giga"
-}
+]
 
 reference = [
     # Small
@@ -109,8 +109,8 @@ def handle_latency():
                     root,
                     'sim-syn-rundir',
                     'output',
-                    bmark,
-                    bmark + '.out'
+                    bmark.strip('-2G'),
+                    bmark.strip('-2G') + '.out'
                 )
                 handle_latency_report(report, root, bmark)
         latency = ['Configure', 'Cycles']
@@ -198,6 +198,9 @@ def _handle_dataset(features, power, latency):
         'latency',
         'power'
     ]
+    b = False
+    if latency[0][0].split('-')[0].split('.')[-1].strip('BoomConfig') in baseline:
+        b = True
     # Average value for all benchmarks
     data = []
     for i in range(len(features)):
@@ -207,12 +210,18 @@ def _handle_dataset(features, power, latency):
             else configs['initialize-method'].upper()
         prefix = prefix if configs["flow"] == "initialize" \
             else configs["model"]
-        c_name = "%sConfig%s" % (prefix, str(idx))
+        if b:
+            c_name = baseline[i % 5] + "BoomConfig"
+        else:
+            c_name = "%sConfig%s" % (prefix, str(idx))
         _bl = []
         _bp = []
         for bmark in benchmarks.keys():
             for l in latency:
-                _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                if b:
+                    _l = l[0].split('-')[0].split('.')[-1]
+                else:
+                    _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
                 if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
                     if np.isnan(l[-1]) or l[-1] == 0:
                         continue
@@ -220,7 +229,7 @@ def _handle_dataset(features, power, latency):
                     _bl.append(l[-1])
             for p in power:
                 _p = p[0].split('-')
-                if (c_name == p[0].split('-')[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
                     if np.isnan(p[-1]) or p[-1] == 0:
                         continue
                     # insert power
