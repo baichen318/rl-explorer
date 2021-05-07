@@ -128,8 +128,24 @@ dataset-output-path: data/dataset.csv
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | dnn-gp | ""
 model: lr
 
+# Learning rate for `dnn-gp`
+learning-rate: 0.001
+
+# Optimizer for `dnn-gp` Adam | SGD
+optimizer: Adam
+
+# Max iteration for `dnn-gp`
+max-epoch: 150
+
+# Max iteration for Bayesian Optimization
+max-bo-steps: 5
+
 # Output path for models
 model-output-path: model/lr.mdl
 
+# Output path for results
+rpt-output-path: rpts
+
 # Output path for fig.
-fig-output-path: data
+fig-output-path: data/figs
+
