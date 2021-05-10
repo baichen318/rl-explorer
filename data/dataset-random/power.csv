@@ -489,6 +489,8 @@ Config244-benchmarks-mt-vvadd.riscv,5.15e-02,6.01e-03,2.96e-03,6.05e-02
 Config244-benchmarks-whetstone.riscv,5.35e-02,5.32e-03,2.97e-03,6.18e-02
 Config245-benchmarks-mt-vvadd.riscv,6.52e-02,8.70e-03,4.25e-03,7.81e-02
 Config245-benchmarks-whetstone.riscv,6.61e-02,7.46e-03,4.28e-03,7.78e-02
+Config246-benchmarks-mt-vvadd.riscv,5.09e-02,6.84e-03,2.71e-03,6.05e-02
+Config246-benchmarks-whetstone.riscv,5.28e-02,5.91e-03,2.72e-03,6.14e-02
 Config247-benchmarks-mt-vvadd.riscv,5.05e-02,6.29e-03,2.66e-03,5.95e-02
 Config247-benchmarks-whetstone.riscv,5.26e-02,5.80e-03,2.67e-03,6.11e-02
 Config248-benchmarks-mt-vvadd.riscv,6.98e-02,1.15e-02,3.94e-03,8.53e-02
@@ -554,6 +556,7 @@ Config277-benchmarks-whetstone.riscv,6.60e-02,9.37e-03,3.28e-03,7.86e-02
 Config278-benchmarks-mt-vvadd.riscv,7.72e-02,1.12e-02,4.68e-03,9.31e-02
 Config278-benchmarks-whetstone.riscv,7.51e-02,8.49e-03,4.72e-03,8.83e-02
 Config279-benchmarks-mt-vvadd.riscv,5.04e-02,7.01e-03,2.73e-03,6.02e-02
+Config279-benchmarks-whetstone.riscv,5.12e-02,5.69e-03,2.75e-03,5.97e-02
 Config280-benchmarks-mt-vvadd.riscv,6.26e-02,8.42e-03,3.21e-03,7.42e-02
 Config280-benchmarks-whetstone.riscv,6.04e-02,5.96e-03,3.24e-03,6.95e-02
 Config281-benchmarks-mt-vvadd.riscv,4.97e-02,6.26e-03,2.37e-03,5.84e-02
@@ -575,6 +578,7 @@ Config288-benchmarks-whetstone.riscv,6.89e-02,7.46e-03,3.96e-03,8.03e-02
 Config289-benchmarks-mt-vvadd.riscv,5.99e-02,8.66e-03,3.64e-03,7.22e-02
 Config289-benchmarks-whetstone.riscv,6.03e-02,7.16e-03,3.67e-03,7.11e-02
 Config290-benchmarks-mt-vvadd.riscv,8.22e-02,1.40e-02,4.64e-03,0.101
+Config290-benchmarks-whetstone.riscv,8.21e-02,1.23e-02,4.68e-03,9.91e-02
 Config291-benchmarks-mt-vvadd.riscv,8.44e-02,1.44e-02,4.73e-03,0.104
 Config291-benchmarks-whetstone.riscv,8.30e-02,1.18e-02,4.77e-03,9.96e-02
 Config292-benchmarks-mt-vvadd.riscv,5.82e-02,8.83e-03,3.51e-03,7.05e-02
@@ -594,3 +598,4 @@ Config298-benchmarks-whetstone.riscv,5.75e-02,5.73e-03,2.95e-03,6.62e-02
 Config299-benchmarks-mt-vvadd.riscv,7.70e-02,1.21e-02,4.03e-03,9.32e-02
 Config299-benchmarks-whetstone.riscv,7.80e-02,1.06e-02,4.06e-03,9.27e-02
 Config300-benchmarks-mt-vvadd.riscv,6.49e-02,9.90e-03,4.14e-03,7.90e-02
+Config300-benchmarks-whetstone.riscv,6.33e-02,7.88e-03,4.17e-03,7.54e-02

@@ -489,6 +489,8 @@ chipyard.TestHarness.BOOMConfig244Config-ChipTop-mt-vvadd.riscv,113226
 chipyard.TestHarness.BOOMConfig244Config-ChipTop-whetstone.riscv,41488
 chipyard.TestHarness.BOOMConfig245Config-ChipTop-mt-vvadd.riscv,117716
 chipyard.TestHarness.BOOMConfig245Config-ChipTop-whetstone.riscv,41357
+chipyard.TestHarness.BOOMConfig246Config-ChipTop-mt-vvadd.riscv,116000
+chipyard.TestHarness.BOOMConfig246Config-ChipTop-whetstone.riscv,41520
 chipyard.TestHarness.BOOMConfig247Config-ChipTop-mt-vvadd.riscv,119443
 chipyard.TestHarness.BOOMConfig247Config-ChipTop-whetstone.riscv,41695
 chipyard.TestHarness.BOOMConfig248Config-ChipTop-mt-vvadd.riscv,110536

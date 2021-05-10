@@ -7,6 +7,8 @@ import numpy as np
 from util import parse_args, get_configs, if_exist, read_csv, write_csv, write_txt
 from exception import UnDefinedException
 
+# NOTICE: If you extract baseline data-set
+# modify `benchmarks` with `mt-vvadd.riscv-2G` and `whetstone.riscv-2G`
 benchmarks = {
     # "median.riscv": 2455,
     # "mt-matmul.riscv": 2508,
@@ -174,7 +176,10 @@ def normalize(power, latency):
 
     return extp, extl
 
-def _handle_dataset(features, power, latency):
+def _handle_dataset(method, features, power, latency):
+    """
+        baseline, random, CRTED & PRTED uses different parsers
+    """
     FEATURES = [
         'fetchWidth',
         'decodeWidth',
@@ -198,54 +203,107 @@ def _handle_dataset(features, power, latency):
         'latency',
         'power'
     ]
-    b = False
-    if latency[0][0].split('-')[0].split('.')[-1].strip('BoomConfig') in baseline:
-        b = True
-    # Average value for all benchmarks
     data = []
-    for i in range(len(features)):
-        _data = features[i].strip().split('\t')
-        idx = i + configs['idx']
-        prefix = "" if configs['initialize-method'] == "random" \
-            else configs['initialize-method'].upper()
-        prefix = prefix if configs["flow"] == "initialize" \
-            else configs["model"]
-        if b:
-            c_name = baseline[i % 5] + "BoomConfig"
-        else:
-            c_name = "%sConfig%s" % (prefix, str(idx))
-        _bl = []
-        _bp = []
-        for bmark in benchmarks.keys():
-            for l in latency:
-                if b:
-                    _l = l[0].split('-')[0].split('.')[-1]
-                else:
+    if method == "crted":
+        crted_idx = [
+            2, 3, 4, 5, 14, 16, 23, 31, 38, 61, 68, 72, 73, 76, 77, 78, 83, 89, 108, 114, 121, 123,
+            126, 131, 142, 147, 164, 172, 181, 187, 189, 193, 207, 211, 213, 218, 229, 230, 241, 243,
+            246, 257, 259, 265, 266, 280, 281, 288, 295
+        ]
+        for i in range(301, 558):
+            crted_idx.append(i)
+        assert len(features) == len(crted_idx)
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            c_name = "CRTEDConfig%s" % str(crted_idx[i])
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
                     _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
-                if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
-                    if np.isnan(l[-1]) or l[-1] == 0:
-                        continue
-                    # insert latency
-                    _bl.append(l[-1])
-            for p in power:
-                _p = p[0].split('-')
-                if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
-                    if np.isnan(p[-1]) or p[-1] == 0:
-                        continue
-                    # insert power
-                    _bp.append(p[-1])
-        _data.append(np.mean(_bl))
-        _data.append(np.mean(_bp))
-        data.append(_data)
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')
+                    if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
+    elif method == "prted":
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            idx = i + configs["idx"]
+            c_name = "PRTEDConfig%s" % str(idx)
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
+                    _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')
+                    if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
+    elif method == "random":
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            idx = i + configs["idx"]
+            c_name = "Config%s" % str(idx)
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
+                    _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')
+                    if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
+    else:
+        # baseline
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            c_name = latency[i][0].split('-')[0].split('.')[-1].strip('BoomConfig')
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
+                    _l = l[0].split('-')[0].split('.')[-1].strip('BoomConfig')
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')[0].strip('BoomConfig')
+                    if (c_name == _p) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
     write_csv(configs["dataset-output-path"], data, col_name=FEATURES)
 
-def handle_dataset():
+def handle_dataset(method):
     with open(configs['initialize-output-path'], 'r') as f:
         features = f.readlines()
     power = read_csv(configs['power-output-path'])
     latency = read_csv(configs['latency-output-path'])
     # area = read_csv(configs['area-output-path'])
-    _handle_dataset(features, power, latency)
+    _handle_dataset(method, features, power, latency)
 
 def handle():
     print("Handling...")
@@ -253,7 +311,7 @@ def handle():
     handle_power()
     handle_latency()
     handle_area()
-    handle_dataset()
+    handle_dataset(configs["initialize-method"])
 
     print("Done.")
 

@@ -1,28 +1,34 @@
 # Data
 
+## NOTICE
+- all data is obtained under benchmark: `whetstone.riscv` and `mt-vvadd.riscv` @ 2GHz
+
 ## Content
-- baseline BOOM @ 2GHz
-	* area: baseline-area.csv
-	* latency: baseline-latency.csv
-	* power: baseline-power.csv
+- *baseline dataset*
+	* dataset-baseline: 5
+		* area: area.csv
+		* latency: latency.csv
+		* power: power.csv
 
-- *dataset* of baseline BOOM @ 500MHz (power modeling)
-	* boom-500mhz-whetstone.riscv.csv
+- *Random dataset*
+	* dataset-random: 300
+		* area: area.csv
+		* latency: latency.csv
+		* power: power.csv
 
-- *dataset* of 200 *random* BOOM @ 2GHz
-	* dataset-boom-random-2ghz-whetstone.riscv.csv
-	* source data are in dataset-random-1/
+- *CRTED dataset*
+	* dataset-crted: 306
+		* area: area.csv
+		* latency: latency.csv
+		* power: power.csv
 
-- *dataset* of 100 *random*  BOOM @ 2GHz
-	* source data are in dataset-random-2/
+- *PRTED dataset*
+	* dataset-prted: 300
+		* area: area.csv
+		* latency: latency.csv
+		* power: power.csv
 
-- *dataset* of 300 *random* BOOM @ 2GHz
-	* *merge* dataset-random-1/ & dataset-random-2/
+- Figure
+	* figs
 
-- BOOM @ 500MHz
-	* latency: boom-500mhz-latency.csv
-	* power: boom-500mhz-power.csv
-
-- predicted BOOM @ 2GHz
-	* data in pred/
-
+- Misc.
