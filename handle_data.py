@@ -59,8 +59,10 @@ def handle_latency_report(report, root, bmark):
             if 'PASSED' in res[0]:
                 res = re.findall(r"\d+\.?\d*", res[1].strip())[0]
                 # NOTICE: CPI is aften used as an evaluation index
-                # We use c.c. here
-                result.append(res)
+                # we scale CPI here to approximate the true CPI
+                # `CPI = cyle / #instruction`
+                res = (float(res) / benchmarks[bmark]) / 20
+                result.append(str(res))
         results.append(result)
 
 def handle_area_report(report, root):
@@ -276,19 +278,20 @@ def _handle_dataset(method, features, power, latency):
             data.append(_data)
     else:
         # baseline
+        assert len(features) == 5
         for i in range(len(features)):
             _data = features[i].strip().split('\t')
-            c_name = latency[i][0].split('-')[0].split('.')[-1].strip('BoomConfig')
+            c_name = baseline[i % 5]
             _bl = []
             _bp = []
             for bmark in benchmarks.keys():
                 for l in latency:
-                    _l = l[0].split('-')[0].split('.')[-1].strip('BoomConfig')
+                    _l = l[0].split('-')[0].split('.')[-1].split('BoomConfig')[0]
                     if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
                         if not (np.isnan(l[-1]) or l[-1] == 0):
                             _bl.append(l[-1])
                 for p in power:
-                    _p = p[0].split('-')[0].strip('BoomConfig')
+                    _p = p[0].split('-')[0].split('BoomConfig')[0]
                     if (c_name == _p) and (p[0].split('benchmarks-')[-1] == bmark):
                         if not (np.isnan(p[-1]) or p[-1] == 0):
                             _bp.append(p[-1])
