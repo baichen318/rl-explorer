@@ -60,14 +60,12 @@ def plot(data, title, kwargs):
     elif "data" in kwargs.keys():
         for d in kwargs["data"]:
             plt.scatter(d[0], d[1], s=2, marker=markers[-2])
-    plt.xlabel('Latency (CPI)')
+    plt.xlabel('CPI')
     plt.ylabel('Power')
-    plt.title('Latency (CPI) vs. Power ' + title)
+    plt.title('CPI vs. Power -- ' + title)
     plt.grid()
     output = os.path.join(
-        kwargs["configs"]["fig-output-path"],
-        title + '-' + kwargs["configs"]["initialize-method"] + \
-            '-' + kwargs["configs"]["model"] + '.pdf'
+        kwargs["configs"]["fig-output-path"]
     )
     print("[INFO]: save the figure", output)
     plt.savefig(output)

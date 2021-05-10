@@ -449,5 +449,5 @@ model-output-path: model
 rpt-output-path: rpts
 
 # Output path for fig.
-fig-output-path: data/figs
+fig-output-path: data/figs/crted-design-space.pdf
 

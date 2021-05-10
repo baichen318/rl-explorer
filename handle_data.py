@@ -28,15 +28,15 @@ baseline = [
 
 reference = [
     # Small
-    np.array([82216.5, 0.045950000000000005]),
+    np.array([1.1276650302844196, 0.045950000000000005]),
     # Medium
-    np.array([73558.0, 0.058649999999999994]),
+    np.array([1.0870944331898145, 0.058649999999999994]),
     # Large
-    np.array([65552.0, 0.09605]),
+    np.array([1.0502134951215067, 0.09605]),
     # Mega
-    np.array([63763.5, 0.1395]),
+    np.array([1.0379504820984464, 0.1395]),
     # Giga
-    np.array([63539.0, 0.14650000000000002])
+    np.array([1.036819875520293, 0.14650000000000002])
 ]
 
 def handle_power_report(report, root, bmark):
@@ -214,6 +214,8 @@ def _handle_dataset(method, features, power, latency):
         ]
         for i in range(301, 558):
             crted_idx.append(i)
+        # remove outliers
+        crted_idx.remove(230, 393, 464, 506)
         assert len(features) == len(crted_idx)
         for i in range(len(features)):
             _data = features[i].strip().split('\t')
