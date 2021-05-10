@@ -55,9 +55,9 @@ def plot(data, title, kwargs):
                     label=kwargs["baseline_config_name"][i]
                 )
             )
-        i += 1
+            i += 1
         plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1)
-    if "data" in kwargs.keys():
+    elif "data" in kwargs.keys():
         for d in kwargs["data"]:
             plt.scatter(d[0], d[1], s=2, marker=markers[-2])
     plt.xlabel('Latency (CPI)')
@@ -88,11 +88,11 @@ def handle_v1():
         {
             "data": reference,
             "baseline_config_name": [
-                "SmallBoomConfig"
+                "SmallBoomConfig",
                 "MediumBoomConfig",
                 "LargeBoomConfig",
                 "MegaBoomConfig",
-                "GigaBoomConfig",
+                "GigaBoomConfig"
             ],
             "configs": configs
         }
