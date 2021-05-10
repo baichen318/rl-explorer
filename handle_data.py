@@ -215,7 +215,10 @@ def _handle_dataset(method, features, power, latency):
         for i in range(301, 558):
             crted_idx.append(i)
         # remove outliers
-        crted_idx.remove(230, 393, 464, 506)
+        crted_idx.remove(230)
+        crted_idx.remove(393)
+        crted_idx.remove(464)
+        crted_idx.remove(506)
         assert len(features) == len(crted_idx)
         for i in range(len(features)):
             _data = features[i].strip().split('\t')
