@@ -104,7 +104,7 @@ idx: 1
 vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
 
 # Output path for latency
-latency-output-path: data/dataset-random/latency.csv
+latency-output-path: data/dataset-random/latency-cc.csv
 
 # Output path for area
 area-output-path: data/dataset-random/area.csv
@@ -419,7 +419,7 @@ config-name:
   - chipyard.TestHarness.BOOMConfig300Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: data/dataset-random/dataset.csv
+dataset-output-path: data/dataset-random/dataset-cc.csv
 
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | dnn-gp | ""
 model: ""

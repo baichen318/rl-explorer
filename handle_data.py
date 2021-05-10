@@ -60,9 +60,9 @@ def handle_latency_report(report, root, bmark):
                 res = re.findall(r"\d+\.?\d*", res[1].strip())[0]
                 # NOTICE: CPI is aften used as an evaluation index
                 # we scale CPI here to approximate the true CPI
-                # `CPI = cyle / #instruction`
-                res = (float(res) / benchmarks[bmark]) / 20
-                result.append(str(res))
+                # `CPI = total-cyle - reset-cycle / #instruction`
+                # res = ((float(res) - 10000) / benchmarks[bmark]) / 20
+                result.append(res)
         results.append(result)
 
 def handle_area_report(report, root):

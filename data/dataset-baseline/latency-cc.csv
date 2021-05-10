@@ -1,0 +1,11 @@
+Configure,Cycles
+chipyard.TestHarness.SmallBoomConfig-ChipTop-mt-vvadd.riscv,122691
+chipyard.TestHarness.SmallBoomConfig-ChipTop-whetstone.riscv,41742
+chipyard.TestHarness.MediumBoomConfig-ChipTop-mt-vvadd.riscv,105678
+chipyard.TestHarness.MediumBoomConfig-ChipTop-whetstone.riscv,41438
+chipyard.TestHarness.LargeBoomConfig-ChipTop-mt-vvadd.riscv,89914
+chipyard.TestHarness.LargeBoomConfig-ChipTop-whetstone.riscv,41190
+chipyard.TestHarness.MegaBoomConfig-ChipTop-mt-vvadd.riscv,86603
+chipyard.TestHarness.MegaBoomConfig-ChipTop-whetstone.riscv,40924
+chipyard.TestHarness.GigaBoomConfig-ChipTop-mt-vvadd.riscv,86166
+chipyard.TestHarness.GigaBoomConfig-ChipTop-whetstone.riscv,40912
