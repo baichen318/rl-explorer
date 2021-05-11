@@ -35,13 +35,19 @@ def validate(dataset):
 
     return data
 
-def plot(data, title, kwargs):
+def plot_v1(data, title, kwargs):
     plt.rcParams['savefig.dpi'] = 300
     plt.rcParams['figure.dpi'] = 300
     cnt = 0
     print("[INFO]: data points: ", len(data))
-    for d in data:
-        plt.scatter(d[0], d[1], s=1, marker=markers[2])
+
+    for i in range(1, 6):
+        plt.scatter(data[str(i) + "-x"], data[str(i) + "-y"],
+            s=2,
+            marker=markers[2],
+            c=colors[i + 1],
+            label="decodeWidth = %s" % str(i)
+        )
     if "data" in kwargs.keys() and "baseline_config_name" in kwargs.keys():
         i = 0
         h = []
@@ -52,18 +58,19 @@ def plot(data, title, kwargs):
                     d[1],
                     s=15,
                     marker=markers[-2],
+                    c=colors[i + 2],
                     label=kwargs["baseline_config_name"][i]
                 )
             )
             i += 1
-        plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1)
+        plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1, frameon=False)
     elif "data" in kwargs.keys():
         for d in kwargs["data"]:
             plt.scatter(d[0], d[1], s=2, marker=markers[-2])
-    plt.xlabel('CPI')
+    plt.xlabel('C.C.')
     plt.ylabel('Power')
-    plt.title('CPI vs. Power -- ' + title)
-    plt.grid()
+    plt.title('C.C. vs. Power -- ' + title)
+    # plt.grid()
     output = os.path.join(
         kwargs["configs"]["fig-output-path"]
     )
@@ -76,11 +83,22 @@ def handle_v1():
     """
     dataset, title = read_csv_v2(configs["dataset-output-path"])
     dataset = validate(dataset)
-    _data = []
+    _data = {
+        "1-x": np.array([]),
+        "1-y": np.array([]),
+        "2-x": np.array([]),
+        "2-y": np.array([]),
+        "3-x": np.array([]),
+        "3-y": np.array([]),
+        "4-x": np.array([]),
+        "4-y": np.array([]),
+        "5-x": np.array([]),
+        "5-y": np.array([])
+    }
     for data in dataset:
-        if isinstance(data[-2], float) and isinstance(data[-1], float):
-            _data.append((data[-2], data[-1]))
-    plot(
+        _data[str(round(data[1])) + "-x"] = np.insert(_data[str(round(data[1])) + "-x"], len(_data[str(round(data[1])) + "-x"]), data[-2])
+        _data[str(round(data[1])) + "-y"] = np.insert(_data[str(round(data[1])) + "-y"], len(_data[str(round(data[1])) + "-y"]), data[-1])
+    plot_v1(
         _data,
         "Design Space",
         {
@@ -92,9 +110,51 @@ def handle_v1():
                 "MegaBoomConfig",
                 "GigaBoomConfig"
             ],
-            "configs": configs
+            "configs": configs,
         }
     )
+
+def plot_v2(data, title, kwargs):
+    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 300
+    cnt = 0
+    print("[INFO]: data points: ", len(data))
+
+    for d in data:
+        plt.scatter(
+            d[0],
+            d[1],
+            s=2,
+            marker=markers[2],
+        )
+    if "data" in kwargs.keys() and "baseline_config_name" in kwargs.keys():
+        i = 0
+        h = []
+        for d in kwargs["data"]:
+            h.append(
+                plt.scatter(
+                    d[0],
+                    d[1],
+                    s=15,
+                    marker=markers[-2],
+                    c=colors[i + 2],
+                    label=kwargs["baseline_config_name"][i]
+                )
+            )
+            i += 1
+        plt.legend(handles=h, labels=kwargs["baseline_config_name"], loc='best', ncol=1, frameon=False)
+    elif "data" in kwargs.keys():
+        for d in kwargs["data"]:
+            plt.scatter(d[0], d[1], s=2, marker=markers[-2])
+    plt.xlabel('C.C.')
+    plt.ylabel('Power')
+    plt.title('C.C. vs. Power -- ' + title)
+    # plt.grid()
+    output = os.path.join(
+        kwargs["configs"]["fig-output-path"]
+    )
+    print("[INFO]: save the figure", output)
+    plt.savefig(output)
 
 def handle_v2(data, title, configs):
     """
@@ -107,7 +167,7 @@ def handle_v2(data, title, configs):
     for d in dataset:
         if isinstance(d[-2], float) and isinstance(d[-1], float):
             _data.append((d[-2], d[-1]))
-    plot(
+    plot_v2(
         data,
         title,
         {

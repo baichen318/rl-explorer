@@ -227,7 +227,7 @@ def regression(method, dataset, index):
         )
     )
     heap = sa_search(model, design_space, logger, top_k=50,
-        n_iter=10000, early_stop=300, parallel_size=512, log_interval=50)
+        n_iter=10000, early_stop=5000, parallel_size=1024, log_interval=100)
     # saving results
     mkdir(configs["rpt-output-path"])
     write_csv(
@@ -236,7 +236,7 @@ def regression(method, dataset, index):
             configs["model"] + '-prediction.rpt'
         ),
         heap,
-        mode='a'
+        mode='w'
     )
     # get the metris
     perf = []
