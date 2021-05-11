@@ -144,8 +144,8 @@ Config*.csv
 *.predict
 img/
 exp.yml
-power.csv
-latency.csv
-area.csv
+# power.csv
+# latency.csv
+# area.csv
 test.py
 

@@ -1,0 +1,11 @@
+Configure,Int Power,Switch Power,Leak Power,Total Power
+SmallBoomConfig-benchmarks-mt-vvadd.riscv-2G,3.81e-02,5.64e-03,1.83e-03,4.56e-02
+SmallBoomConfig-benchmarks-whetstone.riscv-2G,3.96e-02,4.86e-03,1.84e-03,4.63e-02
+MediumBoomConfig-benchmarks-mt-vvadd.riscv-2G,4.95e-02,7.03e-03,2.51e-03,5.90e-02
+MediumBoomConfig-benchmarks-whetstone.riscv-2G,5.00e-02,5.78e-03,2.52e-03,5.83e-02
+LargeBoomConfig-benchmarks-mt-vvadd.riscv-2G,8.11e-02,1.26e-02,3.85e-03,9.76e-02
+LargeBoomConfig-benchmarks-whetstone.riscv-2G,8.02e-02,1.04e-02,3.88e-03,9.45e-02
+MegaBoomConfig-benchmarks-mt-vvadd.riscv-2G,0.119,1.82e-02,6.35e-03,0.143
+MegaBoomConfig-benchmarks-whetstone.riscv-2G,0.116,1.42e-02,6.40e-03,0.136
+GigaBoomConfig-benchmarks-mt-vvadd.riscv-2G,0.115,1.66e-02,6.71e-03,0.138
+GigaBoomConfig-benchmarks-whetstone.riscv-2G,0.127,2.16e-02,6.74e-03,0.155

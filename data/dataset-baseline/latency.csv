@@ -1,0 +1,11 @@
+Configure,Cycles
+chipyard.TestHarness.SmallBoomConfig-ChipTop-mt-vvadd.riscv-2G,0.49257668219046086
+chipyard.TestHarness.SmallBoomConfig-ChipTop-whetstone.riscv-2G,1.7627533783783782
+chipyard.TestHarness.MediumBoomConfig-ChipTop-mt-vvadd.riscv-2G,0.4242733258390879
+chipyard.TestHarness.MediumBoomConfig-ChipTop-whetstone.riscv-2G,1.7499155405405407
+chipyard.TestHarness.LargeBoomConfig-ChipTop-mt-vvadd.riscv-2G,0.3609844226754456
+chipyard.TestHarness.LargeBoomConfig-ChipTop-whetstone.riscv-2G,1.7394425675675678
+chipyard.TestHarness.MegaBoomConfig-ChipTop-mt-vvadd.riscv-2G,0.34769150473743377
+chipyard.TestHarness.MegaBoomConfig-ChipTop-whetstone.riscv-2G,1.7282094594594593
+chipyard.TestHarness.GigaBoomConfig-ChipTop-mt-vvadd.riscv-2G,0.3459370483378834
+chipyard.TestHarness.GigaBoomConfig-ChipTop-whetstone.riscv-2G,1.7277027027027028
