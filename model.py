@@ -3,7 +3,6 @@
 import sys
 import os
 import numpy as np
-from xgboost import XGBRegressor
 import sklearn
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import KFold
@@ -27,6 +26,7 @@ methods = [
     "lr",
     "lasso",
     "ridge",
+    "elastic",
     "svr",
     "lsvr",
     "xgb",
@@ -34,6 +34,8 @@ methods = [
     "ab",
     "gb",
     "bg",
+    "gp",
+    "br",
     "dnn-gp"
 ]
 
@@ -70,14 +72,17 @@ def create_model(method):
         model = LinearRegression(n_jobs=-1)
     elif method == "lasso":
         from sklearn.linear_model import Lasso
-        model = Lasso()
+        model = Lasso(alpha=0.001, precompute=True, max_iter=1000000, tol=1e-5)
     elif method == "ridge":
         from sklearn.linear_model import Ridge
-        model = Ridge()
+        model = Ridge(tol=1e-6)
+    elif method == "elastic":
+        from sklearn.linear_model import ElasticNet
+        model = ElasticNet(alpha=0.001, precompute=True, max_iter=10000000, tol=1e-4)
     elif method == "svr":
         from sklearn.svm import SVR
         model = MultiOutputRegressor(
-            SVR()
+            SVR(C=0.0001, kernel='poly', degree=6, tol=1e-6)
         )
     elif method == "lsvr":
         from sklearn.svm import LinearSVR
@@ -85,46 +90,75 @@ def create_model(method):
             LinearSVR()
         )
     elif method == "xgb":
+        from xgboost import XGBRegressor
         model = MultiOutputRegressor(
             XGBRegressor(
-                n_estimators=100
+                max_depth=3,
+                learning_rate=0.1,
+                gamma=0.0001,
+                min_child_weight=1,
+                # reg_alpha=0.01,
+                # reg_lambda=0.01,
+                subsample=1.0,
+                n_estimators=50,
+                booster='gbtree',
+                objective='reg:linear'
             )
         )
     elif method == "rf":
         from sklearn.ensemble import RandomForestRegressor
         model = MultiOutputRegressor(
-            RandomForestRegressor()
+            RandomForestRegressor(
+                n_estimators=15,
+                criterion="mse",
+                n_jobs=-1
+            )
         )
     elif method == "ab":
         from sklearn.ensemble import AdaBoostRegressor
         model = MultiOutputRegressor(
-            AdaBoostRegressor()
+            AdaBoostRegressor(
+                n_estimators=100,
+                learning_rate=0.01,
+                loss='linear'
+            )
         )
     elif method == "gb":
         from sklearn.ensemble import GradientBoostingRegressor
         model = MultiOutputRegressor(
-            GradientBoostingRegressor()
+            GradientBoostingRegressor(
+                loss='huber',
+                learning_rate=0.01,
+                n_estimators=100,
+            )
         )
     elif method == "bg":
         from sklearn.ensemble import BaggingRegressor
         model = MultiOutputRegressor(
-            BaggingRegressor()
+            BaggingRegressor(
+                n_estimators=10,
+                bootstrap_features=False
+            )
         )
     elif method == "gp":
         from sklearn.gaussian_process import GaussianProcessRegressor
         from sklearn.gaussian_process.kernels import WhiteKernel, RationalQuadratic, \
-            ExpSineSquared , DotProduct, ConstantKernel
+            ExpSineSquared , DotProduct, ConstantKernel, Matern
         # kernel = ConstantKernel(1.0, (1e-3, 1000)) * \
-        #     RationalQuadratic(1.0, 1.0, (1e-5, 1e5), (1e-5, 1e5)) + WhiteKernel(0, (1e-3, 1000))
+            # RationalQuadratic(1.0, 1.0, (1e-5, 1e5), (1e-5, 1e5)) + WhiteKernel(0, (1e-3, 1000))
         kernel = ConstantKernel(1.0, (1e-3, 1000)) * \
             DotProduct(1.0,(1e-5, 1e5)) + WhiteKernel(0.1, (1e-3, 1000))
+        # kernel = 1.0 * Matern(length_scale=1.0, nu=1.5)
         model = MultiOutputRegressor(
             GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b')
         )
     elif method == "br":
         from sklearn.linear_model import BayesianRidge
         model = MultiOutputRegressor(
-            BayesianRidge()
+            BayesianRidge(
+                n_iter=300,
+                tol=1e-6,
+            )
         )
     elif method == "dnn-gp":
         from bayes_gp import BayesianOptimization
@@ -138,8 +172,8 @@ def regression(method, dataset, index):
         # coefficients
         if hasattr(model, "coef_"):
             print("[INFO]: coefficients of LinearRegression:\n", model.coef_)
-        elif hasattr(model, "feature_importances_"):
-            print("[INFO]: significance of features:\n", model.feature_importances_)
+        elif hasattr(model, "estimator") and hasattr(model.estimator, "feature_importances_"):
+            print("[INFO]: significance of features:\n", model.estimator.feature_importances_)
 
         mse_l = mse(gt[:, 0], predict[:, 0])
         mse_p = mse(gt[:, 1], predict[:, 1])
@@ -184,10 +218,10 @@ def regression(method, dataset, index):
             )
     msg = "[INFO]: achieve the best performance: MAPE (latency): %.8f " %  min_mape_l + \
         "MAPE (power): %.8f in one round. " % min_mape_p + \
-        "Average MAPE (latency): %.8f, " % avg_metrics[4] + \
-        "average MAPE (power): %.8f, " % avg_metrics[5] + \
-        "average R2 (latency): %.8f, " % avg_metrics[2] + \
-        "average R2 (power): %.8f" % avg_metrics[3]
+        "Average MAPE (latency): %.8f, " % float(avg_metrics[4] / cnt) + \
+        "average MAPE (power): %.8f, " % float(avg_metrics[5] / cnt) + \
+        "average R2 (latency): %.8f, " % float(avg_metrics[2] / cnt) + \
+        "average R2 (power): %.8f" % float(avg_metrics[3]/ cnt)
     logger.info(msg)
 
     # test

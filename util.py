@@ -194,7 +194,8 @@ def r2(gt, predict):
 def mape(gt, predict):
     # gt: `np.array`
     # predict: `np.array`
-    return np.mean(np.abs((predict - gt) / gt)) * 100
+    # return np.mean(np.abs(predict - gt) / gt)) * 100
+    return metrics.mean_absolute_percentage_error(gt, predict)
 
 def hyper_volume(reference, point):
     """

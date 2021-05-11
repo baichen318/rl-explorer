@@ -24,6 +24,9 @@ class RandomizedTED(object):
         # t = np.linalg.norm(np.array(u,dtype=np.float64)-np.array(v,dtype=np.float64))**2
         # if t > 1:
         #     print('t is ',t)
+        # NOTICE: target value should be discards
+        u = u[:-2]
+        v = v[:-2]
         return pow(
             math.e,
             -np.linalg.norm(
@@ -74,51 +77,68 @@ class RandomizedTED(object):
             K_.append(self.select_mi(M_, F))
         return K_
 
-class PureRandomizedTED(RandomizedTED):
-    """
-        `design_space`: <DesignSpace>
-    """
-    def __init__(self, kwargs, design_space):
-        super(PureRandomizedTED, self).__init__(kwargs)
-        self.design_space = design_space
-        self.Batch = kwargs["Batch"]
-        self.batch = kwargs["batch"]
-        assert self.Batch > self.batch, "[ERROR] require self.Batch > self.batch"
-
-    def rted(self):
-        # NOTICE: `rted` may select duplicated points,
-        # in order to avoid this problem, we delete 80%
-        # some points randomly
-        def _delete_duplicate(vec):
-            """
-                `vec`: <list>
-            """
-            return [list(v) for v in set([tuple(v) for v in vec])]
-
-        x = []
-        while len(x) < configs["initialize-size"]:
-            candidates = super().rted(
-                self.design_space.random_sample(self.Batch),
-                configs["initialize-size"] - len(x)
-            )
-            for c in candidates:
-                x.append(c)
-            x = _delete_duplicate(x)
-
-        return np.array(x).reshape((-1, self.design_space.n_dim))
-
 class ClusteringRandomizedTED(RandomizedTED):
     """
         `design_space`: <DesignSpace>
     """
-    def __init__(self, kwargs, design_space):
-        super(ClusteringRandomizedTED, self).__init__(kwargs)
-        self.design_space = design_space
-        self.Batch = kwargs["Batch"]
-        self.batch = kwargs["batch"]
-        assert self.Batch > self.batch, "[ERROR] require self.Batch > self.batch"
+    def __init__(self, configs):
+        super(ClusteringRandomizedTED, self).__init__(configs)
+        self.configs = configs
+        self.batch_per_cluster = self.configs["batch"] // self.configs["cluster"]
+        # feature dimension
+        self.n_dim = 19
 
-    def cbted(self):
+    def distance(self, x, y, l=2):
+        """calculates distance between two points"""
+        # NOTICE: `decodeWidth` should be assignd with larger weights
+        weights = [1 for i in range(self.n_dim)]
+        weights[1] *= 3
+
+        return np.sum((x - y)**l * weights).astype(float)
+
+    def clustering(self, points, k, max_iter=100):
+        """k-means clustering algorithm"""
+        centroids = [points[i] for i in np.random.randint(len(points), size=k)]
+        new_assignment = [0] * len(points)
+        old_assignment = [-1] * len(points)
+
+        i = 0
+        split = False
+        while i < max_iter or split == True and new_assignment != old_assignment:
+            old_assignment = list(new_assignment)
+            split = False
+            i += 1
+
+            for p in range(len(points)):
+                distances = [self.distance(points[p], centroids[c]) for c in range(len(centroids))]
+                new_assignment[p] = np.argmin(distances)
+
+            for c in range(len(centroids)):
+                members = [points[p] for p in range(len(points)) if new_assignment[p] == c]
+                if members:
+                    centroids[c] = np.mean(members, axis=0).astype(int)
+                else:
+                    centroids[c] = points[np.random.choice(len(points))]
+                    split = True
+
+        loss = np.sum([self.distance(points[p], centroids[new_assignment[p]]) \
+            for p in range(len(points))])
+
+        return centroids, new_assignment, loss
+
+    def gather_groups(self, dataset, cluster):
+        new_dataset = [[] for i in range(self.configs["cluster"])]
+
+        for i in range(len(dataset)):
+            new_dataset[cluster[i]].append(dataset[i])
+        for i in range(len(new_dataset)):
+            new_dataset[i] = np.array(new_dataset[i])
+        return new_dataset
+
+    def crted(self, dataset):
+        """
+            dataset: <numpy.array>: M x (19 + 2)
+        """
         # NOTICE: `rted` may select duplicated points,
         # in order to avoid this problem, we delete 80%
         # some points randomly
@@ -128,25 +148,28 @@ class ClusteringRandomizedTED(RandomizedTED):
             """
             return [list(v) for v in set([tuple(v) for v in vec])]
 
-        x = []
-        decodeWidth = self.design_space.bounds["decodeWidth"]
-        for i in decodeWidth:
-            _x = []
-            while len(_x) < self.batch:
-                candidates = self.rted(
-                    self.design_space.random_sample_v2(i, self.Batch),
-                    self.batch - len(_x)
-                )
-                for c in candidates:
-                    _x.append(c)
-                _x = _delete_duplicate(_x)
-                self.design_space.set_random_state(
-                    random.randint(1, round(time()))
-                )
-            for c in _x:
-                x.append(c)
+        centroids, new_assignment, loss = self.clustering(
+            dataset[:, :-2],
+            self.configs["cluster"],
+            max_iter=10
+        )
+        new_dataset = self.gather_groups(dataset, new_assignment)
 
-        return np.array(x).reshape((-1, self.design_space.n_dim))
+        data = []
+        for c in new_dataset:
+            x = []
+            while len(x) < self.batch_per_cluster:
+                candidates = self.rted(
+                    c,
+                    self.batch_per_cluster - len(x)
+                )
+                for _c in candidates:
+                    x.append(_c)
+                x = _delete_duplicate(x)
+            for _x in x:
+                data.append(_x)
+
+        return data
 
 def create_design_space():
     logger = create_logger("logs", configs["initialize-method"])
