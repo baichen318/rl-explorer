@@ -122,7 +122,7 @@ config-name:
 # Output path for final training set
 dataset-output-path: data/dataset.csv
 
-# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | dnn-gp | ""
+# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model: lr
 
 # Learning rate for `dnn-gp`

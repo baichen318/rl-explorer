@@ -12,7 +12,10 @@ def perfcmp(point, score):
         point: `np.array`
         score: `np.array`
     """
-    return hyper_volume(reference[point[1] - 1], score)
+    # `point[1]` is decodeWidth
+    # scale c.c. and power dissipation
+    ref = [reference[point[1] - 1][0] / 10000, reference[point[1] - 1][1] * 100]
+    return hyper_volume(ref, score)
 
 def _exist_duplicate(s, heap):
     """
@@ -92,17 +95,3 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
     heap_items.sort(key=lambda item: -item[0])
 
     return heap_items
-
-# reference = [
-#     # Small
-#     np.array([41742, 4.63e-02]),
-#     # Medium
-#     np.array([41438, 5.83e-02]),
-#     # Large
-#     np.array([41190, 9.45e-02]),
-#     # Mega
-#     np.array([40924, 0.136]),
-#     # Giga
-#     np.array([40912, 0.133])
-# ]
-

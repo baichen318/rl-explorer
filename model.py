@@ -36,7 +36,6 @@ methods = [
     "bg",
     "gp",
     "br",
-    "dnn-gp"
 ]
 
 def split_dataset(dataset):
@@ -93,16 +92,16 @@ def create_model(method):
         from xgboost import XGBRegressor
         model = MultiOutputRegressor(
             XGBRegressor(
-                max_depth=3,
+                max_depth=20,
                 learning_rate=0.1,
                 gamma=0.0001,
                 min_child_weight=1,
-                # reg_alpha=0.01,
-                # reg_lambda=0.01,
+                reg_alpha=0.01,
+                reg_lambda=0.01,
                 subsample=1.0,
                 n_estimators=50,
                 booster='gbtree',
-                objective='reg:linear'
+                objective='reg:squarederror'
             )
         )
     elif method == "rf":
@@ -160,9 +159,6 @@ def create_model(method):
                 tol=1e-6,
             )
         )
-    elif method == "dnn-gp":
-        from bayes_gp import BayesianOptimization
-        model = BayesianOptimization(configs)
     else:
         raise UnDefinedException("%s not supported" % method)
     return model
@@ -224,18 +220,14 @@ def regression(method, dataset, index):
         "average R2 (power): %.8f" % float(avg_metrics[3]/ cnt)
     logger.info(msg)
 
-    # test
-    try:
-        model = joblib.load(
-            os.path.join(
-                configs["model-output-path"],
-                configs["model"] + ".mdl"
-            )
+    model = joblib.load(
+        os.path.join(
+            configs["model-output-path"],
+            configs["model"] + ".mdl"
         )
-    except Exception:
-        pass
+    )
     heap = sa_search(model, design_space, logger, top_k=50,
-        n_iter=5000, early_stop=3000, parallel_size=128, log_interval=50)
+        n_iter=10000, early_stop=300, parallel_size=512, log_interval=50)
     # saving results
     mkdir(configs["rpt-output-path"])
     write_csv(
@@ -277,6 +269,10 @@ def verify(heap):
 def handle():
     dataset, title = read_csv_v2(configs["dataset-output-path"])
     dataset = validate(dataset)
+
+    # scale dataset to balance c.c. and power dissipation
+    dataset[:, -2] = dataset[:, -2] / 10000
+    dataset[:, -1] = dataset[:, -1] * 100
     kf = kFold()
     index = kf.split(dataset)
 
