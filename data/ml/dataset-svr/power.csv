@@ -1,0 +1,15 @@
+Configure,Int Power,Switch Power,Leak Power,Total Power
+SVRConfig2-benchmarks-mt-vvadd.riscv,6.84e-02,1.17e-02,3.52e-03,8.36e-02
+SVRConfig2-benchmarks-whetstone.riscv,6.94e-02,1.06e-02,3.54e-03,8.35e-02
+SVRConfig3-benchmarks-mt-vvadd.riscv,6.67e-02,1.17e-02,3.41e-03,8.19e-02
+SVRConfig3-benchmarks-whetstone.riscv,6.77e-02,1.06e-02,3.43e-03,8.18e-02
+SVRConfig4-benchmarks-mt-vvadd.riscv,6.71e-02,1.17e-02,3.40e-03,8.21e-02
+SVRConfig4-benchmarks-whetstone.riscv,6.83e-02,1.06e-02,3.42e-03,8.23e-02
+SVRConfig5-benchmarks-mt-vvadd.riscv,7.07e-02,1.17e-02,3.75e-03,8.61e-02
+SVRConfig5-benchmarks-whetstone.riscv,7.17e-02,1.05e-02,3.76e-03,8.60e-02
+SVRConfig7-benchmarks-mt-vvadd.riscv,7.45e-02,1.21e-02,4.22e-03,9.08e-02
+SVRConfig7-benchmarks-whetstone.riscv,7.51e-02,1.06e-02,4.24e-03,9.00e-02
+SVRConfig8-benchmarks-mt-vvadd.riscv,7.09e-02,1.20e-02,3.87e-03,8.67e-02
+SVRConfig8-benchmarks-whetstone.riscv,7.15e-02,1.06e-02,3.89e-03,8.60e-02
+SVRConfig9-benchmarks-mt-vvadd.riscv,6.74e-02,1.18e-02,3.46e-03,8.26e-02
+SVRConfig9-benchmarks-whetstone.riscv,6.83e-02,1.06e-02,3.48e-03,8.24e-02

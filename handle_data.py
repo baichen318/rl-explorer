@@ -281,6 +281,69 @@ def _handle_dataset(method, features, power, latency):
             _data.append(np.mean(_bl))
             _data.append(np.mean(_bp))
             data.append(_data)
+    elif method == "XGB":
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            idx = i + configs["idx"]
+            c_name = "XGBConfig%s" % str(idx)
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
+                    _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')
+                    if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
+    elif method == "LR":
+        lr_idx = [1, 2, 3, 4, 5, 6, 7, 9, 11]
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            c_name = "LRConfig%s" % str(lr_idx[i])
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
+                    _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')
+                    if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
+    elif method == "SVR":
+        lr_idx = [2, 3, 4, 5, 7, 8, 9]
+        for i in range(len(features)):
+            _data = features[i].strip().split('\t')
+            c_name = "SVRConfig%s" % str(lr_idx[i])
+            _bl = []
+            _bp = []
+            for bmark in benchmarks.keys():
+                for l in latency:
+                    _l = l[0].split('-')[0].split('.')[-1].lstrip('BOOM').rstrip('Config')
+                    if (c_name == _l) and (l[0].split('ChipTop-')[-1] == bmark):
+                        if not (np.isnan(l[-1]) or l[-1] == 0):
+                            _bl.append(l[-1])
+                for p in power:
+                    _p = p[0].split('-')
+                    if (c_name == _p[0]) and (p[0].split('benchmarks-')[-1] == bmark):
+                        if not (np.isnan(p[-1]) or p[-1] == 0):
+                            _bp.append(p[-1])
+            _data.append(np.mean(_bl))
+            _data.append(np.mean(_bp))
+            data.append(_data)
     else:
         # baseline
         assert len(features) == 5
