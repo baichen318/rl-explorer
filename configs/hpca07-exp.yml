@@ -95,7 +95,7 @@ batch: 60
 initialize-size: 200
 
 # Record samples
-initialize-output-path: /research/dept8/gds/cbai/research/design-explorer/data/ml/dataset-hpca07/hpca.txt
+initialize-output-path: /research/dept8/gds/cbai/research/design-explorer/data/ml/dataset-hpca07/hpca07.txt
 
 # Index for the first config.
 idx: 1

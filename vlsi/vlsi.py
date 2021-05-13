@@ -7,7 +7,7 @@ from glob import glob
 import numpy as np
 from util import parse_args, get_configs, if_exist, \
     execute, create_logger, mkdir, dump_yaml, read_csv, load_txt
-from .macros import MACROS, modify_macros
+from macros import MACROS, modify_macros
 
 class VLSI(object):
     def __init__(self, kwargs):
@@ -573,7 +573,7 @@ def offline_vlsi_flow_v1():
     """
         V1: read from `configs["initialize-output-path"]`
     """
-    fout = configs["initialize-output-path"] + ".txt"
+    fout = configs["initialize-output-path"]
     if_exist(
         fout,
         strict=True
