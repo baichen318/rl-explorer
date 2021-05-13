@@ -24,7 +24,7 @@ def create_model(hidden=4):
 		alpha=0.0001,
 		learning_rate="adaptive",
 		learning_rate_init=0.001,
-		max_iter=10000,
+		max_iter=50000,
 		momentum=0.5,
 		early_stopping=True
 	)
@@ -118,6 +118,7 @@ def perfcmp(point, score):
     ref = [reference[point[1] - 1][0] / 10000, reference[point[1] - 1][1] * 100]
 
     return -adrs(ref, score)
+    # return hyper_volume(ref, score)
 
 def _exist_duplicate(s, heap):
     """
@@ -329,6 +330,41 @@ def main():
 		mode='w'
 	)
 
+def analysis():
+    import matplotlib.pyplot as plt
+
+    global dataset
+    dataset = get_dataset()
+
+    h1 = joblib.load(
+        os.path.join(
+            "model",
+            "dac16-h1.mdl"
+        )
+    )
+    h2 = joblib.load(
+        os.path.join(
+            "model",
+            "dac16-h2.mdl"
+        )
+    )
+
+    ret = (predict_model(h1, dataset[:, :-2]) + predict_model(h2, dataset[:, :-2])) / 2
+
+    print(mape(dataset[:, -2], ret[:, 0]), mape(dataset[:, -1], ret[:, 1]), r2(dataset[:, -2], ret[:, 0]), r2(dataset[:, -1], ret[:, 1]))
+
+    # plt.scatter(ret[:, 0], dataset[:, -2], s=2)
+    # plt.xlabel("pred")
+    # plt.ylabel("gt")
+    # plt.title("pred v.s. gt (c.c.)")
+    # plt.grid()
+
+    plt.scatter(ret[:, 1], dataset[:, -1], s=2)
+    plt.xlabel("pred")
+    plt.ylabel("gt")
+    plt.title("pred v.s. gt (power)")
+    plt.grid()
+    plt.show()
 
 if __name__ == "__main__":
 	# global variables
@@ -339,3 +375,4 @@ if __name__ == "__main__":
 		configs["design-space"]
 	)
 	main()
+	# analysis()
