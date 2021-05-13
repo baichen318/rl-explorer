@@ -27,7 +27,7 @@ def _exist_duplicate(s, heap):
 
     return False
 
-def sa_search(model, design_space, logger, top_k=5, n_iter=500,
+def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
     early_stop=100, parallel_size=128, log_interval=50):
     """
         `model`: <sklearn.model>
@@ -88,7 +88,10 @@ def sa_search(model, design_space, logger, top_k=5, n_iter=500,
             t_str = "%.8f" % t
             msg = "SA iter: %d\tlast update: %d\tmax-0: %.8f\ttemp: %s\t" % (k,
                 k_last_modify, heap_items[0][0], t_str)
-            logger.info("[INFO]: %s" % msg)
+            if logger:
+                logger.info("[INFO]: %s" % msg)
+            else:
+                print("[INFO]: %s" % msg)
 
     # big -> small
     heap_items.sort(key=lambda item: -item[0])

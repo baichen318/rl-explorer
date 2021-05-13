@@ -128,7 +128,6 @@ def sample(sampler, unsampled_dataset, sampled_dataset):
     return unsampled_dataset
 
 def design_explorer():
-
     dataset = get_data()
     test_dataset, dataset = construct_test_dataset(dataset)
     unsampled_dataset = dataset.copy()
@@ -181,7 +180,15 @@ def design_explorer():
         )
     )
 
+def analysis():
+    import matplotlib.pyplot as plt
+
+    dataset = get_data()
+    plt.bar(range(len(dataset)), list(dataset[:, -2]))
+    plt.show()
+
 if __name__ == "__main__":
     argv = parse_args()
     configs = get_configs(argv.configs)
-    design_explorer()
+    # design_explorer()
+    analysis()
