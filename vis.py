@@ -175,9 +175,65 @@ def handle_v2(data, title, configs):
             "configs": configs
         }
     )
+
+def plot_v3(data):
+    from handle_data import reference, baseline
+
+    plt.rcParams['savefig.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 300
+    cnt = 0
+    print("[INFO]: data points: ", len(data))
+
+    for d in data:
+        plt.scatter(
+            d[0],
+            d[1],
+            s=2,
+            marker=markers[2],
+        )
+    h = []
+    i = 0
+    for b in reference:
+        h.append(
+            plt.scatter(
+                b[0],
+                b[1],
+                s=15,
+                marker=markers[-2],
+                c=colors[i],
+                label=baseline[i] + "BoomConfig"
+            )
+        )
+        i += 1
+    plt.legend(handles=h, labels=[b + "BoomConfig" for b in baseline], loc='best', frameon=False)
+    plt.xlabel('C.C.')
+    plt.ylabel('Power')
+    plt.title('C.C. vs. Power -- ' + configs["initialize-method"])
+    # plt.grid()
+    output = os.path.join(
+        configs["fig-output-path"]
+    )
+    print("[INFO]: save the figure", output)
+    plt.savefig(output)
+
+def handle_v3():
+    """
+        API for verification between prediction & baseline
+    """
+    dataset, _ = read_csv_v2(configs["dataset-output-path"])
+    dataset = validate(dataset)
+    _data = []
+    for d in dataset:
+        if isinstance(d[-2], float) and isinstance(d[-1], float):
+            _data.append((d[-2], d[-1]))
+
+    plot_v3(_data)
+
 if __name__ == "__main__":
     # TODO: verify plot
     # plot original design space
     argv = parse_args()
     configs = get_configs(argv.configs)
-    handle_v1()
+    # handle_v1()
+    handle_v3()
+

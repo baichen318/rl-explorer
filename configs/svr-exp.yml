@@ -150,5 +150,5 @@ model-output-path: model
 rpt-output-path: rpts
 
 # Output path for fig.
-fig-output-path: data/figs/lr.pdf
+fig-output-path: data/figs/svr.pdf
 
