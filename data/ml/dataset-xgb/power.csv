@@ -1,0 +1,23 @@
+Configure,Int Power,Switch Power,Leak Power,Total Power
+XGBConfig1-benchmarks-mt-vvadd.riscv,6.56e-02,1.18e-02,3.91e-03,8.13e-02
+XGBConfig1-benchmarks-whetstone.riscv,5.82e-02,6.73e-03,3.90e-03,6.88e-02
+XGBConfig2-benchmarks-mt-vvadd.riscv,5.40e-02,7.56e-03,2.63e-03,6.42e-02
+XGBConfig2-benchmarks-whetstone.riscv,5.34e-02,5.82e-03,2.65e-03,6.19e-02
+XGBConfig3-benchmarks-mt-vvadd.riscv,5.39e-02,7.55e-03,2.63e-03,6.41e-02
+XGBConfig3-benchmarks-whetstone.riscv,5.34e-02,5.81e-03,2.65e-03,6.19e-02
+XGBConfig4-benchmarks-mt-vvadd.riscv,5.37e-02,7.54e-03,2.64e-03,6.38e-02
+XGBConfig4-benchmarks-whetstone.riscv,5.30e-02,5.79e-03,2.65e-03,6.14e-02
+XGBConfig5-benchmarks-mt-vvadd.riscv,5.22e-02,7.21e-03,2.50e-03,6.20e-02
+XGBConfig5-benchmarks-whetstone.riscv,5.23e-02,5.72e-03,2.52e-03,6.05e-02
+XGBConfig6-benchmarks-mt-vvadd.riscv,5.37e-02,7.53e-03,2.63e-03,6.38e-02
+XGBConfig6-benchmarks-whetstone.riscv,5.30e-02,5.79e-03,2.65e-03,6.14e-02
+XGBConfig7-benchmarks-mt-vvadd.riscv,5.19e-02,7.19e-03,2.50e-03,6.15e-02
+XGBConfig7-benchmarks-whetstone.riscv,5.18e-02,5.71e-03,2.51e-03,6.00e-02
+XGBConfig8-benchmarks-mt-vvadd.riscv,5.47e-02,7.59e-03,2.65e-03,6.49e-02
+XGBConfig8-benchmarks-whetstone.riscv,5.47e-02,5.86e-03,2.67e-03,6.32e-02
+XGBConfig9-benchmarks-mt-vvadd.riscv,5.48e-02,7.60e-03,2.65e-03,6.50e-02
+XGBConfig9-benchmarks-whetstone.riscv,5.47e-02,5.87e-03,2.67e-03,6.33e-02
+XGBConfig10-benchmarks-mt-vvadd.riscv,5.23e-02,7.23e-03,2.51e-03,6.20e-02
+XGBConfig10-benchmarks-whetstone.riscv,5.23e-02,5.73e-03,2.53e-03,6.06e-02
+XGBConfig11-benchmarks-mt-vvadd.riscv,5.18e-02,7.17e-03,2.50e-03,6.15e-02
+XGBConfig11-benchmarks-whetstone.riscv,5.18e-02,5.68e-03,2.52e-03,6.00e-02
