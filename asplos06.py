@@ -16,7 +16,7 @@ from handle_data import reference
 
 def create_model():
 	model = MLPRegressor(
-		hidden_layer_sizes=(16, 2),
+		hidden_layer_sizes=(100, 50, 2),
 		activation="logistic",
 		solver="adam",
 		alpha=0.0001,
@@ -69,7 +69,6 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
         `heap_items`: <list> (<tuple> in <list>), specifically,
         <tuple> is (<int>, <list>) or (hv, configurations)
     """
-    global pf
 
     points = design_space.random_sample(parallel_size)
     _scores = model.predict(points)
@@ -135,7 +134,6 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
 
 def main():
 	global dataset
-	global pf
 	dataset = get_dataset()
 
 	kf = kFold()
@@ -199,7 +197,6 @@ def main():
 			"asplos06.mdl"
 		)
 	)
-	exit()
 	# search
 	heap = sa_search(model, design_space, top_k=50,
 		n_iter=10000, early_stop=5000, parallel_size=1024, log_interval=100)
@@ -217,7 +214,6 @@ def main():
 if __name__ == "__main__":
 	# global variables
 	dataset = None
-	pf = None
 	argv = parse_args()
 	configs = get_configs(argv.configs)
 	design_space = parse_design_space(
