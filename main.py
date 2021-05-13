@@ -115,13 +115,16 @@ def predict_by_dnn_gp(model, x, y):
 def sample(sampler, unsampled_dataset, sampled_dataset):
     data = sampler.crted(unsampled_dataset)
     # move sampled data from `unsampled_dataset` to `sampled_dataset`
+    temp = []
     for d in data:
         idx = 0
         for _d in unsampled_dataset:
-            if (_d == d).all():
-                unsampled_dataset = np.delete(unsampled_dataset, idx, axis=0)
+            if ((_d - d < 1e-5)).all():
+                temp.append(idx)
+                break
             idx += 1
         sampled_dataset.append(d)
+    unsampled_dataset = np.delete(unsampled_dataset, temp, axis=0)
     return unsampled_dataset
 
 def design_explorer():

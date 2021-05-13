@@ -1,7 +1,6 @@
 # Author: baichen318@gmail.com
 
 import heapq
-import logging
 import time
 import numpy as np
 from util import hyper_volume

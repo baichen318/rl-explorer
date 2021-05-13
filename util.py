@@ -211,3 +211,10 @@ def hyper_volume(reference, point):
         hv = (np.abs(reference[0] - point[0]) / reference[0]) * \
             (np.abs(reference[1] - point[1]) / reference[1])
         return hv
+
+def adrs(reference, point):
+    """
+        reference: <numpy.ndarray>
+        point: <numpy.ndarray>
+    """
+    return np.sqrt((reference[0] - point[0]) ** 2 + (reference[1] - point[1]) ** 2)
