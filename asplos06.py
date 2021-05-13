@@ -3,8 +3,7 @@ import heapq
 import time
 import numpy as np
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.neural_network import MLPRegressor
 try:
     from sklearn.externals import joblib
 except ImportError:
@@ -16,7 +15,17 @@ from space import parse_design_space
 from handle_data import reference
 
 def create_model():
-	model = Ridge(alpha=0.01, tol=1e-8)
+	model = MLPRegressor(
+		hidden_layer_sizes=(16, 2),
+		activation="logistic",
+		solver="adam",
+		alpha=0.0001,
+		learning_rate="adaptive",
+		learning_rate_init=0.001,
+		max_iter=5000,
+		momentum=0.5,
+		early_stopping=True
+	)
 
 	return model
 
@@ -63,7 +72,7 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
     global pf
 
     points = design_space.random_sample(parallel_size)
-    _scores = np.exp(model.predict(pf.fit_transform(points)))
+    _scores = model.predict(points)
     scores = np.empty(parallel_size)
     for i, (p, s) in enumerate(zip(points, _scores)):
         scores[i] = perfcmp(p, s)
@@ -89,7 +98,7 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
         new_points = np.empty_like(points)
         for i, p in enumerate(points):
             new_points[i] = design_space.random_walk(p)
-        _new_scores = np.exp(model.predict(pf.fit_transform(points)))
+        _new_scores = model.predict(points)
         new_scores = np.empty(parallel_size)
         for i, (p, s) in enumerate(zip(new_points, _new_scores)):
             new_scores[i] = perfcmp(p, s)
@@ -136,7 +145,6 @@ def main():
 	cnt = 0
 	mse_l, mse_p, r2_l, r2_p, mape_l, mape_p = 0, 0, 0, 0, 0, 0
 	model = create_model()
-	pf = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
 	for train_index, test_index in index:
 		print("train:\n%s" % str(train_index))
 		print("test:\n%s" % str(test_index))
@@ -144,12 +152,9 @@ def main():
 		x_train, y_train = split_dataset(dataset[train_index])
 		x_test, y_test = split_dataset(dataset[test_index])
 
-		x_train = pf.fit_transform(x_train)
-		y_train = np.log(y_train)
 		model.fit(x_train, y_train)
 
-		_y = model.predict(pf.fit_transform(x_test))
-		_y = np.exp(_y)
+		_y = model.predict(x_test)
 
 		# analysis
 		_mse_l = mse(_y[:, 0], y_test[:, 0])
@@ -167,7 +172,7 @@ def main():
 				model,
 				os.path.join(
 					"model",
-					"hpca07.mdl"
+					"asplos06.mdl"
 				)
 			)
 			min_mape_l = _mape_l
@@ -191,9 +196,10 @@ def main():
 	model = joblib.load(
 		os.path.join(
 			"model",
-			"hpca07.mdl"
+			"asplos06.mdl"
 		)
 	)
+	exit()
 	# search
 	heap = sa_search(model, design_space, top_k=50,
 		n_iter=10000, early_stop=5000, parallel_size=1024, log_interval=100)
@@ -201,7 +207,7 @@ def main():
 	write_csv(
 		os.path.join(
 			"rpts",
-			"hpca07" + '-prediction.rpt'
+			"asplos06" + '-prediction.rpt'
 		),
 		heap,
 		mode='w'
