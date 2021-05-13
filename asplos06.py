@@ -16,13 +16,12 @@ from handle_data import reference
 
 def create_model():
 	model = MLPRegressor(
-		hidden_layer_sizes=(100, 50, 2),
+		hidden_layer_sizes=(16,),
 		activation="logistic",
 		solver="adam",
-		alpha=0.0001,
 		learning_rate="adaptive",
 		learning_rate_init=0.001,
-		max_iter=5000,
+		max_iter=10000,
 		momentum=0.5,
 		early_stopping=True
 	)
@@ -60,7 +59,7 @@ def _exist_duplicate(s, heap):
 
     return False
 
-def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
+def sa_search(model_l, model_p, design_space, logger=None, top_k=5, n_iter=500,
     early_stop=100, parallel_size=128, log_interval=50):
     """
         `model`: <sklearn.model>
@@ -71,9 +70,14 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
     """
 
     points = design_space.random_sample(parallel_size)
-    _scores = model.predict(points)
+    _scores_l = model_l.predict(points)
+    _scores_p = model_p.predict(points)
+    temp_scores = []
+    for i in range(len(_scores_l)):
+        temp_scores.append([_scores_l[i], _scores_p[i]])
+    temp_scores = np.array(temp_scores)
     scores = np.empty(parallel_size)
-    for i, (p, s) in enumerate(zip(points, _scores)):
+    for i, (p, s) in enumerate(zip(points, temp_scores)):
         scores[i] = perfcmp(p, s)
 
     # build heap and insert initial points
@@ -97,9 +101,14 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
         new_points = np.empty_like(points)
         for i, p in enumerate(points):
             new_points[i] = design_space.random_walk(p)
-        _new_scores = model.predict(points)
+        _scores_l = model_l.predict(points)
+        _scores_p = model_p.predict(points)
+        temp_scores = []
+        for i in range(len(_scores_l)):
+            temp_scores.append([_scores_l[i], _scores_p[i]])
+        temp_scores = np.array(temp_scores)
         new_scores = np.empty(parallel_size)
-        for i, (p, s) in enumerate(zip(new_points, _new_scores)):
+        for i, (p, s) in enumerate(zip(new_points, temp_scores)):
             new_scores[i] = perfcmp(p, s)
         ac_prob = np.exp(np.minimum((new_scores - scores) / (t + 1e-5), 1))
         ac_index = np.random.random(len(ac_prob)) < ac_prob
@@ -142,7 +151,9 @@ def main():
 	perf = float('inf')
 	cnt = 0
 	mse_l, mse_p, r2_l, r2_p, mape_l, mape_p = 0, 0, 0, 0, 0, 0
-	model = create_model()
+	max_r2_l, max_r2_p = -float('inf'), -float('inf')
+	model_l = create_model()
+	model_p = create_model()
 	for train_index, test_index in index:
 		print("train:\n%s" % str(train_index))
 		print("test:\n%s" % str(test_index))
@@ -150,32 +161,44 @@ def main():
 		x_train, y_train = split_dataset(dataset[train_index])
 		x_test, y_test = split_dataset(dataset[test_index])
 
-		model.fit(x_train, y_train)
+		model_l.fit(x_train, y_train[:, 0])
+		model_p.fit(x_train, y_train[:, 1])
 
-		_y = model.predict(x_test)
+		_y_l = model_l.predict(x_test)
+		_y_p = model_p.predict(x_test)
 
 		# analysis
-		_mse_l = mse(_y[:, 0], y_test[:, 0])
-		_mse_p = mse(_y[:, 1], y_test[:, 1])
-		_r2_l = r2(_y[:, 0], y_test[:, 0])
-		_r2_p = r2(_y[:, 1], y_test[:, 1])
-		_mape_l = mape(_y[:, 0], y_test[:, 0])
-		_mape_p = mape(_y[:, 1], y_test[:, 1])
+		_mse_l = mse(y_test[:, 0], _y_l)
+		_mse_p = mse(y_test[:, 1], _y_p)
+		_r2_l = r2(y_test[:, 0], _y_l)
+		_r2_p = r2(y_test[:, 1], _y_p)
+		_mape_l = mape(y_test[:, 0], _y_l)
+		_mape_p = mape(y_test[:, 1], _y_p)
 		print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (_mse_l, _mse_p))
 		print("[INFO]: R2 (latency): %.8f, R2 (power): %.8f" % (_r2_l, _r2_p))
 		print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (_mape_l, _mape_p))
 		if perf > (0.5 * _mape_l + 0.5 * _mape_p):
 			perf = (0.5 * _mape_l + 0.5 * _mape_p)
 			joblib.dump(
-				model,
+				model_l,
 				os.path.join(
 					"model",
-					"asplos06.mdl"
+					"asplos06-cc.mdl"
+				)
+			)
+			joblib.dump(
+				model_p,
+				os.path.join(
+					"model",
+					"asplos06-power.mdl"
 				)
 			)
 			min_mape_l = _mape_l
 			min_mape_p = _mape_p
-
+		if max_r2_l < _r2_l:
+			max_r2_l = _r2_l
+		if max_r2_p < _r2_p:
+			max_r2_p = _r2_p
 		cnt += 1
 		mse_l += _mse_l
 		mse_p += _mse_p
@@ -188,17 +211,25 @@ def main():
 		"Average MAPE (latency): %.8f, " % float(mape_l / cnt) + \
 		"average MAPE (power): %.8f, " % float(mape_p / cnt) + \
 		"average R2 (latency): %.8f, " % float(r2_l / cnt) + \
-		"average R2 (power): %.8f" % float(r2_p / cnt)
+		"average R2 (power): %.8f, " % float(r2_p / cnt) + \
+		"the best R2 (latency): %.8f, " % max_r2_l + \
+		"the best R2 (power): %.8f" % max_r2_p
 	print(msg)
 
-	model = joblib.load(
+	model_l = joblib.load(
 		os.path.join(
 			"model",
-			"asplos06.mdl"
+			"asplos06-cc.mdl"
+		)
+	)
+	model_p = joblib.load(
+		os.path.join(
+			"model",
+			"asplos06-power.mdl"
 		)
 	)
 	# search
-	heap = sa_search(model, design_space, top_k=50,
+	heap = sa_search(model_l, model_p, design_space, top_k=50,
 		n_iter=10000, early_stop=5000, parallel_size=1024, log_interval=100)
     # saving results
 	write_csv(

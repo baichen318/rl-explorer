@@ -1,10 +1,10 @@
-
 import os
 import heapq
+import random
 import time
 import numpy as np
-from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import AdaBoostRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.neural_network import MLPRegressor
 try:
     from sklearn.externals import joblib
@@ -24,16 +24,16 @@ def create_model(hidden=4):
 		alpha=0.0001,
 		learning_rate="adaptive",
 		learning_rate_init=0.001,
-		max_iter=5000,
+		max_iter=10000,
 		momentum=0.5,
 		early_stopping=True
 	)
 	rt = MultiOutputRegressor(
-	    AdaBoostRegressor(
-	        n_estimators=100,
-	        learning_rate=0.001,
-	        loss='linear'
-	  	)
+		AdaBoostRegressor(
+			n_estimators=100,
+			learning_rate=0.001,
+			loss='linear'
+		)
 	)
 
 	return {
@@ -208,13 +208,15 @@ def main():
 
 	K = 50
 	W = 16
-	perf = float('inf')
+	N = 4
 	cnt = 0
+	perf = float('inf')
 	mse_l, mse_p, r2_l, r2_p, mape_l, mape_p = 0, 0, 0, 0, 0, 0
+	max_r2_l, max_r2_p = -float('inf'), -float('inf')
 	for train_index, test_index in index:
 		print("train:\n%s" % str(train_index))
 		print("test:\n%s" % str(test_index))
-		L, P = create_pool(dataset[train_index])
+		L, P = create_pool(dataset[train_index], p=len(dataset[train_index]) - 64)
 		h1, h2 = init_actboost(L)
 		for i in range(K):
 			if len(P) > 0:
@@ -230,7 +232,8 @@ def main():
 						L = np.insert(L, len(L), P[j], axis=0)
 					P = np.array([])
 				else:
-					for j in range(W):
+					idx = random.sample(range(1, W), N)
+					for j in idx:
 						data = np.concatenate((x[cv[j][0]], y[cv[j][0]]))
 						L = np.insert(L, len(L), data, axis=0)
 						_i = 0
@@ -252,12 +255,12 @@ def main():
 		ret = (ret1 + ret2) / 2
 
 		# analysis
-		_mse_l = mse(ret[:, 0], y_test[:, 0])
-		_mse_p = mse(ret[:, 1], y_test[:, 1])
-		_r2_l = r2(ret[:, 0], y_test[:, 0])
-		_r2_p = r2(ret[:, 1], y_test[:, 1])
-		_mape_l = mape(ret[:, 0], y_test[:, 0])
-		_mape_p = mape(ret[:, 1], y_test[:, 1])
+		_mse_l = mse(y_test[:, 0], ret[:, 0])
+		_mse_p = mse(y_test[:, 1], ret[:, 1])
+		_r2_l = r2(y_test[:, 0], ret[:, 0])
+		_r2_p = r2(y_test[:, 1], ret[:, 1])
+		_mape_l = mape(y_test[:, 0], ret[:, 0])
+		_mape_p = mape(y_test[:, 1], ret[:, 1])
 		print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (_mse_l, _mse_p))
 		print("[INFO]: R2 (latency): %.8f, R2 (power): %.8f" % (_r2_l, _r2_p))
 		print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (_mape_l, _mape_p))
@@ -280,6 +283,10 @@ def main():
 			min_mape_l = _mape_l
 			min_mape_p = _mape_p
 
+		if max_r2_l < _r2_l:
+			max_r2_l = _r2_l
+		if max_r2_p < _r2_p:
+			max_r2_p = _r2_p
 		cnt += 1
 		mse_l += _mse_l
 		mse_p += _mse_p
@@ -292,7 +299,9 @@ def main():
 		"Average MAPE (latency): %.8f, " % float(mape_l / cnt) + \
 		"average MAPE (power): %.8f, " % float(mape_p / cnt) + \
 		"average R2 (latency): %.8f, " % float(r2_l / cnt) + \
-		"average R2 (power): %.8f" % float(r2_p / cnt)
+		"average R2 (power): %.8f, " % float(r2_p / cnt) + \
+        "the best R2 (latency): %.8f, " % max_r2_l + \
+        "the best R2 (power): %.8f" % max_r2_p
 	print(msg)
 
 	h1 = joblib.load(

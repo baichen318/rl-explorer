@@ -81,7 +81,7 @@ def create_model(method):
     elif method == "svr":
         from sklearn.svm import SVR
         model = MultiOutputRegressor(
-            SVR(C=0.0001, kernel='poly', degree=6, tol=1e-6)
+            SVR(C=1, kernel='linear', degree=6, tol=1e-6)
         )
     elif method == "lsvr":
         from sklearn.svm import LinearSVR
@@ -187,6 +187,7 @@ def regression(method, dataset, index):
     # MSE, R2, MAPE for latency and power
     avg_metrics = [0 for i in range(6)]
     perf = float('inf')
+    max_r2_l, max_r2_p = -float('inf'), -float('inf')
     cnt = 0
     for train_index, test_index in index:
         logger.info("train:\n%s" % str(train_index))
@@ -212,12 +213,18 @@ def regression(method, dataset, index):
                     configs["model"] + ".mdl"
                 )
             )
+        if max_r2_l < metrics[2]:
+            max_r2_l = metrics[2]
+        if max_r2_p < metrics[3]:
+            max_r2_p = metrics[3]
     msg = "[INFO]: achieve the best performance: MAPE (latency): %.8f " %  min_mape_l + \
         "MAPE (power): %.8f in one round. " % min_mape_p + \
         "Average MAPE (latency): %.8f, " % float(avg_metrics[4] / cnt) + \
         "average MAPE (power): %.8f, " % float(avg_metrics[5] / cnt) + \
         "average R2 (latency): %.8f, " % float(avg_metrics[2] / cnt) + \
-        "average R2 (power): %.8f" % float(avg_metrics[3]/ cnt)
+        "average R2 (power): %.8f " % float(avg_metrics[3] / cnt) + \
+        "the best R2 (latency): %.8f " % max_r2_l + \
+        "the best R2 (power): %.8f" % max_r2_p
     logger.info(msg)
 
     model = joblib.load(

@@ -135,6 +135,7 @@ def main():
 	perf = float('inf')
 	cnt = 0
 	mse_l, mse_p, r2_l, r2_p, mape_l, mape_p = 0, 0, 0, 0, 0, 0
+	max_r2_l, max_r2_p = -float('inf'), -float('inf')
 	model = create_model()
 	pf = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
 	for train_index, test_index in index:
@@ -152,12 +153,12 @@ def main():
 		_y = np.exp(_y)
 
 		# analysis
-		_mse_l = mse(_y[:, 0], y_test[:, 0])
-		_mse_p = mse(_y[:, 1], y_test[:, 1])
-		_r2_l = r2(_y[:, 0], y_test[:, 0])
-		_r2_p = r2(_y[:, 1], y_test[:, 1])
-		_mape_l = mape(_y[:, 0], y_test[:, 0])
-		_mape_p = mape(_y[:, 1], y_test[:, 1])
+		_mse_l = mse(y_test[:, 0], _y[:, 0])
+		_mse_p = mse(y_test[:, 1], _y[:, 1])
+		_r2_l = r2(y_test[:, 0], _y[:, 0])
+		_r2_p = r2(y_test[:, 1], _y[:, 1])
+		_mape_l = mape(y_test[:, 0], _y[:, 0])
+		_mape_p = mape(y_test[:, 1], _y[:, 1])
 		print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (_mse_l, _mse_p))
 		print("[INFO]: R2 (latency): %.8f, R2 (power): %.8f" % (_r2_l, _r2_p))
 		print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (_mape_l, _mape_p))
@@ -172,7 +173,10 @@ def main():
 			)
 			min_mape_l = _mape_l
 			min_mape_p = _mape_p
-
+		if _r2_l > max_r2_l:
+			max_r2_l = _r2_l
+		if _r2_p > max_r2_p:
+			max_r2_p = _r2_p
 		cnt += 1
 		mse_l += _mse_l
 		mse_p += _mse_p
@@ -185,7 +189,9 @@ def main():
 		"Average MAPE (latency): %.8f, " % float(mape_l / cnt) + \
 		"average MAPE (power): %.8f, " % float(mape_p / cnt) + \
 		"average R2 (latency): %.8f, " % float(r2_l / cnt) + \
-		"average R2 (power): %.8f" % float(r2_p / cnt)
+		"average R2 (power): %.8f, " % float(r2_p / cnt) + \
+		"the best R2 (latency): %.8f, " % max_r2_l + \
+		"the best R2 (power): %.8f" % max_r2_p
 	print(msg)
 
 	model = joblib.load(
