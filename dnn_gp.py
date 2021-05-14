@@ -180,8 +180,9 @@ class DNNGPV2(gpytorch.models.ExactGP):
             # This module will scale the NN features so that they're nice values
             self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            # self.device = torch.device("cpu")
             self.likelihood = likelihood.to(self.device)
-            self.mlp = MLP(self.n_dim, 20).to(self.device)
+            self.mlp = MLP(self.n_dim, 2).to(self.device)
             # global variables
             self.model = None
 
@@ -203,17 +204,17 @@ class DNNGPV2(gpytorch.models.ExactGP):
 
             # Use the adam optimizer
             optimizer = torch.optim.Adam([
-                {'params': self.model.feature_extractor.parameters()},
-                {'params': self.model.covar_module.parameters()},
-                {'params': self.model.mean_module.parameters()},
-                {'params': self.model.likelihood.parameters()},
+                {'params': self.mlp.parameters()},
+                {'params': self.covar_module.parameters()},
+                {'params': self.mean_module.parameters()},
+                {'params': self.likelihood.parameters()},
             ], lr=0.01)
 
             # "Loss" for GPs - the marginal log likelihood
-            mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
+            mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self)
 
             def _fit():
-                iterator = tqdm.notebook.tqdm(range(self.configs["max-epoch"]))
+                iterator = tqdm.tqdm(range(self.configs["max-epoch"]))
                 for i in iterator:
                     # Zero backprop gradients
                     optimizer.zero_grad()
