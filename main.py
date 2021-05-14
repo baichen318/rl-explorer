@@ -192,30 +192,27 @@ def design_explorer_v2():
     sampler = ClusteringRandomizedTED(configs)
 
     def analysis(gt, predict):
-        mse = mse(gt, predict)
-        r2 = r2(gt, predict)
-        mape = mape(gt, predict)
-        print("[INFO]: MSE: %.8f, " % mse)
-        print("[INFO]: R2: %.8f, " % r2)
-        print("[INFO]: MAPE: %.8f" % mape)
+        _mse = mse(gt, predict)
+        _r2 = r2(gt, predict)
+        _mape = mape(gt, predict)
 
-        return mse, r2, mape
+        return _mse, _r2, _mape
 
     # initialize
     unsampled_dataset = sample(sampler, unsampled_dataset, sampled_dataset)
     x, y = split_data(sampled_dataset)
     # record R2
     for i in range(configs["max-bo-steps"]):
-        model_l = DNNGPV2(configs, x, y[0])
-        model_p = DNNGPV2(configs, x, y[1])
-        model_l.fit(x, y[0])
-        model_p.fit(x, y[1])
+        model_l = DNNGPV2(configs, x, y[:, 0])
+        model_p = DNNGPV2(configs, x, y[:, 1])
+        model_l.fit(x, y[:, 0])
+        model_p.fit(x, y[:, 1])
 
         _y_l = model_l.predict(x)
         _y_p = model_p.predict(x)
 
-        metrics_l = analysis(y[0], _y_l)
-        metrics_p = analysis(y[1], _y_p)
+        metrics_l = analysis(y[:, 0], _y_l.detach().numpy())
+        metrics_p = analysis(y[:, 1], _y_p.detach().numpy())
 
         msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
             "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
@@ -229,10 +226,10 @@ def design_explorer_v2():
         _y_l = model_l.predict(test_dataset[0])
         _y_p = model_p.predict(test_dataset[0])
 
-        metrics_l = analysis(test_dataset[0], _y_l)
-        metrics_p = analysis(test_dataset[1], _y_p)
+        metrics_l = analysis(test_dataset[0][:, 0], _y_l.detach().numpy())
+        metrics_p = analysis(test_dataset[1][:, 1], _y_p.detach().numpy())
 
-        msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
+        msg = "[TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
             "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
             "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \
             "on test data set"
@@ -243,20 +240,12 @@ def design_explorer_v2():
     _y_l = model_l.predict(x)
     _y_p = model_p.predict(x)
 
-    metrics_l = analysis(y[0], _y_l)
-    metrics_p = analysis(y[1], _y_p)
-    msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
+    metrics_l = analysis(y[:, 0], _y_l.detach().numpy())
+    metrics_p = analysis(y[:, 1], _y_p.detach().numpy())
+    msg = "[FINAL-TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
         "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
         "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \
         "unsampled_dataset data size: %d" % len(unsampled_dataset)
-    print(msg)
-    # validate on `test_dataset`
-    _y_l = model_l.predict(test_dataset[0])
-    _y_p = model_p.predict(test_dataset[0])
-    msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
-        "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
-        "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \
-        "on test data set"
     print(msg)
     # model.save(
     #     os.path.join(
