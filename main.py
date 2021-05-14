@@ -211,8 +211,8 @@ def design_explorer_v2():
         _y_l = model_l.predict(x)
         _y_p = model_p.predict(x)
 
-        metrics_l = analysis(y[:, 0], _y_l.detach().numpy())
-        metrics_p = analysis(y[:, 1], _y_p.detach().numpy())
+        metrics_l = analysis(y[:, 0], _y_l.cpu().detach().numpy())
+        metrics_p = analysis(y[:, 1], _y_p.cpu().detach().numpy())
 
         msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
             "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
@@ -226,8 +226,8 @@ def design_explorer_v2():
         _y_l = model_l.predict(test_dataset[0])
         _y_p = model_p.predict(test_dataset[0])
 
-        metrics_l = analysis(test_dataset[0][:, 0], _y_l.detach().numpy())
-        metrics_p = analysis(test_dataset[1][:, 1], _y_p.detach().numpy())
+        metrics_l = analysis(test_dataset[0][:, 0], _y_l.cpu().detach().numpy())
+        metrics_p = analysis(test_dataset[1][:, 1], _y_p.cpu().detach().numpy())
 
         msg = "[TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
             "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
@@ -240,8 +240,8 @@ def design_explorer_v2():
     _y_l = model_l.predict(x)
     _y_p = model_p.predict(x)
 
-    metrics_l = analysis(y[:, 0], _y_l.detach().numpy())
-    metrics_p = analysis(y[:, 1], _y_p.detach().numpy())
+    metrics_l = analysis(y[:, 0], _y_l.cpu().detach().numpy())
+    metrics_p = analysis(y[:, 1], _y_p.cpu().detach().numpy())
     msg = "[FINAL-TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
         "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
         "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \

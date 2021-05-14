@@ -184,7 +184,7 @@ class DNNGPV2(gpytorch.models.ExactGP):
             self.likelihood = likelihood.to(self.device)
             self.mlp = MLP(self.n_dim, 2).to(self.device)
             # global variables
-            self.model = None
+            self = self.to(self.device)
 
         def forward(self, x):
             # We're first putting our data through a deep net (feature extractor)
@@ -201,6 +201,9 @@ class DNNGPV2(gpytorch.models.ExactGP):
             # Find optimal model hyperparameters
             self.train()
             self.likelihood.train()
+
+            train_x = train_x.to(self.device)
+            train_y = train_y.to(self.device)
 
             # Use the adam optimizer
             optimizer = torch.optim.Adam([
@@ -231,6 +234,7 @@ class DNNGPV2(gpytorch.models.ExactGP):
         def predict(self, test_x):
             self.eval()
             self.likelihood.eval()
+            test_x = test_x.to(self.device)
             with torch.no_grad(), gpytorch.settings.use_toeplitz(False), gpytorch.settings.fast_pred_var():
                 preds = self.forward(test_x)
 
