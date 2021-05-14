@@ -7,15 +7,21 @@ import numpy as np
 from sample import ClusteringRandomizedTED
 from dnn_gp import DNNGP
 from vis import validate
+import joblib
 from util import parse_args, get_configs, execute, read_csv_v2, mse, r2, mape
 from exception import UnDefinedException
 
 def get_data():
     dataset, title = read_csv_v2(configs["dataset-output-path"])
     dataset = validate(dataset)
+
+    # scale dataset to balance c.c. and power dissipation
+    dataset[:, -2] = dataset[:, -2] / 10000
+    dataset[:, -1] = dataset[:, -1] * 100
+
     return dataset
 
-def split_data(data, x, y):
+def split_data(data):
     """
         data: <numpy.ndarray>
         x: <list>
@@ -23,8 +29,8 @@ def split_data(data, x, y):
     """
     def _split(data):
         for d in data:
-            # In order to balance the c.c. and power, we scale them with suitable factors
-            yield d[:-2], np.array([d[-2] / 10000, d[-1] * 100])
+            yield d[:-2], np.array([d[-2], d[-1]])
+    x, y = [], []
     for _x, _y in _split(data):
         x.append(_x)
         y.append(_y)
@@ -44,8 +50,7 @@ def construct_test_dataset(dataset):
     for i in idx:
         test_dataset.append(dataset[i])
 
-    x, y = [], []
-    x, y = split_data(np.array(test_dataset), x, y)
+    x, y = split_data(np.array(test_dataset))
     # remove `test_dataset` from `dataset`
     dataset = np.delete(dataset, idx, axis=0)
 
@@ -110,7 +115,7 @@ def predict_by_dnn_gp(model, x, y):
 
     _y = model.predict(x)
     y = y.to(model.device)
-    return analysis(_y.numpy(), y.numpy())
+    return analysis(y.numpy(), _y.numpy())
 
 def sample(sampler, unsampled_dataset, sampled_dataset):
     data = sampler.crted(unsampled_dataset)
@@ -135,9 +140,8 @@ def design_explorer():
     sampler = ClusteringRandomizedTED(configs)
 
     # initialize
-    x, y = [], []
     unsampled_dataset = sample(sampler, unsampled_dataset, sampled_dataset)
-    x, y = split_data(sampled_dataset, x, y)
+    x, y = split_data(sampled_dataset)
     for i in range(configs["max-bo-steps"]):
         model = fit_dnn_gp(x, y)
         metrics = predict_by_dnn_gp(model, x, y)
@@ -147,7 +151,7 @@ def design_explorer():
             "training data size: %d" % len(sampled_dataset)
         print(msg)
         unsampled_dataset = sample(sampler, unsampled_dataset, sampled_dataset)
-        x, y = split_data(sampled_dataset, x.tolist(), y.tolist())
+        x, y = split_data(sampled_dataset)
 
         # evaluate
         metrics = predict_by_dnn_gp(model, test_dataset[0], test_dataset[1])
@@ -158,8 +162,7 @@ def design_explorer():
         print(msg)
 
     # validate on `unsampled_dataset`
-    x, y = [], []
-    x, y = split_data(unsampled_dataset, x, y)
+    x, y = split_data(unsampled_dataset)
     metrics = predict_by_dnn_gp(model, x, y)
     msg = "[FINAL-TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics[0], metrics[1]) + \
             "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics[4], metrics[5]) + \
@@ -182,13 +185,47 @@ def design_explorer():
 
 def analysis():
     import matplotlib.pyplot as plt
+    from sklearn.linear_model import LinearRegression
+    from sklearn.preprocessing import PolynomialFeatures
+
+    markers = [
+        '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
+        '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
+        'X', 'D', 'd', '|', '_'
+    ]
+    colors = [
+        'c', 'b', 'g', 'r', 'm', 'y', 'k', 'w'
+    ]
 
     dataset = get_data()
-    plt.bar(range(len(dataset)), list(dataset[:, -2]))
-    plt.show()
+    print("Mean: %.8f, Var: %.8f" % (np.mean(dataset[:, -2]), np.std(dataset[:, -2])))
+    model = joblib.load(
+        os.path.join(
+            "model",
+            "hpca07.mdl"
+        )
+    )
+    pf = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
+    pred = np.exp(model.predict(pf.fit_transform(dataset[:, :-2])))[:, 0] * 10000
+    # pred = model.predict(dataset[:, :-2])[:, 0] * 10000
+    # plt.bar(range(len(dataset)), list(dataset[:, -2]), label='gt')
+    # plt.bar(range(len(dataset)), list(pred), label='pred')
+    plt.scatter(list(pred), dataset[:, -2], s=1.5, marker=markers[2])
+    plt.xlabel("pred")
+    plt.ylabel("gt")
+    plt.title("HPCA07 on c.c")
+    plt.grid()
+    # plt.show()
+    plt.savefig(
+        os.path.join(
+            "data",
+            "figs",
+            "HPCA07-pred.pdf"
+        )
+    )
 
 if __name__ == "__main__":
     argv = parse_args()
     configs = get_configs(argv.configs)
-    # design_explorer()
-    analysis()
+    design_explorer()
+    # analysis()

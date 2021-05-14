@@ -36,7 +36,7 @@ class DNNGP():
         self.configs = configs
         self.n_dim = 19
         self.n_target = 2
-        self.mlp = MLP(self.n_dim, 6)
+        self.mlp = MLP(self.n_dim, 12)
         self.learning_rate = self.configs["learning-rate"]
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cpu")

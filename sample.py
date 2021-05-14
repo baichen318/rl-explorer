@@ -151,18 +151,22 @@ class ClusteringRandomizedTED(RandomizedTED):
         centroids, new_assignment, loss = self.clustering(
             dataset[:, :-2],
             self.configs["cluster"],
-            max_iter=10
+            max_iter=300
         )
         new_dataset = self.gather_groups(dataset, new_assignment)
 
         data = []
         for c in new_dataset:
             x = []
-            while len(x) < self.batch_per_cluster:
-                candidates = self.rted(
-                    c,
-                    self.batch_per_cluster - len(x)
-                )
+            while len(x) < min(self.batch_per_cluster, len(c)):
+                if len(c) > (self.batch_per_cluster - len(x)) and \
+                    len(c) > self.configs["Nrted"]:
+                    candidates = self.rted(
+                        c,
+                        self.batch_per_cluster - len(x)
+                    )
+                else:
+                    candidates = c
                 for _c in candidates:
                     x.append(_c)
                 x = _delete_duplicate(x)
