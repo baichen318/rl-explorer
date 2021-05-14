@@ -80,7 +80,7 @@ design-space:
 flow: search
 
 # Choose random | crted | prted
-initialize-method: "HPCA07"
+initialize-method: "DAC16"
 
 # ClustringBootstrapTED:
 Nrted: 100
@@ -95,7 +95,7 @@ batch: 60
 initialize-size: 200
 
 # Record samples
-initialize-output-path: /research/dept8/gds/cbai/research/design-explorer/data/ml/dataset-hpca07/hpca07-2.txt
+initialize-output-path: /research/dept8/gds/cbai/research/design-explorer/data/ml/dataset-dac16/dac16.txt
 
 # Index for the first config.
 idx: 1
@@ -104,27 +104,27 @@ idx: 1
 vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
 
 # Output path for latency
-latency-output-path: data/ml/dataset-hpca07/latency.csv
+latency-output-path: data/ml/dataset-dac16/latency.csv
 
 # Output path for area
-area-output-path: data/ml/dataset-hpca07/area.csv
+area-output-path: data/ml/dataset-dac16/area.csv
 
 # Collect power
 pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
 
 # Output path for power
-power-output-path: data/ml/dataset-hpca07/power.csv
+power-output-path: data/ml/dataset-dac16/power.csv
 
 # Config. name
 config-name:
-  - chipyard.TestHarness.BOOMHPCA07Config1Config-ChipTop
-  - chipyard.TestHarness.BOOMHPCA07Config4Config-ChipTop
-  - chipyard.TestHarness.BOOMHPCA07Config5Config-ChipTop
-  - chipyard.TestHarness.BOOMHPCA07Config8Config-ChipTop
-  - chipyard.TestHarness.BOOMHPCA07Config9Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC1606Config1Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC1606Config4Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC1606Config5Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC1606Config8Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC1606Config10Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: data/ml/dataset-hpca07/dataset.csv
+dataset-output-path: data/ml/dataset-dac16/dataset.csv
 
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model: xgb
@@ -148,5 +148,5 @@ model-output-path: model
 rpt-output-path: rpts
 
 # Output path for fig.
-fig-output-path: data/figs/hpca07.pdf
+fig-output-path: data/figs/dac16.pdf
 
