@@ -201,7 +201,6 @@ def design_explorer_v2():
     # initialize
     unsampled_dataset = sample(sampler, unsampled_dataset, sampled_dataset)
     x, y = split_data(sampled_dataset)
-    # record R2
     for i in range(configs["max-bo-steps"]):
         model_l = DNNGPV2(configs, x, y[:, 0])
         model_p = DNNGPV2(configs, x, y[:, 1])
@@ -254,6 +253,58 @@ def design_explorer_v2():
     #     )
     # )
 
+def design_explorer_v3():
+    dataset = get_data()
+    test_dataset, dataset = construct_test_dataset(dataset)
+
+    def analysis(gt, predict):
+        _mse = mse(gt, predict)
+        _r2 = r2(gt, predict)
+        _mape = mape(gt, predict)
+
+        return _mse, _r2, _mape
+
+    # initialize
+    x, y = split_data(dataset)
+    model_l = DNNGPV2(configs, x, y[:, 0])
+    model_p = DNNGPV2(configs, x, y[:, 1])
+    model_l.fit(x, y[:, 0])
+    model_p.fit(x, y[:, 1])
+
+    _y_l = model_l.predict(x)
+    _y_p = model_p.predict(x)
+
+    metrics_l = analysis(y[:, 0], _y_l.cpu().detach().numpy())
+    metrics_p = analysis(y[:, 1], _y_p.cpu().detach().numpy())
+
+    msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
+        "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
+        "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \
+        "training data size: %d" % len(sampled_dataset)
+    print(msg)
+    unsampled_dataset = sample(sampler, unsampled_dataset, sampled_dataset)
+    x, y = split_data(sampled_dataset)
+
+    # evaluate
+    _y_l = model_l.predict(test_dataset[0])
+    _y_p = model_p.predict(test_dataset[0])
+
+    metrics_l = analysis(test_dataset[0][:, 0], _y_l.cpu().detach().numpy())
+    metrics_p = analysis(test_dataset[1][:, 1], _y_p.cpu().detach().numpy())
+
+    msg = "[TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
+        "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
+        "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \
+        "on test data set"
+    print(msg)
+
+    # model.save(
+    #     os.path.join(
+    #         configs["model-output-path"],
+    #         "dnn-gp.mdl"
+    #     )
+    # )
+
 def analysis():
     import matplotlib.pyplot as plt
     from sklearn.linear_model import LinearRegression
@@ -298,5 +349,5 @@ def analysis():
 if __name__ == "__main__":
     argv = parse_args()
     configs = get_configs(argv.configs)
-    design_explorer_v2()
+    design_explorer_v3()
     # analysis()
