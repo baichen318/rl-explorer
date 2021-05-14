@@ -2,6 +2,7 @@ import sys
 import os
 import torch
 import gpytorch
+import tqdm
 import torch.nn as nn
 import numpy as np
 from botorch.models import MultiTaskGP
@@ -36,7 +37,7 @@ class DNNGP():
         self.configs = configs
         self.n_dim = 19
         self.n_target = 2
-        self.mlp = MLP(self.n_dim, 12)
+        self.mlp = MLP(self.n_dim, 20)
         self.learning_rate = self.configs["learning-rate"]
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cpu")
@@ -165,3 +166,85 @@ class DNNGP():
         self.mlp.load_state_dict(state_dict["mlp"])
         self.gp.load_state_dict(state_dict["gp"])
         self.set_eval()
+
+class DNNGPV2(gpytorch.models.ExactGP):
+        def __init__(self, configs, train_x, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood()):
+            super(DNNGPV2, self).__init__(train_x, train_y, likelihood)
+            self.configs = configs
+            self.mean_module = gpytorch.means.ConstantMean()
+            self.covar_module = gpytorch.kernels.GridInterpolationKernel(
+                gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=2)),
+                num_dims=2, grid_size=100
+            )
+            self.n_dim = 19
+            # This module will scale the NN features so that they're nice values
+            self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.likelihood = likelihood.to(self.device)
+            self.mlp = MLP(self.n_dim, 20).to(self.device)
+            # global variables
+            self.model = None
+
+        def forward(self, x):
+            # We're first putting our data through a deep net (feature extractor)
+            projected_x = self.mlp(x)
+            projected_x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
+
+            mean_x = self.mean_module(projected_x)
+            covar_x = self.covar_module(projected_x)
+
+            return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+        def fit(self, train_x, train_y):
+            # Find optimal model hyperparameters
+            self.train()
+            self.likelihood.train()
+
+            # Use the adam optimizer
+            optimizer = torch.optim.Adam([
+                {'params': self.model.feature_extractor.parameters()},
+                {'params': self.model.covar_module.parameters()},
+                {'params': self.model.mean_module.parameters()},
+                {'params': self.model.likelihood.parameters()},
+            ], lr=0.01)
+
+            # "Loss" for GPs - the marginal log likelihood
+            mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
+
+            def _fit():
+                iterator = tqdm.notebook.tqdm(range(self.configs["max-epoch"]))
+                for i in iterator:
+                    # Zero backprop gradients
+                    optimizer.zero_grad()
+                    # Get output from model
+                    output = self.forward(train_x)
+                    # Calc loss and backprop derivatives
+                    loss = -mll(output, train_y)
+                    loss.backward()
+                    iterator.set_postfix(loss=loss.item())
+                    optimizer.step()
+
+            _fit()
+
+        def predict(self, test_x):
+            self.eval()
+            self.likelihood.eval()
+            with torch.no_grad(), gpytorch.settings.use_toeplitz(False), gpytorch.settings.fast_pred_var():
+                preds = self.forward(test_x)
+
+            return preds.mean
+
+        # def save(self, path):
+        #     state_dict = {
+        #         "mlp": self.mlp.state_dict(),
+        #         "gp": self.gp.state_dict()
+        #     }
+        #     torch.save(state_dict, path)
+        #     print("[INFO]: saving model to %s" % path)
+
+        # def load(self, mdl, x, y):
+        #     state_dict = torch.load(mdl)
+        #     self.mlp.load_state_dict(state_dict["mlp"])
+        #     self.gp.load_state_dict(state_dict["gp"])
+        #     self.set_eval()

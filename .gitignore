@@ -143,7 +143,7 @@ Config*.csv
 *-model.yml
 *.predict
 img/
-exp.yml
+# exp.yml
 # power.csv
 # latency.csv
 # area.csv

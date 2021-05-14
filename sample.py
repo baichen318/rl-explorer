@@ -133,6 +133,44 @@ class ClusteringRandomizedTED(RandomizedTED):
             new_dataset[cluster[i]].append(dataset[i])
         for i in range(len(new_dataset)):
             new_dataset[i] = np.array(new_dataset[i])
+        if self.configs["vis-crted"]:
+            import matplotlib.pyplot as plt
+            from sklearn.manifold import TSNE
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            markers = [
+                '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
+                '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
+                'X', 'D', 'd', '|', '_'
+            ]
+            colors = [
+                'c', 'b', 'g', 'r', 'm', 'y', 'k', 'w'
+            ]
+            tsne = TSNE(n_components=2)
+            i = 0
+            h = []
+            anno = ["cluster %d" % d for d in range(1, len(new_dataset) + 1)]
+            for c in new_dataset:
+                tsne.fit_transform(c)
+                for _c in tsne.embedding_:
+                    h.append(
+                        ax.scatter(
+                            _c[-2],
+                            _c[-1],
+                            s=4,
+                            marker=markers[2],
+                            c=colors[i],
+                            label=anno
+                        )
+                    )
+                i += 1
+            # plt.legend(tuple(h), labels=anno, loc=0, frameon=False)
+            plt.xlabel("c.c.")
+            plt.ylabel("Power")
+            plt.title("Clusters on design space")
+            plt.grid()
+            plt.show()
         return new_dataset
 
     def crted(self, dataset):
@@ -151,7 +189,7 @@ class ClusteringRandomizedTED(RandomizedTED):
         centroids, new_assignment, loss = self.clustering(
             dataset[:, :-2],
             self.configs["cluster"],
-            max_iter=300
+            max_iter=100
         )
         new_dataset = self.gather_groups(dataset, new_assignment)
 
