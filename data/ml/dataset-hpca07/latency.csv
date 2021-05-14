@@ -1,0 +1,11 @@
+Configure,Cycles
+chipyard.TestHarness.BOOMHPCA07Config1Config-ChipTop-mt-vvadd.riscv,106962
+chipyard.TestHarness.BOOMHPCA07Config1Config-ChipTop-whetstone.riscv,41536
+chipyard.TestHarness.BOOMHPCA07Config4Config-ChipTop-mt-vvadd.riscv,103349
+chipyard.TestHarness.BOOMHPCA07Config4Config-ChipTop-whetstone.riscv,41501
+chipyard.TestHarness.BOOMHPCA07Config5Config-ChipTop-mt-vvadd.riscv,107437
+chipyard.TestHarness.BOOMHPCA07Config5Config-ChipTop-whetstone.riscv,41571
+chipyard.TestHarness.BOOMHPCA07Config8Config-ChipTop-mt-vvadd.riscv,103376
+chipyard.TestHarness.BOOMHPCA07Config8Config-ChipTop-whetstone.riscv,41501
+chipyard.TestHarness.BOOMHPCA07Config9Config-ChipTop-mt-vvadd.riscv,107247
+chipyard.TestHarness.BOOMHPCA07Config9Config-ChipTop-whetstone.riscv,41535

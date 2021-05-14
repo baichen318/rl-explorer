@@ -1,0 +1,11 @@
+Configure,Cycles
+chipyard.TestHarness.BOOMASPLOS06Config1Config-ChipTop-mt-vvadd.riscv,123611
+chipyard.TestHarness.BOOMASPLOS06Config1Config-ChipTop-whetstone.riscv,41746
+chipyard.TestHarness.BOOMASPLOS06Config4Config-ChipTop-mt-vvadd.riscv,126463
+chipyard.TestHarness.BOOMASPLOS06Config4Config-ChipTop-whetstone.riscv,41743
+chipyard.TestHarness.BOOMASPLOS06Config5Config-ChipTop-mt-vvadd.riscv,126326
+chipyard.TestHarness.BOOMASPLOS06Config5Config-ChipTop-whetstone.riscv,41522
+chipyard.TestHarness.BOOMASPLOS06Config8Config-ChipTop-mt-vvadd.riscv,126151
+chipyard.TestHarness.BOOMASPLOS06Config8Config-ChipTop-whetstone.riscv,41746
+chipyard.TestHarness.BOOMASPLOS06Config10Config-ChipTop-mt-vvadd.riscv,126123
+chipyard.TestHarness.BOOMASPLOS06Config10Config-ChipTop-whetstone.riscv,41743
