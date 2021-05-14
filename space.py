@@ -31,8 +31,8 @@ class Space(object):
 class DesignSpace(Space):
     def __init__(self, features, bounds, dims, size, random_state=1):
         """
-            `features`: <list>
-            `bounds`: <OrderedDict>: <str> - <np.array>
+            features: <list>
+            bounds: <OrderedDict>: <str> - <np.array>
         """
         self.features = features
         self.bounds = bounds
@@ -56,7 +56,7 @@ class DesignSpace(Space):
 
     def features2knob(self, vec):
         """
-            vec: np.array
+            vec: <numpy.ndarray>
         """
         ret = []
         for idx in range(self.n_dim):
@@ -70,7 +70,7 @@ class DesignSpace(Space):
 
     def verify_features(self, vec):
         """
-            vec: <np.array>
+            vec: <numpy.ndarray>
         """
         _vec = self.round_vec(vec)
         # constraint #1
@@ -255,7 +255,7 @@ class DesignSpace(Space):
 
     def knob2point(self, vec):
         """
-            vec: `np.array`
+            vec: <numpy.ndarray>
         """
         return super().knob2point(
             self.features2knob(
@@ -266,7 +266,7 @@ class DesignSpace(Space):
 
     def random_walk(self, vec):
         """
-            vec: `np.array`
+            vec: <numpy.ndarray>
         """
         old = list(vec).copy()
         new = list(vec)

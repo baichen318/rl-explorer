@@ -213,34 +213,37 @@ class ClusteringRandomizedTED(RandomizedTED):
 
         return data
 
-def create_design_space():
-    logger = create_logger("logs", configs["initialize-method"])
-    design_space = parse_design_space(configs["design-space"])
-    logger.info("Design space size: %d" % design_space.size)
+class Sampler(object):
+    """
+        Sampler: sample configurations
+    """
+    def __init__(self, configs):
+        super(Sampler, self).__init__()
+        self.configs = configs
 
-    return design_space
+    def sample(self):
+        """
+            sample points
+        """
+        raise NotImplementedError
 
-def record_sample(design_space, data):
-    write_excel(configs["initialize-output-path"] + ".xlsx", data, design_space.features)
-    write_txt(configs["initialize-output-path"] + ".txt", data)
+class RandomSampler(Sampler):
+    """
+        RandomSampler: randomly sample configurations
+    """
+    def __init__(self, configs):
+        super(RandomSampler, self).__init__(configs)
+        random.seed(round(time()))
 
-def initialize(method):
-    design_space = create_design_space()
+    def set_random_state(self, random_state):
+        random.seed(random_state)
 
-    if method == "random":
-        data = design_space.random_sample(configs["initialize-size"])
-    elif method == "prted":
-        prted = PureRandomizedTED(configs, design_space)
-        data = prted.rted()
-    elif method == "crted":
-        cbted = ClusteringRandomizedTED(configs, design_space)
-        data = cbted.cbted()
-    else:
-        raise UnDefinedException(method + " method")
-
-    record_sample(design_space, data)
-
-if __name__ == "__main__":
-    argv = parse_args()
-    configs = get_configs(argv.configs)
-    initialize(configs["initialize-method"])
+    def sample(self, dataset, batch=8):
+        """
+            dataset: <numpy.ndarray> (M x N)
+        """
+        idx = random.sample(range(len(dataset)), min(batch, len(dataset)))
+        sampled = []
+        for i in idx:
+            sampled.append(dataset[i])
+        return np.delete(dataset, idx, axis=0), np.array(sampled)

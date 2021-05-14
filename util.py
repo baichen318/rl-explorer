@@ -62,20 +62,52 @@ def read_csv(data):
     if_exist(data, strict=True)
     return np.array(pd.read_csv(data))
 
-def read_csv_v2(file):
+def load_dataset(csv_path):
     """
-        data: <str>
-        filter the first row as the title
+        csv_path: <str>
     """
-    data = []
-    if_exist(file, strict=True)
-    with open(file, 'r') as f:
-        reader = csv.reader(f)
-        title = next(reader)
-        for row in reader:
-            data.append(row)
+    def _read_csv(csv_path):
+        data = []
+        if_exist(csv_path, strict=True)
+        with open(csv_path, 'r') as f:
+            reader = csv.reader(f)
+            title = next(reader)
+            for row in reader:
+                data.append(row)
 
-    return data, title
+        return data, title
+
+    def validate(dataset):
+        """
+            `dataset`: <tuple>
+        """
+        data = []
+        for item in dataset:
+            _data = []
+            f = item[0].split(' ')
+            for i in f:
+                _data.append(int(i))
+            for i in item[1:]:
+                _data.append(float(i))
+            data.append(_data)
+        data = np.array(data)
+
+        return data
+
+    dataset, _ = _read_csv(csv_path)
+    return validate(dataset)
+
+def split_dataset(dataset):
+    # split dataset into x label & y label
+    # dataset: <numpy.ndarray>
+    x = []
+    y = []
+    for data in dataset:
+        x.append(data[0:-2])
+        # scale c.c. & power approximately
+        y.append(np.array([data[-2] / 10000, data[-1] * 100]))
+
+    return np.array(x), np.array(y)
 
 def calc_mape(x, y):
         return np.mean(np.abs((np.array(x) - np.array(y)) / np.array(y)))
@@ -196,6 +228,19 @@ def mape(gt, predict):
     # predict: `np.array`
     # return np.mean(np.abs(predict - gt) / gt)) * 100
     return metrics.mean_absolute_percentage_error(gt, predict)
+
+def rmse(gt, predict):
+    """
+        gt: <numpy.ndarray>
+        predict: <numpy.ndarray>
+    """
+    return np.mean(np.sqrt(np.power(gt - predict, 2)))
+
+def strflush(msg, logger=None):
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
 
 def hyper_volume(reference, point):
     """
