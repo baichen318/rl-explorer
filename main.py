@@ -225,7 +225,7 @@ def design_explorer_v2():
         _y_l = model_l.predict(test_dataset[0])
         _y_p = model_p.predict(test_dataset[0])
 
-        metrics_l = analysis(test_dataset[0][:, 0], _y_l.cpu().detach().numpy())
+        metrics_l = analysis(test_dataset[1][:, 0], _y_l.cpu().detach().numpy())
         metrics_p = analysis(test_dataset[1][:, 1], _y_p.cpu().detach().numpy())
 
         msg = "[TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
@@ -280,16 +280,14 @@ def design_explorer_v3():
     msg = "[TRAIN] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
         "MAPE (latency): %.8f, MAPE (power): %.8f, " % (metrics_l[2], metrics_p[2]) + \
         "R2 (latency): %.8f, R2 (power): %.8f, " % (metrics_l[1], metrics_p[1]) + \
-        "training data size: %d" % len(sampled_dataset)
+        "training data size: %d" % len(x)
     print(msg)
-    unsampled_dataset = sample(sampler, unsampled_dataset, sampled_dataset)
-    x, y = split_data(sampled_dataset)
 
     # evaluate
     _y_l = model_l.predict(test_dataset[0])
     _y_p = model_p.predict(test_dataset[0])
 
-    metrics_l = analysis(test_dataset[0][:, 0], _y_l.cpu().detach().numpy())
+    metrics_l = analysis(test_dataset[1][:, 0], _y_l.cpu().detach().numpy())
     metrics_p = analysis(test_dataset[1][:, 1], _y_p.cpu().detach().numpy())
 
     msg = "[TEST] MSE (latency): %.8f, MSE (power): %.8f, " % (metrics_l[0], metrics_p[0]) + \
@@ -298,18 +296,21 @@ def design_explorer_v3():
         "on test data set"
     print(msg)
 
-    # model.save(
-    #     os.path.join(
-    #         configs["model-output-path"],
-    #         "dnn-gp.mdl"
-    #     )
-    # )
+    model_l.save(
+        os.path.join(
+            configs["model-output-path"],
+            "dnn-gp-cc.mdl"
+        )
+    )
+    model_p.save(
+        os.path.join(
+            configs["model-output-path"],
+            "dnn-gp-power.mdl"
+        )
+    )
 
 def analysis():
     import matplotlib.pyplot as plt
-    from sklearn.linear_model import LinearRegression
-    from sklearn.preprocessing import PolynomialFeatures
-
     markers = [
         '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
         '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
@@ -320,31 +321,25 @@ def analysis():
     ]
 
     dataset = get_data()
-    print("Mean: %.8f, Var: %.8f" % (np.mean(dataset[:, -2]), np.std(dataset[:, -2])))
-    model = joblib.load(
+    test_dataset, dataset = construct_test_dataset(dataset)
+    x, y = split_data(dataset)
+    model_l = DNNGPV2(configs, x, y[:, 0])
+    model_p = DNNGPV2(configs, x, y[:, 1])
+
+    model_l.load(
         os.path.join(
-            "model",
-            "hpca07.mdl"
+            configs["model-output-path"],
+            "dnn-gp-cc.mdl"
         )
     )
-    pf = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
-    pred = np.exp(model.predict(pf.fit_transform(dataset[:, :-2])))[:, 0] * 10000
-    # pred = model.predict(dataset[:, :-2])[:, 0] * 10000
-    # plt.bar(range(len(dataset)), list(dataset[:, -2]), label='gt')
-    # plt.bar(range(len(dataset)), list(pred), label='pred')
-    plt.scatter(list(pred), dataset[:, -2], s=1.5, marker=markers[2])
-    plt.xlabel("pred")
-    plt.ylabel("gt")
-    plt.title("HPCA07 on c.c")
-    plt.grid()
-    # plt.show()
-    plt.savefig(
+    model_p.load(
         os.path.join(
-            "data",
-            "figs",
-            "HPCA07-pred.pdf"
+            configs["model-output-path"],
+            "dnn-gp-power.mdl"
         )
     )
+
+    # TODO: analysis
 
 if __name__ == "__main__":
     argv = parse_args()

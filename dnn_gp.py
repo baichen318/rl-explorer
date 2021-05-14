@@ -171,11 +171,13 @@ class DNNGPV2(gpytorch.models.ExactGP):
         def __init__(self, configs, train_x, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood()):
             super(DNNGPV2, self).__init__(train_x, train_y, likelihood)
             self.configs = configs
-            self.mean_module = gpytorch.means.ConstantMean()
+            self.mean_module = gpytorch.means.LinearMean(input_size=2)
             self.covar_module = gpytorch.kernels.GridInterpolationKernel(
-                gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=2)),
-                num_dims=2, grid_size=100
+                gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5)),
+                num_dims=2,
+                grid_size=100
             )
+
             self.n_dim = 19
             # This module will scale the NN features so that they're nice values
             self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
@@ -187,6 +189,7 @@ class DNNGPV2(gpytorch.models.ExactGP):
             self = self.to(self.device)
 
         def forward(self, x):
+            x = x.to(self.device)
             # We're first putting our data through a deep net (feature extractor)
             projected_x = self.mlp(x)
             projected_x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
@@ -211,7 +214,7 @@ class DNNGPV2(gpytorch.models.ExactGP):
                 {'params': self.covar_module.parameters()},
                 {'params': self.mean_module.parameters()},
                 {'params': self.likelihood.parameters()},
-            ], lr=0.01)
+            ], lr=self.configs["learning-rate"])
 
             # "Loss" for GPs - the marginal log likelihood
             mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self)
@@ -240,16 +243,11 @@ class DNNGPV2(gpytorch.models.ExactGP):
 
             return preds.mean
 
-        # def save(self, path):
-        #     state_dict = {
-        #         "mlp": self.mlp.state_dict(),
-        #         "gp": self.gp.state_dict()
-        #     }
-        #     torch.save(state_dict, path)
-        #     print("[INFO]: saving model to %s" % path)
+        def save(self, path):
+            torch.save(self.state_dict(), path)
+            print("[INFO]: saving model to %s" % path)
 
-        # def load(self, mdl, x, y):
-        #     state_dict = torch.load(mdl)
-        #     self.mlp.load_state_dict(state_dict["mlp"])
-        #     self.gp.load_state_dict(state_dict["gp"])
-        #     self.set_eval()
+        def load(self, mdl):
+            state_dict = torch.load(mdl)
+            self.load_state_dict(state_dict)
+            self.set_eval()
