@@ -168,23 +168,26 @@ class DNNGP():
         self.set_eval()
 
 class DNNGPV2(gpytorch.models.ExactGP):
-        def __init__(self, configs, train_x, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood()):
+        def __init__(self, configs, train_x, train_y,
+            likelihood=gpytorch.likelihoods.GaussianLikelihood()):
+
             super(DNNGPV2, self).__init__(train_x, train_y, likelihood)
             self.configs = configs
-            self.mean_module = gpytorch.means.LinearMean(input_size=2)
-            self.covar_module = gpytorch.kernels.GridInterpolationKernel(
-                gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5)),
-                num_dims=2,
-                grid_size=100
-            )
+            self.mean_module = gpytorch.means.LinearMean(input_size=100)
+            # self.covar_module = gpytorch.kernels.GridInterpolationKernel(
+            #     gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5)),
+            #     num_dims=2,
+            #     grid_size=100
+            # )
+            self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(nu=2.5))
 
             self.n_dim = 19
             # This module will scale the NN features so that they're nice values
             self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            # self.device = torch.device("cpu")
+            # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device("cpu")
             self.likelihood = likelihood.to(self.device)
-            self.mlp = MLP(self.n_dim, 2).to(self.device)
+            self.mlp = MLP(self.n_dim, 100).to(self.device)
             # global variables
             self = self.to(self.device)
 
@@ -238,7 +241,8 @@ class DNNGPV2(gpytorch.models.ExactGP):
             self.eval()
             self.likelihood.eval()
             test_x = test_x.to(self.device)
-            with torch.no_grad(), gpytorch.settings.use_toeplitz(False), gpytorch.settings.fast_pred_var():
+            with torch.no_grad(), gpytorch.settings.use_toeplitz(False), \
+                gpytorch.settings.fast_pred_var():
                 preds = self.forward(test_x)
 
             return preds.mean
@@ -249,5 +253,7 @@ class DNNGPV2(gpytorch.models.ExactGP):
 
         def load(self, mdl):
             state_dict = torch.load(mdl)
+            print("[INFO]: loading model to %s" % path)
             self.load_state_dict(state_dict)
             self.set_eval()
+

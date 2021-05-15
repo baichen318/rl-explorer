@@ -130,13 +130,13 @@ dataset-output-path: data/dataset/dataset-cc.csv
 model: xgb
 
 # Learning rate for `dnn-gp`
-learning-rate: 0.001
+learning-rate: 0.0001
 
 # Optimizer for `dnn-gp` Adam | SGD
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-max-epoch: 150
+max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
 max-bo-steps: 30
