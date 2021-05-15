@@ -124,7 +124,7 @@ config-name:
   - chipyard.TestHarness.BOOMDAC1606Config10Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: data/ml/dataset-dac16/dataset.csv
+dataset-output-path: data/dataset/dataset-cc.csv
 
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model: xgb
@@ -142,7 +142,7 @@ max-epoch: 150
 max-bo-steps: 5
 
 # Output path for models
-model-output-path: model
+model-output-path: model/bo30-b8
 
 # Output path for results
 rpt-output-path: rpts

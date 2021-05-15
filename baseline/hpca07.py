@@ -1,34 +1,21 @@
+import sys
+sys.path.append("..")
 import os
 import heapq
 import time
 import numpy as np
-from sklearn.multioutput import MultiOutputRegressor
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from util import parse_args, get_configs, read_csv_v2, mse, r2, mape, hyper_volume, write_csv, adrs
-from model import split_dataset, kFold
-from vis import validate
+from sample import RandomSampler
+from util import parse_args, get_configs, load_dataset, \
+    split_dataset, rmse, hyper_volume, adrs, strflush
+from vis import plot_predictions_with_gt
 from space import parse_design_space
 from handle_data import reference
-
-def create_model():
-	model = Ridge(alpha=0.01, tol=1e-8)
-
-	return model
-
-def get_dataset():
-	dataset, title = read_csv_v2(configs["dataset-output-path"])
-	dataset = validate(dataset)
-
-	# scale dataset to balance c.c. and power dissipation
-	dataset[:, -2] = dataset[:, -2] / 10000
-	dataset[:, -1] = dataset[:, -1] * 100
-
-	return dataset
 
 def perfcmp(point, score):
     """
@@ -63,7 +50,7 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
     global pf
 
     points = design_space.random_sample(parallel_size)
-    _scores = np.exp(model.predict(pf.fit_transform(points)))
+    _scores = model.predict(points)
     scores = np.empty(parallel_size)
     for i, (p, s) in enumerate(zip(points, _scores)):
         scores[i] = perfcmp(p, s)
@@ -89,7 +76,7 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
         new_points = np.empty_like(points)
         for i, p in enumerate(points):
             new_points[i] = design_space.random_walk(p)
-        _new_scores = np.exp(model.predict(pf.fit_transform(points)))
+        _new_scores = model.predict(points)
         new_scores = np.empty(parallel_size)
         for i, (p, s) in enumerate(zip(new_points, _new_scores)):
             new_scores[i] = perfcmp(p, s)
@@ -124,103 +111,133 @@ def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
 
     return heap_items
 
+class SurrogateModel(object):
+    """
+        SurrogateModel: 12 traditional basic ML models
+    """
+    def __init__(self):
+        super(SurrogateModel, self).__init__()
+        self.preprocess = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
+        self.model = self.init()
+
+    def init(self):
+	    # return Ridge(alpha=0.01, tol=1e-8)
+	    return Ridge(tol=1e-8)
+
+    def fit(self, x, y):
+        """
+            x: <numpy.ndarray> (M x 19)
+            y: <numpy.ndarray> (M x 2)
+        """
+        x = self.preprocess.fit_transform(x)
+        y = np.log(y)
+        self.model.fit(x, y)
+
+    def predict(self, x):
+        """
+            x: <numpy.ndarray> (M x 19)
+        """
+        x = self.preprocess.fit_transform(x)
+        return np.exp(self.model.predict(x))
+
+class BayesianOptimization(object):
+    """docstring for BayesianOptimization"""
+    def __init__(self, configs):
+        super(BayesianOptimization, self).__init__()
+        self.configs = configs
+        # build model
+        self.model = SurrogateModel()
+        self.space = parse_design_space(self.configs["design-space"])
+        self.sampler = RandomSampler(self.configs)
+        self.dataset = load_dataset(configs["dataset-output-path"])
+        self.unsampled = None
+
+    def sample(self, dataset):
+        return self.sampler.sample(dataset)
+
+    def fit(self, x, y):
+        self.model.fit(x, y)
+
+    def predict(self, x):
+        return self.model.predict(x)
+
+    def run(self):
+        x, y = [], []
+        dataset = self.dataset.copy()
+        for i in range(self.configs["max-bo-steps"]):
+            dataset, sample = self.sample(dataset)
+            _x, _y = split_dataset(sample)
+            # add `_x` & `_y` to `x` & `y` respectively
+            if len(x) == 0:
+                for j in _x:
+                    x.append(j)
+                x = np.array(x)
+                for j in _y:
+                    y.append(j)
+                y = np.array(y)
+            else:
+                for j in _x:
+                    x = np.insert(x, len(x), j, axis=0)
+                for j in _y:
+                    y = np.insert(y, len(y), j, axis=0)
+            self.fit(x, y)
+
+            __y = self.predict(x)
+
+            msg = "[INFO]: Training Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(y[:, 0], __y[:, 0])) + \
+                "RMSE of power: %.8f on %d train data" % (rmse(y[:, 1], __y[:, 1]), len(x))
+            strflush(msg)
+            # validate
+            __x, __y = split_dataset(dataset)
+            ___y = self.predict(__x)
+            msg = "[INFO]: Testing Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(__y[:, 0], ___y[:, 0])) + \
+                "RMSE of power: %.8f on %d test data" % (rmse(__y[:, 1], ___y[:, 1]), len(__x))
+            strflush(msg)
+
+        self.unsampled = dataset
+
+    def validate(self, logger=None):
+        x, y = split_dataset(self.unsampled)
+        _y = self.predict(x)
+        msg = "[INFO]: RMSE of c.c.: %.8f, " % rmse(y[:, 0], _y[:, 0]) + \
+            "RMSE of power: %.8f on %d test data" % (rmse(y[:, 1], _y[:, 1]), len(self.unsampled))
+        strflush(msg)
+
+        # visualize
+        plot_predictions_with_gt(
+            y,
+            _y,
+            title="HPCA07",
+            output=self.configs["fig-output-path"]
+        )
+
+    def save(self):
+        output = os.path.join(
+            self.configs["model-output-path"],
+            "hpca07.mdl"
+        )
+        joblib.dump(
+            self.model,
+            output
+        )
+        msg = "[INFO]: saving model to %s" % output
+        strflush(msg)
+
+    def load(self):
+        output = os.path.join(
+            self.configs["model-output-path"],
+            "hpca07.mdl"
+        )
+        self.model = joblib.load(output)
+        msg = "[INFO]: loading model from %s" % output
+        strflush(msg)
+
 def main():
-	global dataset
-	global pf
-	dataset = get_dataset()
-
-	kf = kFold()
-	index = kf.split(dataset)
-
-	perf = float('inf')
-	cnt = 0
-	mse_l, mse_p, r2_l, r2_p, mape_l, mape_p = 0, 0, 0, 0, 0, 0
-	max_r2_l, max_r2_p = -float('inf'), -float('inf')
-	model = create_model()
-	pf = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
-	for train_index, test_index in index:
-		print("train:\n%s" % str(train_index))
-		print("test:\n%s" % str(test_index))
-
-		x_train, y_train = split_dataset(dataset[train_index])
-		x_test, y_test = split_dataset(dataset[test_index])
-
-		x_train = pf.fit_transform(x_train)
-		y_train = np.log(y_train)
-		model.fit(x_train, y_train)
-
-		_y = model.predict(pf.fit_transform(x_test))
-		_y = np.exp(_y)
-
-		# analysis
-		_mse_l = mse(y_test[:, 0], _y[:, 0])
-		_mse_p = mse(y_test[:, 1], _y[:, 1])
-		_r2_l = r2(y_test[:, 0], _y[:, 0])
-		_r2_p = r2(y_test[:, 1], _y[:, 1])
-		_mape_l = mape(y_test[:, 0], _y[:, 0])
-		_mape_p = mape(y_test[:, 1], _y[:, 1])
-		print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (_mse_l, _mse_p))
-		print("[INFO]: R2 (latency): %.8f, R2 (power): %.8f" % (_r2_l, _r2_p))
-		print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (_mape_l, _mape_p))
-		if perf > (0.5 * _mape_l + 0.5 * _mape_p):
-			perf = (0.5 * _mape_l + 0.5 * _mape_p)
-			joblib.dump(
-				model,
-				os.path.join(
-					"model",
-					"hpca07.mdl"
-				)
-			)
-			min_mape_l = _mape_l
-			min_mape_p = _mape_p
-		if _r2_l > max_r2_l:
-			max_r2_l = _r2_l
-		if _r2_p > max_r2_p:
-			max_r2_p = _r2_p
-		cnt += 1
-		mse_l += _mse_l
-		mse_p += _mse_p
-		r2_l += _r2_l
-		r2_p += _r2_p
-		mape_l += _mape_l
-		mape_p += _mape_p
-	msg = "[INFO]: achieve the best performance: MAPE (latency): %.8f " %  min_mape_l + \
-		"MAPE (power): %.8f in one round. " % min_mape_p + \
-		"Average MAPE (latency): %.8f, " % float(mape_l / cnt) + \
-		"average MAPE (power): %.8f, " % float(mape_p / cnt) + \
-		"average R2 (latency): %.8f, " % float(r2_l / cnt) + \
-		"average R2 (power): %.8f, " % float(r2_p / cnt) + \
-		"the best R2 (latency): %.8f, " % max_r2_l + \
-		"the best R2 (power): %.8f" % max_r2_p
-	print(msg)
-
-	model = joblib.load(
-		os.path.join(
-			"model",
-			"hpca07.mdl"
-		)
-	)
-	# search
-	heap = sa_search(model, design_space, top_k=50,
-		n_iter=10000, early_stop=5000, parallel_size=1024, log_interval=100)
-    # saving results
-	write_csv(
-		os.path.join(
-			"rpts",
-			"hpca07" + '-prediction.rpt'
-		),
-		heap,
-		mode='w'
-	)
-
+    manager = BayesianOptimization(configs)
+    manager.run()
+    manager.validate()
+    manager.save()
 
 if __name__ == "__main__":
-	# global variables
-	dataset = None
-	pf = None
-	argv = parse_args()
-	configs = get_configs(argv.configs)
-	design_space = parse_design_space(
-		configs["design-space"]
-	)
-	main()
+    configs = get_configs(parse_args().configs)
+    main()

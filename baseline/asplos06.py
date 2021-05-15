@@ -11,7 +11,8 @@ try:
 except ImportError:
     import joblib
 from sample import RandomSampler
-from util import parse_args, get_configs, load_dataset, split_dataset, hyper_volume, adrs, rmse, strflush
+from util import parse_args, get_configs, load_dataset, \
+    split_dataset, hyper_volume, adrs, rmse, strflush
 from vis import plot_predictions_with_gt
 from space import parse_design_space
 from handle_data import reference
@@ -23,8 +24,6 @@ class SurrogateModel(object):
     """
     def __init__(self):
         super(SurrogateModel, self).__init__()
-        # self.cc = self.init()
-        # self.power = self.init()
         self.model = self.init()
 
     def init(self):

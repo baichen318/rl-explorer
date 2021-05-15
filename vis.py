@@ -46,4 +46,4 @@ def plot_predictions_with_gt(gt, preds, **kwargs):
     )
     print("[INFO]: save the figure", output)
     plt.savefig(output)
-    plt.show()
+    # plt.show()

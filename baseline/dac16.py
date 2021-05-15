@@ -1,3 +1,5 @@
+import sys
+sys.path.append("..")
 import os
 import heapq
 import random
@@ -10,16 +12,16 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from util import parse_args, get_configs, read_csv_v2, mse, r2, mape, hyper_volume, write_csv, adrs
-from model import split_dataset, kFold
-from vis import validate
+from util import parse_args, get_configs, load_dataset, \
+    split_dataset, rmse, strflush
+from vis import plot_predictions_with_gt
 from space import parse_design_space
 from handle_data import reference
 
 def create_model(hidden=4):
 	mlp = MLPRegressor(
 		hidden_layer_sizes=(16, hidden),
-		activation="relu",
+		activation="logistic",
 		solver="adam",
 		alpha=0.0001,
 		learning_rate="adaptive",
@@ -30,9 +32,9 @@ def create_model(hidden=4):
 	)
 	rt = MultiOutputRegressor(
 		AdaBoostRegressor(
-			n_estimators=100,
-			learning_rate=0.001,
-			loss='linear'
+			n_estimators=50,
+			learning_rate=1,
+			loss='square'
 		)
 	)
 
@@ -41,25 +43,22 @@ def create_model(hidden=4):
 		"rt": rt
 	}
 
-def train_model(h, x, y):
-	h["mlp"].fit(x, y)
-	h["rt"].fit(h["mlp"].predict(x), y)
-	return h
+def train_model(H, x, y):
+	H["mlp"].fit(x, y)
+	H["rt"].fit(H["mlp"].predict(x), y)
 
-def predict_model(h, x):
-	return h["rt"].predict(h["mlp"].predict(x))
+def predict_model(H, x):
+    return H["rt"].predict(H["mlp"].predict(x))
 
-def init_actboost(P):
-	M1 = 6
-	M2 = 8
-	x, y = split_dataset(P)
-	h1 = create_model(M1)
-	h2 = create_model(M2)
+def init_actboost(L):
+	x, y = split_dataset(L)
+	H1 = create_model(hidden=6)
+	H2 = create_model(hidden=8)
 
-	h1 = train_model(h1, x, y)
-	h2 = train_model(h2, x, y)
+	train_model(H1, x, y)
+	train_model(H2, x, y)
 	
-	return h1, h2
+	return H1, H2
 
 def calc_cv(data1, data2):
 	"""
@@ -78,8 +77,8 @@ def calc_cv(data1, data2):
 		cv1 = _calc_cv(np.array([data1[i][0], data2[i][0]]))
 		cv2 = _calc_cv(np.array([data1[i][1], data2[i][1]]))
 		cv.append((i, 0.5 * cv1 + 0.5 * cv2))
-
-	cv = sorted(cv, key=lambda t:t[1])
+    # big -> small
+	cv = sorted(cv, key=lambda t:t[1], reverse=True)
 
 	return cv
 
@@ -200,179 +199,91 @@ def sa_search(rt1, rt2, design_space, top_k=5, n_iter=500,
 
     return heap_items
 
+def generate_LU(dataset):
+    """
+        generate L and U dataset
+        initially, L contains 64 designs
+    """
+    idx = random.sample(range(len(dataset)), 64)
+    L = []
+    for i in idx:
+        L.append(dataset[i])
+    return np.array(L), np.delete(dataset, idx, axis=0)
+
+def generate_P_from_U(dataset, p=8):
+    idx = random.sample(range(len(dataset)), p)
+    P = []
+    for i in idx:
+        P.append(dataset[i])
+    return np.array(P), np.delete(dataset, idx, axis=0)
+
 def main():
-	global dataset
-	dataset = get_dataset()
+    dataset = load_dataset(configs["dataset-output-path"])
 
-	kf = kFold()
-	index = kf.split(dataset)
+    L, U = generate_LU(dataset)
 
-	K = 50
-	W = 16
-	N = 4
-	cnt = 0
-	perf = float('inf')
-	mse_l, mse_p, r2_l, r2_p, mape_l, mape_p = 0, 0, 0, 0, 0, 0
-	max_r2_l, max_r2_p = -float('inf'), -float('inf')
-	for train_index, test_index in index:
-		print("train:\n%s" % str(train_index))
-		print("test:\n%s" % str(test_index))
-		L, P = create_pool(dataset[train_index], p=len(dataset[train_index]) - 64)
-		h1, h2 = init_actboost(L)
-		for i in range(K):
-			if len(P) > 0:
-				x, y = split_dataset(P)
-				ret1 = predict_model(h1, x)
-				ret2 = predict_model(h2, x)
+    P, U = generate_P_from_U(U, p=32)
 
-				# calculate c.v.
-				cv = calc_cv(ret1, ret2)
-				# move the newly labeled samples from `P` to `L`
-				if len(P) < W:
-					for j in range(len(P)):
-						L = np.insert(L, len(L), P[j], axis=0)
-					P = np.array([])
-				else:
-					idx = random.sample(range(1, W), N)
-					for j in idx:
-						data = np.concatenate((x[cv[j][0]], y[cv[j][0]]))
-						L = np.insert(L, len(L), data, axis=0)
-						_i = 0
-						temp = []
-						for d in P:
-							if ((data - d < 1e-5)).all():
-								temp.append(_i)
-								break
-							_i += 1
-						P = np.delete(P, temp, axis=0)
-				# rebuild
-				x, y = split_dataset(L)
-				h1 = train_model(h1, x, y)
-				h2 = train_model(h2, x, y)
-		# test
-		x_test, y_test = split_dataset(dataset[test_index])
-		ret1 = predict_model(h1, x_test)
-		ret2 = predict_model(h2, x_test)
-		ret = (ret1 + ret2) / 2
+    H1, H2 = init_actboost(L)
 
-		# analysis
-		_mse_l = mse(y_test[:, 0], ret[:, 0])
-		_mse_p = mse(y_test[:, 1], ret[:, 1])
-		_r2_l = r2(y_test[:, 0], ret[:, 0])
-		_r2_p = r2(y_test[:, 1], ret[:, 1])
-		_mape_l = mape(y_test[:, 0], ret[:, 0])
-		_mape_p = mape(y_test[:, 1], ret[:, 1])
-		print("[INFO]: MSE (latency): %.8f, MSE (power): %.8f" % (_mse_l, _mse_p))
-		print("[INFO]: R2 (latency): %.8f, R2 (power): %.8f" % (_r2_l, _r2_p))
-		print("[INFO]: MAPE (latency): %.8f, MAPE (power): %.8f" % (_mape_l, _mape_p))
-		if perf > (0.5 * _mape_l + 0.5 * _mape_p):
-			perf = (0.5 * _mape_l + 0.5 * _mape_p)
-			joblib.dump(
-				h1,
-				os.path.join(
-					"model",
-					"dac16-h1.mdl"
-				)
-			)
-			joblib.dump(
-				h2,
-				os.path.join(
-					"model",
-					"dac16-h2.mdl"
-				)
-			)
-			min_mape_l = _mape_l
-			min_mape_p = _mape_p
+    K = 5
+    W = 16
+    N = 4
+    for i in range(K):
+        x, y = split_dataset(P)
+        y1 = predict_model(H1, x)
+        y2 = predict_model(H2, x)
+        cv = calc_cv(y1, y2)
 
-		if max_r2_l < _r2_l:
-			max_r2_l = _r2_l
-		if max_r2_p < _r2_p:
-			max_r2_p = _r2_p
-		cnt += 1
-		mse_l += _mse_l
-		mse_p += _mse_p
-		r2_l += _r2_l
-		r2_p += _r2_p
-		mape_l += _mape_l
-		mape_p += _mape_p
-	msg = "[INFO]: achieve the best performance: MAPE (latency): %.8f " %  min_mape_l + \
-		"MAPE (power): %.8f in one round. " % min_mape_p + \
-		"Average MAPE (latency): %.8f, " % float(mape_l / cnt) + \
-		"average MAPE (power): %.8f, " % float(mape_p / cnt) + \
-		"average R2 (latency): %.8f, " % float(r2_l / cnt) + \
-		"average R2 (power): %.8f, " % float(r2_p / cnt) + \
-        "the best R2 (latency): %.8f, " % max_r2_l + \
-        "the best R2 (power): %.8f" % max_r2_p
-	print(msg)
+        # choosse `N` from top `W` randomly
+        idx = random.sample(range(W), N)
+        _data = []
+        for j in idx:
+            _data.append(
+                np.concatenate((x[cv[j][0]] * 10000, y[cv[j][0]] / 100))
+            )
+        _data = np.array(_data)
 
-	h1 = joblib.load(
-		os.path.join(
-			"model",
-			"dac16-h1.mdl"
-		)
-	)
-	h2 = joblib.load(
-		os.path.join(
-			"model",
-			"dac16-h2.mdl"
-		)
-	)
-	# search
-	heap = sa_search(h1, h2, design_space, top_k=50,
-		n_iter=10000, early_stop=5000, parallel_size=1024, log_interval=100)
-    # saving results
-	write_csv(
-		os.path.join(
-			"rpts",
-			"dac16" + '-prediction.rpt'
-		),
-		heap,
-		mode='w'
-	)
+        # move the newly labeled samples from P to L
+        for j in _data:
+            L = np.insert(L, len(L), j, axis=0)
+        P = np.delete(P, idx, axis=0)
 
-def analysis():
-    import matplotlib.pyplot as plt
+        # rebuild H1, H2 by new set L
+        H1, H2 = init_actboost(L)
 
-    global dataset
-    dataset = get_dataset()
+        # replenish P by choosing `N` from `U` randomly
+        idx = random.sample(range(len(U)), N)
+        for j in idx:
+            P = np.insert(P, len(P), U[j], axis=0)
+        U = np.delete(U, idx, axis=0)
+    # evaluate on `U`
+    x, y = split_dataset(U)
+    _y = (predict_model(H1, x) + predict_model(H2, x)) / 2
+    msg = "[INFO]: RMSE of c.c.: %.8f, " % rmse(y[:, 0], _y[:, 0]) + \
+        "RMSE of power: %.8f on %d test data" % (rmse(y[:, 1], _y[:, 1]), len(U))
+    strflush(msg)
 
-    h1 = joblib.load(
-        os.path.join(
-            "model",
-            "dac16-h1.mdl"
-        )
+    # save
+    output = os.path.join(
+        configs["model-output-path"],
+        "dac16-1.mdl"
     )
-    h2 = joblib.load(
-        os.path.join(
-            "model",
-            "dac16-h2.mdl"
-        )
+    joblib.dump(H1, output)
+    output = os.path.join(
+        configs["model-output-path"],
+        "dac16-2.mdl"
     )
+    joblib.dump(H2, output)
 
-    ret = (predict_model(h1, dataset[:, :-2]) + predict_model(h2, dataset[:, :-2])) / 2
-
-    print(mape(dataset[:, -2], ret[:, 0]), mape(dataset[:, -1], ret[:, 1]), r2(dataset[:, -2], ret[:, 0]), r2(dataset[:, -1], ret[:, 1]))
-
-    # plt.scatter(ret[:, 0], dataset[:, -2], s=2)
-    # plt.xlabel("pred")
-    # plt.ylabel("gt")
-    # plt.title("pred v.s. gt (c.c.)")
-    # plt.grid()
-
-    plt.scatter(ret[:, 1], dataset[:, -1], s=2)
-    plt.xlabel("pred")
-    plt.ylabel("gt")
-    plt.title("pred v.s. gt (power)")
-    plt.grid()
-    plt.show()
+    plot_predictions_with_gt(
+        y,
+        _y,
+        title="DAC16",
+        output=configs["fig-output-path"]
+    )
 
 if __name__ == "__main__":
-	# global variables
-	dataset = None
-	argv = parse_args()
-	configs = get_configs(argv.configs)
-	design_space = parse_design_space(
-		configs["design-space"]
-	)
-	main()
-	# analysis()
+    configs = get_configs(parse_args().configs)
+    main()
+

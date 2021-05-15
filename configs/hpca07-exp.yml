@@ -124,7 +124,7 @@ config-name:
   - chipyard.TestHarness.BOOMHPCA07Config9Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: data/ml/dataset-hpca07/dataset.csv
+dataset-output-path: data/dataset/dataset-cc.csv
 
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model: xgb
@@ -139,10 +139,10 @@ optimizer: Adam
 max-epoch: 150
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 5
+max-bo-steps: 30
 
 # Output path for models
-model-output-path: model
+model-output-path: model/bo30-b8
 
 # Output path for results
 rpt-output-path: rpts

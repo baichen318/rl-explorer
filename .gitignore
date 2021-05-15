@@ -148,4 +148,5 @@ img/
 # latency.csv
 # area.csv
 test.py
+*.pdf
 
