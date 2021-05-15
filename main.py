@@ -6,6 +6,7 @@ def main():
     manager = BayesianOptimization(configs)
     manager.run()
     manager.validate()
+    manager.save()
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)

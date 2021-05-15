@@ -1,4 +1,5 @@
 
+import os
 import numpy as np
 try:
     from sklearn.externals import joblib
@@ -203,11 +204,15 @@ class BayesianOptimization(object):
                     y = np.insert(y, len(y), j, axis=0)
             self.fit(x, y)
 
+            __y = self.predict(x)
+            msg = "[INFO]: Training Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(y[:, 0], __y[:, 0])) + \
+                "RMSE of power: %.8f on %d train data" % (rmse(y[:, 1], __y[:, 1]), len(x))
+            strflush(msg)
             # validate
             __x, __y = split_dataset(dataset)
             ___y = self.predict(__x)
-            msg = "[INFO]: Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(__y[:, 0], ___y[:, 0])) + \
-                "RMSE of power: %.8f on %d test data" % (rmse(__y[:, 1], ___y[:, 1]), len(x))
+            msg = "[INFO]: Testing Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(__y[:, 0], ___y[:, 0])) + \
+                "RMSE of power: %.8f on %d test data" % (rmse(__y[:, 1], ___y[:, 1]), len(__x))
             strflush(msg)
 
         self.unsampled = dataset
@@ -228,18 +233,23 @@ class BayesianOptimization(object):
         )
 
     def save(self):
+        output = os.path.join(
+            self.configs["model-output-path"],
+            self.configs["model"] + ".mdl"
+        )
         joblib.dump(
             self.model,
-            os.path.join(
-                self.configs["model-output-path"],
-                self.configs["model"] + ".mdl"
-            )
+            output
         )
+        msg = "[INFO]: saving model to %s" % output
+        strflush(msg)
 
     def load(self):
-        self.model = joblib.load(
-            os.path.join(
-                self.configs["model-output-path"],
-                self.configs["model"] + ".mdl"
-            )
+        output = os.path.join(
+            self.configs["model-output-path"],
+            self.configs["model"] + ".mdl"
         )
+        self.model = joblib.load(output)
+        msg = "[INFO]: loading model from %s" % output
+        strflush(msg)
+
