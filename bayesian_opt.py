@@ -252,4 +252,3 @@ class BayesianOptimization(object):
         self.model = joblib.load(output)
         msg = "[INFO]: loading model from %s" % output
         strflush(msg)
-
