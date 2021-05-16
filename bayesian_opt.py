@@ -7,9 +7,30 @@ except ImportError:
     import joblib
 from space import parse_design_space
 from sample import RandomSampler
-from util import load_dataset, split_dataset, rmse, strflush
+from util import load_dataset, split_dataset, rmse, strflush, adrs, write_csv
 from vis import plot_predictions_with_gt
+from handle_data import reference
+from search import perfcmp
 from exception import UnDefinedException
+
+def calc_adrs(point, score):
+    """
+        point: `np.array`
+        score: `np.array`
+    """
+    # `point[1]` is decodeWidth
+    # scale c.c. and power dissipation
+    ref = [reference[int(point[1]) - 1][0] / 90000, reference[int(point[1]) - 1][1] * 10]
+    return adrs(ref, score)
+
+def calc_hv(x, pred):
+    hv = []
+    for i in range(len(x)):
+        hv.append((i, calc_adrs(x[i], pred[i])))
+    # small -> big
+    hv = sorted(hv, key=lambda t: t[1])
+
+    return hv
 
 class SurrogateModel(object):
     """
@@ -217,20 +238,43 @@ class BayesianOptimization(object):
 
         self.unsampled = dataset
 
-    def validate(self, logger=None):
+    def explore(self, logger=None):
         x, y = split_dataset(self.unsampled)
         _y = self.predict(x)
-        msg = "[INFO]: RMSE of c.c.: %.8f, " % rmse(y[:, 0], _y[:, 0]) + \
-            "RMSE of power: %.8f on %d test data" % (rmse(y[:, 1], _y[:, 1]), len(self.unsampled))
-        strflush(msg)
 
+        hv = calc_hv(x, _y)
+        # transform `_y` to top predictions
+        pred = []
+        for (idx, _hv) in hv:
+            pred.append(_y[idx])
+        pred = np.array(pred)
+
+        # highlight `self.unsampled`
+        highlight = []
+        for (idx, _hv) in hv:
+            highlight.append(y[idx])
+        highlight = np.array(highlight)
         # visualize
         plot_predictions_with_gt(
             y,
-            _y,
+            pred,
+            highlight,
+            top_k=self.configs["top-k"],
             title=self.configs["model"],
-            output=self.configs["fig-output-path"]
+            output=self.configs["fig-output-path"],
         )
+
+        # write results
+        data = []
+        for (idx, _hv) in hv:
+            data.append(np.concatenate((x[idx], y[idx])))
+        data = np.array(data)
+        output = os.path.join(
+            self.configs["rpt-output-path"],
+            self.configs["model"] + ".rpt"
+        )
+        print("[INFO]: saving results to %s" % output)
+        write_csv(output, data[:self.configs["top-k"], :])
 
     def save(self):
         output = os.path.join(

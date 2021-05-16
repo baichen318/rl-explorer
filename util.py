@@ -105,7 +105,7 @@ def split_dataset(dataset):
     for data in dataset:
         x.append(data[0:-2])
         # scale c.c. & power approximately
-        y.append(np.array([data[-2] / 10000, data[-1] * 100]))
+        y.append(np.array([data[-2] / 90000, data[-1] * 10]))
 
     return np.array(x), np.array(y)
 

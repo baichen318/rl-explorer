@@ -166,7 +166,6 @@ class BayesianOptimization(object):
             for j, (_x, _y) in enumerate(train_loader):
                 self.optimizer.zero_grad()
                 pred = self.model(_x)
-                # print(pred, _y)
                 loss = self.loss(pred, _y)
                 loss.backward()
                 self.optimizer.step()
@@ -198,8 +197,6 @@ class BayesianOptimization(object):
             self.fit(x, y)
 
             __y = self.predict(x).detach().numpy()
-            # print("train:", __y)
-            # print(_y)
 
             msg = "[INFO]: Training Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(y[:, 0], __y[:, 0])) + \
                 "RMSE of power: %.8f on %d train data" % (rmse(y[:, 1], __y[:, 1]), len(x))

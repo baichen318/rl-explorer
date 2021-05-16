@@ -238,7 +238,7 @@ class RandomSampler(Sampler):
     def set_random_state(self, random_state):
         random.seed(random_state)
 
-    def sample(self, dataset, batch=8):
+    def sample(self, dataset, batch=5):
         """
             dataset: <numpy.ndarray> (M x N)
         """

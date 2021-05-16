@@ -122,7 +122,7 @@ config-name:
 dataset-output-path: data/dataset/dataset-cc.csv
 
 # Model: lr | lasso | ridge | elastic | svr | xgb | rf | ab | gb | bg | gp | br | ""
-model: br
+model: svr
 
 # Learning rate for `dnn-gp`
 learning-rate: 0.001
@@ -131,16 +131,19 @@ learning-rate: 0.001
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-max-epoch: 1500
+max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 30
+max-bo-steps: 9
 
 # Number for clusters
 cluster: 5
 
+# Top K
+top-k: 10
+
 # Output path for models
-model-output-path: model/bo30-b8
+model-output-path: model/bo9-b5
 
 # Output path for results
 rpt-output-path: rpts

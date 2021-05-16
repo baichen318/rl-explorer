@@ -13,7 +13,7 @@ def perfcmp(point, score):
     """
     # `point[1]` is decodeWidth
     # scale c.c. and power dissipation
-    ref = [reference[point[1] - 1][0] / 10000, reference[point[1] - 1][1] * 100]
+    ref = [reference[int(point[1]) - 1][0] / 90000, reference[int(point[1]) - 1][1] * 10]
     return hyper_volume(ref, score)
 
 def _exist_duplicate(s, heap):

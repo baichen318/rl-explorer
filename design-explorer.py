@@ -4,13 +4,12 @@ import os
 import torch
 import gpytorch
 import numpy as np
-from sample import ClusteringRandomizedTED
 from dnn_gp import DNNGP, DNNGPV2
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from sample import RandomSampler
+from sample import ClusteringRandomizedTED, RandomSampler
 from util import parse_args, get_configs, load_dataset, split_dataset, rmse, strflush
 from vis import plot_predictions_with_gt
 from space import parse_design_space
@@ -77,7 +76,8 @@ def predict_by_dnn_gp(model, x, y):
     y = y.to(model.device)
     return analysis(y.numpy(), _y.numpy())
 
-def sample(sampler, unsampled_dataset, sampled_dataset):
+def sample(sampler, unsampled_dataset):
+    sampled_dataset = []
     data = sampler.crted(unsampled_dataset)
     # move sampled data from `unsampled_dataset` to `sampled_dataset`
     temp = []
@@ -90,7 +90,7 @@ def sample(sampler, unsampled_dataset, sampled_dataset):
             idx += 1
         sampled_dataset.append(d)
     unsampled_dataset = np.delete(unsampled_dataset, temp, axis=0)
-    return unsampled_dataset
+    return unsampled_dataset, np.array(sampled_dataset)
 
 # def design_explorer_v1():
 #     dataset = get_data()
@@ -305,12 +305,12 @@ class BayesianOptimization(object):
         self.model1 = None
         self.model2 = None
         self.space = parse_design_space(self.configs["design-space"])
-        self.sampler = RandomSampler(self.configs)
+        self.sampler = ClusteringRandomizedTED(self.configs)
         self.dataset = load_dataset(configs["dataset-output-path"])
         self.unsampled = None
 
     def sample(self, dataset):
-        return self.sampler.sample(dataset)
+        return self.sampler.crted(dataset)
 
     # def fit(self, x, y):
     #     self.model.fit(x, y)
@@ -322,8 +322,8 @@ class BayesianOptimization(object):
         x, y = [], []
         dataset = self.dataset.copy()
         for i in range(self.configs["max-bo-steps"]):
-            dataset, sample = self.sample(dataset)
-            _x, _y = split_dataset(sample)
+            dataset, _sample = sample(self.sampler, dataset)
+            _x, _y = split_dataset(_sample)
             # add `_x` & `_y` to `x` & `y` respectively
             if len(x) == 0:
                 for j in _x:
@@ -344,9 +344,6 @@ class BayesianOptimization(object):
 
             y1 = self.model1.predict(x).numpy()
             y2 = self.model2.predict(x).numpy()
-            # print("train:", y1)
-            # print("train:", y2)
-            # print("train:", y)
             msg = "[INFO]: Training Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(y[:, 0], y1)) + \
                 "RMSE of power: %.8f on %d train data" % (rmse(y[:, 1], y2), len(x))
             strflush(msg)
@@ -354,9 +351,6 @@ class BayesianOptimization(object):
             _x, _y = split_dataset(dataset)
             y1 = self.model1.predict(_x).numpy()
             y2 = self.model2.predict(_x).numpy()
-            # print("test:", y1)
-            # print("test:", y2)
-            # print("test:", _y)
             msg = "[INFO]: Testing Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(_y[:, 0], y1)) + \
                 "RMSE of power: %.8f on %d test data" % (rmse(_y[:, 1], y2), len(_x))
             strflush(msg)
