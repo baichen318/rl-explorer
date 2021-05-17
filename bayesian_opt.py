@@ -90,13 +90,13 @@ class SurrogateModel(object):
         return MultiOutputRegressor(
             XGBRegressor(
                 max_depth=3,
-                gamma=0.0001,
+                # gamma=0.0001,
                 min_child_weight=1,
                 subsample=1.0,
                 eta=0.3,
                 reg_lambda=1.00,
                 alpha=0,
-                objective='reg:linear',
+                objective='reg:squarederror',
                 n_jobs=-1
             )
         )
@@ -128,8 +128,8 @@ class SurrogateModel(object):
         from sklearn.multioutput import MultiOutputRegressor
         return MultiOutputRegressor(
             GradientBoostingRegressor(
-                loss='huber',
-                learning_rate=0.01,
+                loss='ls',
+                learning_rate=0.1,
                 n_estimators=100,
             )
         )
