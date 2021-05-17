@@ -83,11 +83,10 @@ flow: search
 initialize-method: random
 
 # ClustringBootstrapTED:
-Nrted: 100
+Nrted: 5
 mu: 0.1
 sig: 0.1
-Batch: 1000
-batch: 60
+batch: 5
 
 # Size
 initialize-size: 200
@@ -120,7 +119,7 @@ config-name:
   - chipyard.TestHarness.BOOMConfig3Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: data/dataset.csv
+dataset-output-path: data/dataset/dataset-cc.csv
 
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model: lr
@@ -132,17 +131,25 @@ learning-rate: 0.001
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-max-epoch: 150
+max-epoch: 380
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 5
+max-bo-steps: 9
+
+# Number for clusters
+cluster: 5
+
+# Top K
+top-k: 10
 
 # Output path for models
-model-output-path: model
+model-output-path: model/bo9-b5
 
 # Output path for results
 rpt-output-path: rpts
 
 # Output path for fig.
-fig-output-path: data/figs
+fig-output-path: data/figs/dnn-gp.pdf
 
+# Flag for `vis-crted`
+vis-crted: False

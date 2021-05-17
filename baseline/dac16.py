@@ -13,7 +13,8 @@ try:
 except ImportError:
     import joblib
 from util import parse_args, get_configs, load_dataset, \
-    split_dataset, rmse, strflush
+    split_dataset, rmse, strflush, write_csv
+from bayesian_opt import calc_hv
 from vis import plot_predictions_with_gt
 from space import parse_design_space
 from handle_data import reference
@@ -217,6 +218,19 @@ def generate_P_from_U(dataset, p=8):
         P.append(dataset[i])
     return np.array(P), np.delete(dataset, idx, axis=0)
 
+def dump_model(H1, H2):
+    # save
+    output = os.path.join(
+        configs["model-output-path"],
+        "dac16-1.mdl"
+    )
+    joblib.dump(H1, output)
+    output = os.path.join(
+        configs["model-output-path"],
+        "dac16-2.mdl"
+    )
+    joblib.dump(H2, output)
+
 def main():
     dataset = load_dataset(configs["dataset-output-path"])
 
@@ -240,7 +254,7 @@ def main():
         _data = []
         for j in idx:
             _data.append(
-                np.concatenate((x[cv[j][0]] * 10000, y[cv[j][0]] / 100))
+                np.concatenate((x[cv[j][0]] * 90000, y[cv[j][0]] / 10))
             )
         _data = np.array(_data)
 
@@ -264,24 +278,41 @@ def main():
         "RMSE of power: %.8f on %d test data" % (rmse(y[:, 1], _y[:, 1]), len(U))
     strflush(msg)
 
-    # save
-    output = os.path.join(
-        configs["model-output-path"],
-        "dac16-1.mdl"
-    )
-    joblib.dump(H1, output)
-    output = os.path.join(
-        configs["model-output-path"],
-        "dac16-2.mdl"
-    )
-    joblib.dump(H2, output)
+    dump_model(H1, H2)
 
+    hv = calc_hv(x, _y)
+    # transform `_y` to top predictions
+    pred = []
+    for (idx, _hv) in hv:
+        pred.append(_y[idx])
+    pred = np.array(pred)
+
+    # highlight `self.unsampled`
+    highlight = []
+    for (idx, _hv) in hv:
+        highlight.append(y[idx])
+    highlight = np.array(highlight)
+    # visualize
     plot_predictions_with_gt(
         y,
-        _y,
-        title="DAC16",
-        output=configs["fig-output-path"]
+        pred,
+        highlight,
+        top_k=configs["top-k"],
+        title="dac16",
+        output=configs["fig-output-path"],
     )
+
+    # write results
+    data = []
+    for (idx, _hv) in hv:
+        data.append(np.concatenate((x[idx], y[idx])))
+    data = np.array(data)
+    output = os.path.join(
+        configs["rpt-output-path"],
+        "dac16" + ".rpt"
+    )
+    print("[INFO]: saving results to %s" % output)
+    write_csv(output, data[:configs["top-k"], :])
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)

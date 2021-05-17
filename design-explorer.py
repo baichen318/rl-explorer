@@ -10,7 +10,9 @@ try:
 except ImportError:
     import joblib
 from sample import ClusteringRandomizedTED, RandomSampler
-from util import parse_args, get_configs, load_dataset, split_dataset, rmse, strflush
+from bayesian_opt import calc_hv
+from util import parse_args, get_configs, load_dataset, split_dataset, \
+    rmse, strflush, write_csv
 from vis import plot_predictions_with_gt
 from space import parse_design_space
 from exception import UnDefinedException
@@ -357,24 +359,50 @@ class BayesianOptimization(object):
 
         self.unsampled = dataset
 
-    def validate(self, logger=None):
+    def explore(self, logger=None):
         x, y = split_dataset(self.unsampled)
         y1 = self.model1.predict(x).numpy()
         y2 = self.model2.predict(x).numpy()
-        msg = "[INFO]: RMSE of c.c.: %.8f, " % rmse(y[:, 0], y1) + \
-            "RMSE of power: %.8f on %d test data" % (rmse(y[:, 1], y2), len(self.unsampled))
-        strflush(msg)
+
+        # transform the layout of `y1` & `y2`
         _y = []
         for i in range(len(y1)):
             _y.append([y1[i], y2[i]])
         _y = np.array(_y)
+
+        hv = calc_hv(x, _y)
+        # transform `_y` to top predictions
+        pred = []
+        for (idx, _hv) in hv:
+            pred.append(_y[idx])
+        pred = np.array(pred)
+
+        # highlight `self.unsampled`
+        highlight = []
+        for (idx, _hv) in hv:
+            highlight.append(y[idx])
+        highlight = np.array(highlight)
         # visualize
         plot_predictions_with_gt(
             y,
-            _y,
+            pred,
+            highlight,
+            top_k=self.configs["top-k"],
             title="dnn-gp",
-            output=self.configs["fig-output-path"]
+            output=self.configs["fig-output-path"],
         )
+
+        # write results
+        data = []
+        for (idx, _hv) in hv:
+            data.append(np.concatenate((x[idx], y[idx])))
+        data = np.array(data)
+        output = os.path.join(
+            self.configs["rpt-output-path"],
+            "dnn-gp" + ".rpt"
+        )
+        print("[INFO]: saving results to %s" % output)
+        write_csv(output, data[:self.configs["top-k"], :])
 
     def save(self):
         output = os.path.join(
@@ -403,7 +431,7 @@ class BayesianOptimization(object):
 def main():
     manager = BayesianOptimization(configs)
     manager.run()
-    manager.validate()
+    manager.explore()
     manager.save()
 
 if __name__ == "__main__":

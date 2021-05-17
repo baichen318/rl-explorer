@@ -12,9 +12,10 @@ except ImportError:
     import joblib
 from sample import RandomSampler
 from util import parse_args, get_configs, load_dataset, \
-    split_dataset, hyper_volume, adrs, rmse, strflush
+    split_dataset, hyper_volume, adrs, rmse, strflush, write_csv
 from vis import plot_predictions_with_gt
 from space import parse_design_space
+from bayesian_opt import calc_hv
 from handle_data import reference
 
 
@@ -202,20 +203,43 @@ class BayesianOptimization(object):
 
         self.unsampled = dataset
 
-    def validate(self, logger=None):
+    def explore(self, logger=None):
         x, y = split_dataset(self.unsampled)
         _y = self.predict(x)
-        msg = "[INFO]: RMSE of c.c.: %.8f, " % rmse(y[:, 0], _y[:, 0]) + \
-            "RMSE of power: %.8f on %d test data" % (rmse(y[:, 1], _y[:, 1]), len(self.unsampled))
-        strflush(msg)
 
+        hv = calc_hv(x, _y)
+        # transform `_y` to top predictions
+        pred = []
+        for (idx, _hv) in hv:
+            pred.append(_y[idx])
+        pred = np.array(pred)
+
+        # highlight `self.unsampled`
+        highlight = []
+        for (idx, _hv) in hv:
+            highlight.append(y[idx])
+        highlight = np.array(highlight)
         # visualize
         plot_predictions_with_gt(
             y,
-            _y,
-            title="ASPLOS06",
-            output=self.configs["fig-output-path"]
+            pred,
+            highlight,
+            top_k=self.configs["top-k"],
+            title="asplos06",
+            output=self.configs["fig-output-path"],
         )
+
+        # write results
+        data = []
+        for (idx, _hv) in hv:
+            data.append(np.concatenate((x[idx], y[idx])))
+        data = np.array(data)
+        output = os.path.join(
+            self.configs["rpt-output-path"],
+            "asplos06" + ".rpt"
+        )
+        print("[INFO]: saving results to %s" % output)
+        write_csv(output, data[:self.configs["top-k"], :])
 
     def save(self):
         output = os.path.join(
@@ -241,7 +265,7 @@ class BayesianOptimization(object):
 def main():
     manager = BayesianOptimization(configs)
     manager.run()
-    manager.validate()
+    manager.explore()
     manager.save()
 
 if __name__ == "__main__":

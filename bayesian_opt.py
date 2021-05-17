@@ -10,7 +10,6 @@ from sample import RandomSampler
 from util import load_dataset, split_dataset, rmse, strflush, adrs, write_csv
 from vis import plot_predictions_with_gt
 from handle_data import reference
-from search import perfcmp
 from exception import UnDefinedException
 
 def calc_adrs(point, score):
