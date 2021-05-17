@@ -117,14 +117,17 @@ power-output-path: data/ml/dataset-dac16/power.csv
 
 # Config. name
 config-name:
-  - chipyard.TestHarness.BOOMDAC1606Config1Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC1606Config4Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC1606Config5Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC1606Config8Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC1606Config10Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config1Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config3Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config4Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config5Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config6Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config7Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config8Config-ChipTop
+  - chipyard.TestHarness.BOOMDAC16Config10Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: data/dataset/dataset-cc.csv
+dataset-output-path: data/dataset/dataset.csv
 
 # Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
 model: xgb

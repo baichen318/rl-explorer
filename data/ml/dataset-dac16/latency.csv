@@ -1,0 +1,17 @@
+Configure,Cycles
+chipyard.TestHarness.BOOMDAC16Config1Config-ChipTop-mt-vvadd.riscv,113542
+chipyard.TestHarness.BOOMDAC16Config1Config-ChipTop-whetstone.riscv,41347
+chipyard.TestHarness.BOOMDAC16Config3Config-ChipTop-mt-vvadd.riscv,114586
+chipyard.TestHarness.BOOMDAC16Config3Config-ChipTop-whetstone.riscv,41264
+chipyard.TestHarness.BOOMDAC16Config4Config-ChipTop-mt-vvadd.riscv,111024
+chipyard.TestHarness.BOOMDAC16Config4Config-ChipTop-whetstone.riscv,41566
+chipyard.TestHarness.BOOMDAC16Config5Config-ChipTop-mt-vvadd.riscv,114040
+chipyard.TestHarness.BOOMDAC16Config5Config-ChipTop-whetstone.riscv,41374
+chipyard.TestHarness.BOOMDAC16Config6Config-ChipTop-mt-vvadd.riscv,104940
+chipyard.TestHarness.BOOMDAC16Config6Config-ChipTop-whetstone.riscv,41308
+chipyard.TestHarness.BOOMDAC16Config7Config-ChipTop-mt-vvadd.riscv,114833
+chipyard.TestHarness.BOOMDAC16Config7Config-ChipTop-whetstone.riscv,41445
+chipyard.TestHarness.BOOMDAC16Config8Config-ChipTop-mt-vvadd.riscv,112050
+chipyard.TestHarness.BOOMDAC16Config8Config-ChipTop-whetstone.riscv,41470
+chipyard.TestHarness.BOOMDAC16Config10Config-ChipTop-mt-vvadd.riscv,112920
+chipyard.TestHarness.BOOMDAC16Config10Config-ChipTop-whetstone.riscv,41280
