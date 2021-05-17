@@ -103,7 +103,7 @@ def plot_all_model_results(data):
     plt.ylabel('Power')
     plt.title('C.C. vs. Power Model Comparison')
     output = os.path.join(
-        os.path.dirname(kwargs["fig-output-path"]),
+        os.path.dirname(configs["fig-output-path"]),
         "final-result" + ".pdf"
     )
     print("[INFO]: save the figure", output)
