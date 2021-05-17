@@ -55,12 +55,12 @@ def mkdir(path):
         print("[INFO]: create directory: %s" % path)
         os.makedirs(path, exist_ok=True)
 
-def read_csv(data):
+def read_csv(data, header=0):
     """
         data: <str>
     """
     if_exist(data, strict=True)
-    return np.array(pd.read_csv(data))
+    return np.array(pd.read_csv(data, header=header))
 
 def load_dataset(csv_path):
     """
