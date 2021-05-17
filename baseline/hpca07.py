@@ -18,6 +18,9 @@ from vis import plot_predictions_with_gt
 from space import parse_design_space
 from handle_data import reference
 
+seed = 2021
+np.random.seed(seed)
+
 def perfcmp(point, score):
     """
         point: `np.array`

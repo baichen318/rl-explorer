@@ -67,7 +67,7 @@ class SurrogateModel(object):
     def init_elastic(self):
         from sklearn.linear_model import ElasticNet
         return ElasticNet(
-            alpha=0.1,
+            alpha=0.5,
             precompute=True,
             max_iter=1000000,
             tol=1e-5

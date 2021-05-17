@@ -122,7 +122,7 @@ config-name:
 dataset-output-path: data/dataset/dataset.csv
 
 # Model: lr | lasso | ridge | elastic | svr | xgb | rf | ab | gb | bg | gp | br | ""
-model: lr
+model: gp
 
 # Learning rate for `dnn-gp`
 learning-rate: 0.001
@@ -146,10 +146,10 @@ top-k: 10
 model-output-path: model/bo9-b5
 
 # Output path for results
-rpt-output-path: rpts
+rpt-output-path: rpts/bo9-b5
 
 # Output path for fig.
-fig-output-path: data/figs/all-dataset-design-space.pdf
+fig-output-path: data/figs/bo9-b5/all-dataset-design-space.pdf
 
 # Flag for `vis-crted`
 vis-crted: False

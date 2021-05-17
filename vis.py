@@ -14,6 +14,47 @@ colors = [
     'c', 'b', 'g', 'r', 'm', 'y', 'k', # 'w'
 ]
 
+def plot_design_space(dataset):
+    """
+        dataset: <numpy.ndarray>
+    """
+    from handle_data import reference
+
+    labels = ["Small", "Medium", "Large", "Mega", "Giga"]
+    plt.rcParams['savefig.dpi'] = 600
+    plt.rcParams['figure.dpi'] = 600
+
+    for i in range(len(dataset)):
+        plt.scatter(
+            dataset[i][-2],
+            dataset[i][-1],
+            s=1,
+            marker=markers[-6],
+            c=colors[-2],
+        )
+    i = 0
+    for d in reference:
+        plt.scatter(
+            d[0],
+            d[1],
+            s=1,
+            marker=markers[-10],
+            label=labels[i] + "BoomConfig"
+        )
+        i += 1
+    plt.legend()
+    plt.xlabel('C.C.')
+    plt.ylabel('Power')
+    plt.title('C.C. vs. Power - ' + "design space")
+    # plt.grid()
+    output = os.path.join(
+        os.path.dirname(configs["fig-output-path"]),
+        "design-space" + ".pdf"
+    )
+    print("[INFO]: save the figure", output)
+    plt.savefig(output)
+    # plt.show()
+
 def plot_predictions_with_gt(gt, preds, highlight, **kwargs):
     """
         gt: <numpy.ndarray>
@@ -110,13 +151,17 @@ def plot_all_model_results(data):
     plt.savefig(output)
     plt.show()
 
+# def main():
+#     dataset = load_dataset(configs["dataset-output-path"])
+#     plot_design_space(dataset)
+
 def main():
     data = OrderedDict()
-    for f in os.listdir("rpts"):
+    for f in os.listdir(configs["rpt-output-path"]):
         if ".rpt" in f:
             data[f.split('.')[0]] = read_csv(
                 os.path.join(
-                    "rpts",
+                    configs["rpt-output-path"],
                     f
                 ),
                 header=None

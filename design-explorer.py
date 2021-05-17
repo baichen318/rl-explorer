@@ -17,6 +17,9 @@ from vis import plot_predictions_with_gt
 from space import parse_design_space
 from exception import UnDefinedException
 
+seed = 2021
+np.random.seed(seed)
+
 def initialize_dnn_gp(x, y):
     """
         x: <torch.Tensor>

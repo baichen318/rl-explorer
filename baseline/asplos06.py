@@ -18,6 +18,8 @@ from space import parse_design_space
 from bayesian_opt import calc_hv
 from handle_data import reference
 
+seed = 2021
+np.random.seed(seed)
 
 class SurrogateModel(object):
     """

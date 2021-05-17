@@ -8,6 +8,10 @@ from space import parse_design_space
 from util import parse_args, get_configs, create_logger, write_excel, write_txt
 from exception import UnDefinedException
 
+seed = 2021
+random.seed(seed)
+np.random.seed(seed)
+
 class RandomizedTED(object):
     """
         `Nrted`: <int>
@@ -233,7 +237,6 @@ class RandomSampler(Sampler):
     """
     def __init__(self, configs):
         super(RandomSampler, self).__init__(configs)
-        random.seed(round(time()))
 
     def set_random_state(self, random_state):
         random.seed(random_state)

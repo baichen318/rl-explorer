@@ -19,6 +19,10 @@ from vis import plot_predictions_with_gt
 from space import parse_design_space
 from handle_data import reference
 
+seed = 2021
+random.seed(seed)
+np.random.seed(seed)
+
 def create_model(hidden=4):
 	mlp = MLPRegressor(
 		hidden_layer_sizes=(16, hidden),

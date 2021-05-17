@@ -307,6 +307,87 @@ class DesignSpace(Space):
                     new[10] = to_v
         return np.array(new)
 
+    def random_walk_v2(self, vec):
+        """
+            vec: <numpy.ndarray>
+        """
+        def _helper(vec, from_i):
+            candidates = np.array([], dtype=int)
+            if from_i == 0:
+                # merged constraint #1
+                if vec[0] >= vec[1]:
+                    return
+                for c in self.bounds["fetchWidth"]:
+                    if c >= vec[1]:
+                        candidates = np.append(candidates, c)
+            elif from_i == 3:
+                # merged constraint #2
+                if vec[3] % vec[1] == 0:
+                    return
+                else:
+                    for c in self.bounds["numRobEntries"]:
+                        if c % vec[1] == 0:
+                            candidates = np.append(candidates, c)
+            elif from_i == 2:
+                # merged constraint #3
+                if vec[from_i] > vec[0] and vec[from_i] % vec[1] == 0:
+                    return
+                else:
+                    for c in self.bounds["numFetchBufferEntries"]:
+                        if c > vec[0] and c % vec[1] == 0:
+                            candidates = np.append(candidates, c)
+            elif from_i == 18:
+                # merged constraint #4 `ICacheParams_fetchBytes`
+                if vec[0] == 4:
+                    candidates = np.append(candidates, 2)
+                else:
+                    candidates = np.append(candidates, 4)
+            elif from_i == 5:
+                # merged constraint #5 `numIntPhyRegisters`
+                candidates = np.append(candidates, vec[6])
+            elif from_i == 6:
+                # merged constraint #5 `numFpPhysRegisters`
+                candidates = np.append(candidates, vec[5])
+            elif from_i == 8:
+                # merged constraint #6 `numStqEntries`
+                candidates = np.append(candidates, vec[7])
+            elif from_i == 7:
+                # merged constraint #6 `numLdqEntries`
+                candidates = np.append(candidates, vec[8])
+            elif from_i == 12:
+                # merged constraint #7 `fp_issueWidth`
+                candidates = np.append(candidates, vec[10])
+            elif from_i == 10:
+                # merged constraint #7 `mem_issueWidth`
+                candidates = np.append(candidates, vec[12])
+            else:
+                return
+
+            to_v = np.random.choice(candidates)
+            vec[from_i] = to_v
+
+
+        old = list(vec).copy()
+        new = list(vec)
+        _new = old.copy()
+
+        while new == old:
+            from_i = np.random.randint(len(old))
+            while from_i == 1:
+                from_i = np.random.randint(len(old))
+            to_v = np.random.choice(self.bounds[self.features[from_i]])
+            new[from_i] = to_v
+            _helper(new, from_i)
+            while not self.verify_features(np.array(new)):
+                new = _new.copy()
+                from_i = np.random.randint(len(old))
+                while from_i == 1:
+                    from_i = np.random.randint(len(old))
+                to_v = np.random.choice(self.bounds[self.features[from_i]])
+                new[from_i] = to_v
+                _helper(new, from_i)
+        return np.array(new)
+
 def parse_design_space(design_space):
     bounds = OrderedDict()
     dims = []
