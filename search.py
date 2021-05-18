@@ -34,10 +34,10 @@ def _exist_duplicate(s, heap):
 def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
     early_stop=100, parallel_size=128, log_interval=50):
     """
-        `model`: <sklearn.model>
-        `design_space`: <DesignSpace>
+        model: <sklearn.model>
+        design_space: <tuple>
         return:
-        `heap_items`: <list> (<tuple> in <list>), specifically,
+        heap_items: <list> (<tuple> in <list>), specifically,
         <tuple> is (<int>, <list>) or (hv, configurations)
     """
     points = design_space.random_sample_v2(decodeWidth, parallel_size)

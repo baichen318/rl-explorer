@@ -10,6 +10,8 @@ from util import parse_args, get_configs, create_logger, write_excel, write_txt
 from exception import UnDefinedException
 
 seed = 2021
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
 random.seed(seed)
 np.random.seed(seed)
 
@@ -242,15 +244,18 @@ class RandomSampler(Sampler):
     def set_random_state(self, random_state):
         random.seed(random_state)
 
-    def sample(self, dataset, batch=5):
+    def sample(self, x, y, batch=5):
         """
             dataset: <numpy.ndarray> (M x N)
         """
-        idx = random.sample(range(len(dataset)), min(batch, len(dataset)))
-        sampled = []
+        idx = random.sample(range(len(x)), min(batch, len(x)))
+        _x, _y = [], []
         for i in idx:
-            sampled.append(dataset[i])
-        return np.delete(dataset, idx, axis=0), np.array(sampled)
+            _x.append(x[i])
+            _y.append(y[i])
+        x = np.delete(x, idx, axis=0)
+        y = np.delete(y, idx, axis=0)
+        return (x, y), (np.array(_x), np.array(_y))
 
 def sample(configs, problem):
     """
@@ -262,3 +267,7 @@ def sample(configs, problem):
     y = problem.evaluate_true(x)
     problem.remove_sampled_data(x)
     return x, y
+
+def random_sample(configs, x, y, batch=1):
+    sampler = RandomSampler(configs)
+    return sampler.sample(x, y, batch)

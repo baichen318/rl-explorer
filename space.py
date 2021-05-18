@@ -253,16 +253,31 @@ class DesignSpace(Space):
 
         return np.array(data)
 
-    def knob2point(self, vec):
+    def knob2point(self, knob):
         """
-            vec: <numpy.ndarray>
+            knob: <numpy.ndarray>
         """
         return super().knob2point(
             self.features2knob(
-                self.round_vec(vec)
+                self.round_vec(knob)
             ),
             self.dims
         )
+
+    def point2knob(self, point):
+        """
+            point: <int>
+        """
+        knob = super().point2knob(
+            point,
+            self.dims
+        )
+        vec = []
+        i = 0
+        for k, v in self.bounds.items():
+            vec.append(v[knob[i]])
+            i += 1
+        return vec
 
     def random_walk(self, vec):
         """
