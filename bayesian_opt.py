@@ -273,7 +273,7 @@ class BayesianOptimization(object):
             self.configs["model"] + ".rpt"
         )
         print("[INFO]: saving results to %s" % output)
-        write_csv(output, data[:self.configs["top-k"], :])
+        write_csv(output)
 
     def save(self):
         output = os.path.join(

@@ -263,3 +263,27 @@ def adrs(reference, point):
         point: <numpy.ndarray>
     """
     return np.sqrt((reference[0] - point[0]) ** 2 + (reference[1] - point[1]) ** 2)
+
+def get_pareto_points(data_array):
+    num_points = data_array.shape[0]
+    dim = data_array.shape[1]
+    data_array = data_array.reshape((num_points, dim))
+
+    data_array = np.array(list(set([tuple(t) for t in data_array])))
+    num_points = data_array.shape[0]
+
+    delpoints = []
+    for i in range(num_points):
+        temp = data_array[i,:][None,:]
+        temp2 = np.delete(data_array, i, axis=0)
+        acjudge = 0
+        for j in range(num_points - 1):
+            judge = temp < temp2[j,:]
+            judge = judge + 0
+            if max(judge[0, :]) == 1:
+                acjudge = acjudge + 1
+        if acjudge < num_points - 1:
+            delpoints = delpoints + [i]
+    pareto_set = np.delete(data_array, delpoints, axis=0)
+
+    return pareto_set

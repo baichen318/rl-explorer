@@ -83,7 +83,7 @@ flow: search
 initialize-method: random
 
 # ClustringBootstrapTED:
-Nrted: 25
+Nrted: 59
 mu: 0.1
 sig: 0.1
 batch: 20
@@ -122,7 +122,7 @@ config-name:
 dataset-output-path: data/dataset/dataset.csv
 
 # Model: lr | lasso | ridge | elastic | svr | xgb | rf | ab | gb | bg | gp | br | ""
-model: gp
+model: lr
 
 # Learning rate for `dnn-gp`
 learning-rate: 0.001

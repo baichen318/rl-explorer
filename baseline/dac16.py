@@ -316,7 +316,7 @@ def main():
         "dac16" + ".rpt"
     )
     print("[INFO]: saving results to %s" % output)
-    write_csv(output, data[:configs["top-k"], :])
+    write_csv(output, data)
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)

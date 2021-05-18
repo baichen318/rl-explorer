@@ -139,16 +139,16 @@ optimizer: Adam
 max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 9
+max-bo-steps: 6
 
 # Top K
 top-k: 10
 
 # Output path for models
-model-output-path: model/bo9-b5
+model-output-path: model/bo5-b5
 
 # Output path for results
-rpt-output-path: rpts/bo9-b5
+rpt-output-path: rpts/bo5-b5
 
 # Output path for fig.
-fig-output-path: data/figs/bo9-b5/asplos.pdf
+fig-output-path: data/figs/bo5-b5/asplos.pdf

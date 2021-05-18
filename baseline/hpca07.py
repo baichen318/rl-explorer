@@ -236,7 +236,7 @@ class BayesianOptimization(object):
             "hpca07" + ".rpt"
         )
         print("[INFO]: saving results to %s" % output)
-        write_csv(output, data[:self.configs["top-k"], :])
+        write_csv(output, data)
 
     def save(self):
         output = os.path.join(

@@ -12,8 +12,8 @@ except ImportError:
     import joblib
 from sample import RandomSampler
 from util import parse_args, get_configs, load_dataset, \
-    split_dataset, hyper_volume, adrs, rmse, strflush, write_csv
-from vis import plot_predictions_with_gt
+    split_dataset, hyper_volume, adrs, rmse, strflush, write_csv, get_pareto_points
+from vis import plot_predictions_with_gt, plot_pareto_set
 from space import parse_design_space
 from bayesian_opt import calc_hv
 from handle_data import reference
@@ -37,7 +37,7 @@ class SurrogateModel(object):
                 solver="adam",
                 learning_rate="adaptive",
                 learning_rate_init=0.001,
-                max_iter=12000,
+                max_iter=1000,
                 momentum=0.5,
                 early_stopping=False
             )
@@ -222,26 +222,27 @@ class BayesianOptimization(object):
             highlight.append(y[idx])
         highlight = np.array(highlight)
         # visualize
-        plot_predictions_with_gt(
-            y,
-            pred,
-            highlight,
-            top_k=self.configs["top-k"],
-            title="asplos06",
-            output=self.configs["fig-output-path"],
-        )
+        # plot_predictions_with_gt(
+        #     y,
+        #     pred,
+        #     highlight,
+        #     top_k=self.configs["top-k"],
+        #     title="asplos06",
+        #     output=self.configs["fig-output-path"],
+        # )
 
         # write results
         data = []
         for (idx, _hv) in hv:
-            data.append(np.concatenate((x[idx], y[idx])))
+            data.append(np.concatenate((x[idx], _y[idx])))
         data = np.array(data)
-        output = os.path.join(
-            self.configs["rpt-output-path"],
-            "asplos06" + ".rpt"
+        _, idx = get_pareto_points(data[:, -2:])
+        pareto_x = np.delete(x, idx, axis=0)
+        pareto_y = np.delete(y, idx, axis=0)
+        plot_pareto_set(
+            pareto_y,
+            dataset_path=self.configs["dataset-output-path"]
         )
-        print("[INFO]: saving results to %s" % output)
-        write_csv(output, data[:self.configs["top-k"], :])
 
     def save(self):
         output = os.path.join(

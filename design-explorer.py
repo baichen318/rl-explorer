@@ -12,8 +12,8 @@ except ImportError:
 from sample import ClusteringRandomizedTED, RandomSampler
 from bayesian_opt import calc_hv
 from util import parse_args, get_configs, load_dataset, split_dataset, \
-    rmse, strflush, write_csv
-from vis import plot_predictions_with_gt
+    rmse, strflush, write_csv, get_pareto_points
+from vis import plot_predictions_with_gt, plot_pareto_set
 from space import parse_design_space
 from exception import UnDefinedException
 
@@ -405,7 +405,23 @@ class BayesianOptimization(object):
             "dnn-gp" + ".rpt"
         )
         print("[INFO]: saving results to %s" % output)
-        write_csv(output, data[:self.configs["top-k"], :])
+        write_csv(output, data)
+
+    def pareto_set(self):
+        dataset = self.dataset.copy()
+        x, y = split_dataset(dataset)
+        y1 = self.model1.predict(x).numpy()
+        y2 = self.model2.predict(x).numpy()
+
+        data = []
+        for i in range(x.shape[0]):
+            data.append(np.array([y1[i], y2[i]]))
+        data = np.array(data)
+        data = get_pareto_points(data)
+        plot_pareto_set(
+            data,
+            dataset_path=self.configs["dataset-output-path"]
+        )
 
     def save(self):
         output = os.path.join(
@@ -434,7 +450,7 @@ class BayesianOptimization(object):
 def main():
     manager = BayesianOptimization(configs)
     manager.run()
-    manager.explore()
+    manager.pareto_set()
     manager.save()
 
 if __name__ == "__main__":
