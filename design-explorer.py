@@ -13,7 +13,7 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import Nondo
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
 from sample import sample
 from boom_design_problem import BOOMDesignProblem
-from util import get_configs, parse_args, adrs_v2, recover_data
+from util import get_configs, parse_args, adrs_v2, recover_data, write_txt
 from vis import plot_pareto_set
 from exception import UnDefinedException
 
@@ -119,6 +119,32 @@ def design_explorer(problem):
         recover_data(pareto_set),
         dataset_path=configs["dataset-output-path"],
         output=configs["fig-output-path"]
+    )
+
+    # write results
+    # ADRS:
+    write_txt(
+        os.path.join(
+            configs["rpt-output-path"],
+            "dnn-gp-adrs.rpt"
+        ),
+        np.array(adrs),
+        fmt="%f"
+    )
+    # pareto set
+    write_txt(
+        os.path.join(
+            configs["rpt-output-path"],
+            "dnn-gp-pareto-set.rpt"
+        ),
+        np.array(pareto_set),
+        fmt="%f"
+    )
+    # model
+    model.save(
+        os.path.join(
+            configs["model-output-path"]
+        )
     )
 
 def main():
