@@ -18,7 +18,7 @@ from vis import plot_pareto_set
 from exception import UnDefinedException
 
 def initialize_dnn_gp(x, y):
-    return DNNGP(configs, x, y, mlp_output_dim=6)
+    return DNNGP(configs, x, y, mlp_output_dim=configs["mlp-output-dim"])
 
 def fit_dnn_gp(x, y):
     model = initialize_dnn_gp(x, y)

@@ -83,7 +83,7 @@ flow: search
 initialize-method: random
 
 # ClustringBootstrapTED:
-Nrted: 5
+Nrted: 59
 mu: 0.1
 sig: 0.1
 batch: 5
@@ -121,9 +121,6 @@ config-name:
 # Output path for final training set
 dataset-output-path: data/dataset/dataset.csv
 
-# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
-model: lr
-
 # Learning rate for `dnn-gp`
 learning-rate: 0.001
 
@@ -131,25 +128,25 @@ learning-rate: 0.001
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-max-epoch: 380
+max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
 max-bo-steps: 9
 
+# MLP output dimension
+mlp-output-dim: 6
+
 # Number for clusters
 cluster: 5
 
-# Top K
-top-k: 10
-
 # Output path for models
-model-output-path: model/bo5-b5
+model-output-path: model/i5-s9-b1/dnn-gp.mdl
 
 # Output path for results
-rpt-output-path: rpts/bo5-b5
+rpt-output-path: rpts/i5-s9-b1
 
 # Output path for fig.
-fig-output-path: data/figs/bo5-b5/dnn-gp.pdf
+fig-output-path: data/figs/i5-s9-b1/final-result.pdf
 
 # Flag for `vis-crted`
 vis-crted: False
