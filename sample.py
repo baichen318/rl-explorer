@@ -194,7 +194,7 @@ class ClusteringRandomizedTED(RandomizedTED):
         centroids, new_assignment, loss = self.clustering(
             dataset,
             self.configs["cluster"],
-            max_iter=10
+            max_iter=100
         )
         new_dataset = self.gather_groups(dataset, new_assignment)
 

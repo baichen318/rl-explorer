@@ -4,9 +4,11 @@ import argparse
 import yaml
 import time
 import csv
+import torch
 import pandas as pd
 import numpy as np
 import logging
+from typing import Union
 from datetime import datetime
 from sklearn import metrics
 from exception import NotFoundException, UnDefinedException
@@ -62,7 +64,7 @@ def read_csv(data, header=0):
     if_exist(data, strict=True)
     return np.array(pd.read_csv(data, header=header))
 
-def load_dataset(csv_path):
+def load_dataset(csv_path, preprocess=True):
     """
         csv_path: <str>
     """
@@ -101,9 +103,21 @@ def load_dataset(csv_path):
     y = []
     for data in dataset:
         x.append(data[:-2])
-        y.append(np.array([(90000 - data[-2]) / 20000, (0.2 - data[-1]) * 10]))
+        if preprocess:
+            y.append(np.array([(90000 - data[-2]) / 20000, (0.2 - data[-1]) * 10]))
+        else:
+            y.append(np.array([data[-2], data[-1]]))
 
     return np.array(x), np.array(y)
+
+def recover_data(data: Union[torch.Tensor, np.ndarray]):
+    """
+        data: <torch.Tensor>: M x 2
+    """
+    data[:, 0] = 90000 - 20000 * data[:, 0]
+    data[:, 1] = 0.2 - data[:, 1] / 10
+
+    return data
 
 def split_dataset(dataset):
     # split dataset into x label & y label

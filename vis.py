@@ -157,13 +157,11 @@ def plot_pareto_set(data, **kwargs):
     plt.rcParams['figure.dpi'] = 600
 
     dataset_path = kwargs["dataset_path"]
-    dataset = load_dataset(dataset_path)
-    dataset[:, -2] = dataset[:, -2] / 90000
-    dataset[:, -1] = dataset[:, -1] * 10
+    x, y = load_dataset(dataset_path, preprocess=False)
 
     plt.scatter(
-        dataset[:, -2],
-        dataset[:, -1],
+        y[:, 0],
+        y[:, 1],
         s=1.5,
         marker=markers[19],
         c=colors[-1],
@@ -182,12 +180,8 @@ def plot_pareto_set(data, **kwargs):
     plt.xlabel('C.C.')
     plt.ylabel('Power')
     plt.title('C.C. vs. Power Model Comparison')
-    output = os.path.join(
-        "data/figs/bo5-b5",
-        "final-result" + ".pdf"
-    )
-    print("[INFO]: save the figure", output)
-    plt.savefig(output)
+    print("[INFO]: save the figure", kwargs["output"])
+    plt.savefig(kwargs["output"])
     plt.show()
 
 # def main():

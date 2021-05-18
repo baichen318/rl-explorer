@@ -34,7 +34,6 @@ class DNNGP():
         DNN-GP
     """
     def __init__(self, configs, x , y, **kwargs):
-        # exit()
         self.configs = configs
         self.n_dim = x.shape[-1]
         self.n_target = y.shape[-1]
@@ -44,9 +43,6 @@ class DNNGP():
         x = self.forward_mlp(x)
         x = self.transform_xlayout(x)
         y = self.transform_ylayout(y)
-        print(x, x.shape)
-        print(y, y.shape)
-        # exit()
         self.gp = MultiTaskGP(x, y, task_feature=-1, mean_type="linear")
 
     def set_train(self):

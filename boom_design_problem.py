@@ -10,8 +10,8 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
     """
     def __init__(self, configs, noise_std: Optional[float]=None, negate: bool=False):
         self.configs = configs
-        self._ref_point = torch.tensor([0.0])
-        self._bounds = torch.tensor([(0.0, 1.0)])
+        self._ref_point = torch.tensor([0.0, 0.0])
+        self._bounds = torch.tensor([(0.0, 2.0)])
         self.total_x, self.total_y = load_dataset(configs["dataset-output-path"])
         self.x = self.total_x.copy()
         self.y = self.total_y.copy()
@@ -31,7 +31,7 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
             1,
             1
         )
-        return self.y[indices].squeeze()
+        return self.y[indices].to(torch.float32).squeeze()
 
     def remove_sampled_data(self, x: torch.Tensor):
         sampled = torch.zeros(

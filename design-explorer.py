@@ -13,11 +13,12 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import Nondo
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
 from sample import sample
 from boom_design_problem import BOOMDesignProblem
-from util import get_configs, parse_args, adrs_v2
+from util import get_configs, parse_args, adrs_v2, recover_data
+from vis import plot_pareto_set
 from exception import UnDefinedException
 
 def initialize_dnn_gp(x, y):
-    model = DNNGP(configs, x, y, mlp_output_dim=6)
+    return DNNGP(configs, x, y, mlp_output_dim=6)
 
 def fit_dnn_gp(x, y):
     model = initialize_dnn_gp(x, y)
@@ -33,7 +34,7 @@ def fit_dnn_gp(x, y):
 
     iterator = tqdm.trange(configs["max-epoch"], desc="Training DNN-GP")
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(model.gp.likelihood, model.gp)
-    y = model.transform_ylayout(y)
+    y = model.transform_ylayout(y).squeeze(1)
     for i in iterator:
         optimizer.zero_grad()
         _y = model.train(x)
@@ -65,7 +66,7 @@ def ehvi_suggest(model, problem, sampled_y, batch=1):
         ).unsqueeze(1).to(model.device)
     ).to(model.device)
     top_acq_val, indices = torch.topk(acq_val, k=batch)
-    new_x = proble.x[indices]
+    new_x = problem.x[indices].to(torch.float32)
     del acq_val
     return new_x.reshape(-1, problem.n_dim), torch.mean(top_acq_val)
 
@@ -89,10 +90,10 @@ def design_explorer(problem):
         )
     )
     # initialize
-    # model = intialize_dnn_gp(x, y)
+    model = initialize_dnn_gp(x, y)
 
     # Bayesian optimization
-    temp_x, temp_acq_val = [], []
+    search_x, search_acq_val = [], []
     iterator = tqdm.tqdm(range(configs["max-bo-steps"]))
     for step in iterator:
         iterator.set_description("Iter %d" % (step + 1))
@@ -100,18 +101,25 @@ def design_explorer(problem):
         model = fit_dnn_gp(x, y)
         # sample by acquisition function
         new_x, acq_val = ehvi_suggest(model, problem, y)
-        temp_x.append(new_x)
-        temp_acq_val.append(acq_val)
-        print(new_x, acq_val)
-        exit()
-        # update the training data up to `max_acq_idx`, including itself
-        # max_acq_idx = temp_acq_val.index(max(temp_acq_val))
+        search_x.append(new_x)
+        search_acq_val.append(acq_val)
         # add in to `x` and `y`
-        # x = torch.cat((x, temp_x[max_acq_idx]), 0)
-        # y = torch.cat((y, problem(temp_x[max_acq_idx])), 0)
-        # # calculate HV
-        # hv_val = hv.compute(get_pareto_set(y))
-        # print("[INFO]: hyper-volume: %.8f" % hv_val)
+        x = torch.cat((x, new_x), 0)
+        y = torch.cat((y, problem.evaluate_true(new_x).unsqueeze(0)), 0)
+
+    pareto_set = get_pareto_set(y)
+    adrs.append(
+        adrs_v2(
+            get_pareto_set(problem.total_y),
+            pareto_set
+        )
+    )
+    print("[INFO]: pareto set: %s, size: %d" % (str(pareto_set), len(pareto_set)))
+    plot_pareto_set(
+        recover_data(pareto_set),
+        dataset_path=configs["dataset-output-path"],
+        output=configs["fig-output-path"]
+    )
 
 def main():
     problem = define_problem()
