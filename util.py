@@ -95,7 +95,15 @@ def load_dataset(csv_path):
         return data
 
     dataset, _ = _read_csv(csv_path)
-    return validate(dataset)
+    dataset = validate(dataset)
+    # scale the data by `max - x / \alpha`
+    x = []
+    y = []
+    for data in dataset:
+        x.append(data[:-2])
+        y.append(np.array([(90000 - data[-2]) / 20000, (0.2 - data[-1]) * 10]))
+
+    return np.array(x), np.array(y)
 
 def split_dataset(dataset):
     # split dataset into x label & y label
@@ -104,6 +112,7 @@ def split_dataset(dataset):
     y = []
     for data in dataset:
         x.append(data[0:-2])
+        # TODO: max - x / \alpha
         # scale c.c. & power approximately
         y.append(np.array([data[-2] / 90000, data[-1] * 10]))
 
@@ -263,6 +272,26 @@ def adrs(reference, point):
         point: <numpy.ndarray>
     """
     return np.sqrt((reference[0] - point[0]) ** 2 + (reference[1] - point[1]) ** 2)
+
+def adrs_v2(reference, learned_pareto_set):
+    """
+        reference: <torch.Tensor>
+        learned_pareto_set: <torch.Tensor>
+    """
+    # calculate average distance to the reference set
+    ADRS = 0
+    try:
+        reference = reference.cpu()
+        learned_pareto_set = learned_pareto_set.cpu()
+    except:
+        pass
+    for omiga in reference:
+        mini = float('inf')
+        for gama in learned_pareto_set:
+            mini = min(mini, np.linalg.norm(omiga - gama))
+        ADRS += mini
+    ADRS = ADRS / len(reference)
+    return ADRS
 
 def get_pareto_points(data_array):
     num_points = data_array.shape[0]

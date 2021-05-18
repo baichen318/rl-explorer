@@ -2,6 +2,7 @@
 
 import random
 import math
+import torch
 from time import time
 import numpy as np
 from space import parse_design_space
@@ -179,7 +180,7 @@ class ClusteringRandomizedTED(RandomizedTED):
 
     def crted(self, dataset):
         """
-            dataset: <numpy.array>: M x (19 + 2)
+            dataset: <numpy.array>: M x n_dim
         """
         # NOTICE: `rted` may select duplicated points,
         # in order to avoid this problem, we delete 80%
@@ -191,9 +192,9 @@ class ClusteringRandomizedTED(RandomizedTED):
             return [list(v) for v in set([tuple(v) for v in vec])]
 
         centroids, new_assignment, loss = self.clustering(
-            dataset[:, :-2],
+            dataset,
             self.configs["cluster"],
-            max_iter=100
+            max_iter=10
         )
         new_dataset = self.gather_groups(dataset, new_assignment)
 
@@ -250,3 +251,14 @@ class RandomSampler(Sampler):
         for i in idx:
             sampled.append(dataset[i])
         return np.delete(dataset, idx, axis=0), np.array(sampled)
+
+def sample(configs, problem):
+    """
+        configs: <dict>
+        problem: <MultiObjectiveTestProblem>
+    """
+    sampler = ClusteringRandomizedTED(configs)
+    x = torch.Tensor(sampler.crted(problem.x.numpy()))
+    y = problem.evaluate_true(x)
+    problem.remove_sampled_data(x)
+    return x, y

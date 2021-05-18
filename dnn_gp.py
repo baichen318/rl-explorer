@@ -33,31 +33,20 @@ class DNNGP():
     """
         DNN-GP
     """
-    def __init__(self, x, y, configs):
+    def __init__(self, configs, x , y, **kwargs):
+        # exit()
         self.configs = configs
-        self.n_dim = 19
-        self.n_target = 2
-        self.mlp = MLP(self.n_dim, 20)
-        self.learning_rate = self.configs["learning-rate"]
+        self.n_dim = x.shape[-1]
+        self.n_target = y.shape[-1]
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = torch.device("cpu")
-        # other variables
-        self.optimizer = None
-        self.gp = None
-
-        self.init(x, y)
-
-    def init(self, x, y):
-        """
-            x: <torch.Tensor>
-            y: <torch.Tensor>
-        """
-        x = x.to(self.device)
-        y = y.to(self.device)
-        self.mlp = self.mlp.to(self.device)
+        self.mlp = MLP(self.n_dim, kwargs["mlp_output_dim"])
         x = self.forward_mlp(x)
         x = self.transform_xlayout(x)
         y = self.transform_ylayout(y)
+        print(x, x.shape)
+        print(y, y.shape)
+        # exit()
         self.gp = MultiTaskGP(x, y, task_feature=-1, mean_type="linear")
 
     def set_train(self):
@@ -79,6 +68,7 @@ class DNNGP():
                 =>
             [x1, 0; x2, 0; x3, 0; x1, 1; x2, 1; x3, 1]  <-->  [y11; y21; y31; y12; y22; y32]
         """
+        x = x.to(self.device)
         nsample = x.shape[0]
         x = torch.cat([x for i in range(self.n_target)], dim=0)
         task_index = torch.zeros(nsample, 1).to(x.device)
@@ -93,22 +83,23 @@ class DNNGP():
                 =>
             [x1, 0; x2, 0; x3, 0; x1, 1; x2, 1; x3, 1]  <-->  [y11; y21; y31; y12; y22; y32]
         """
+        y = y.to(self.device)
         y = y.chunk(self.n_target, dim=1)
         y = torch.cat([y[i] for i in range(len(y))], dim=0)
         return y
 
     def forward_mlp(self, x):
+        x = x.to(self.device)
         x = self.mlp(x)
         x = x - x.min(0)[0]
         x = 2 * (x / x.max(0)[0]) - 1
         return x
 
-    def forward(self, x, train=True):
+    def train(self, x):
         x = x.to(self.device)
         x = self.forward_mlp(x)
         x = self.transform_xlayout(x)
-        if train:
-            self.gp.set_train_data(x)
+        self.gp.set_train_data(x)
         y = self.gp(x)
 
         return y
