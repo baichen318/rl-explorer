@@ -128,7 +128,7 @@ model: lr
 cluster: 5
 
 # Initialize points
-initialize: 30
+initialize: 5
 
 # Output path for models
 model-output-path: model/i5-s9-b1/

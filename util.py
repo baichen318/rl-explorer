@@ -321,7 +321,8 @@ def get_pareto_points(data_array):
         temp2 = np.delete(data_array, i, axis=0)
         acjudge = 0
         for j in range(num_points - 1):
-            judge = temp < temp2[j,:]
+            # NOTICE: we have to use `>` since we rescale data with inverse directions
+            judge = temp > temp2[j,:]
             judge = judge + 0
             if max(judge[0, :]) == 1:
                 acjudge = acjudge + 1

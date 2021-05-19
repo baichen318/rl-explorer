@@ -292,7 +292,7 @@ def main():
         model,
         (x, y),
         top_k=14,
-        n_iter=70,
+        n_iter=50,
         early_stop=35,
         parallel_size=8,
         log_interval=10

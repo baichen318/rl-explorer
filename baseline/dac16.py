@@ -259,8 +259,8 @@ def main():
         (H1, H2),
         (U_x, U_y),
         top_k=14,
-        n_iter=100,
-        early_stop=50,
+        n_iter=50,
+        early_stop=25,
         parallel_size=8,
         log_interval=10
     )
@@ -270,8 +270,8 @@ def main():
     pred = np.array(pred)
 
     # add `L_x` into `pred`
-    for i in L_x:
-        pred = np.insert(pred, len(pred), i, axis=0)
+    # for i in L_x:
+    #     pred = np.insert(pred, len(pred), i, axis=0)
     # get corresponding `_y`
     idx = []
     for _pred in pred:
