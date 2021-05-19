@@ -9,7 +9,8 @@ from space import parse_design_space
 from util import parse_args, get_configs, create_logger, write_excel, write_txt
 from exception import UnDefinedException
 
-seed = 2021
+# seed = 2021
+seed = int(time())
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 random.seed(seed)

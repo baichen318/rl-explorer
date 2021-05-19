@@ -99,7 +99,7 @@ class SurrogateModel(object):
         return MultiOutputRegressor(
             XGBRegressor(
                 max_depth=3,
-                # gamma=0.0001,
+                gamma=0.0001,
                 min_child_weight=1,
                 subsample=1.0,
                 eta=0.3,
@@ -207,7 +207,8 @@ def random_walk(point, x, y):
     idx = []
     def _in(point, x, y):
         for i in range(len(x)):
-            if ((point - x[i]) < 1e-4).all():
+            # if (np.abs(point - x[i]) < 1e-4).all():
+            if ((point - x[i]) < 1e-4).all() or ((x[i] - point) < 1e-4).all():
                 idx.append(i)
                 return True
         return False
@@ -230,7 +231,8 @@ def sa_search(model, dataset, logger=None, top_k=5, n_iter=500,
     (x, y), (points, _y) = random_sample(configs, x, y, batch=parallel_size)
     scores = model.predict(points)
     # the larger `scores` is, the better the point
-    scores = 1 / np.prod(scores, axis=1)
+    # (i.e., the area is larger, however, c.c. and power are inversed)
+    scores = np.prod(scores, axis=1)
 
     # build heap
     heap_items = [(float('-inf'), - 1 - i) for i in range(top_k)]
@@ -250,7 +252,7 @@ def sa_search(model, dataset, logger=None, top_k=5, n_iter=500,
         for i, p in enumerate(points):
             new_points[i], x, y = random_walk(p, x, y)
         new_scores = model.predict(new_points)
-        new_scores = 1 / np.prod(new_scores, axis=1)
+        new_scores = np.prod(new_scores, axis=1)
         ac_prob = np.exp(np.minimum((new_scores - scores) / (t + 1e-5), 1))
         ac_index = np.random.random(len(ac_prob)) < ac_prob
         points[ac_index] = new_points[ac_index]
@@ -275,7 +277,6 @@ def sa_search(model, dataset, logger=None, top_k=5, n_iter=500,
 
     # big -> small
     heap_items.sort(key=lambda item: -item[0])
-
     return heap_items
 
 def main():
@@ -291,8 +292,8 @@ def main():
         model,
         (x, y),
         top_k=14,
-        n_iter=50,
-        early_stop=25,
+        n_iter=70,
+        early_stop=35,
         parallel_size=8,
         log_interval=10
     )
@@ -304,7 +305,6 @@ def main():
     # add `_x` into `pred`
     for i in _x:
         pred = np.insert(pred, len(pred), i, axis=0)
-
     # get corresponding `_y`
     idx = []
     for _pred in pred:
