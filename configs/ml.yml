@@ -124,12 +124,6 @@ dataset-output-path: data/dataset/dataset.csv
 # Model: lr | lasso | ridge | elastic | svr | xgb | rf | ab | gb | bg | gp | br | ""
 model: lr
 
-# Learning rate for `dnn-gp`
-learning-rate: 0.001
-
-# Max iteration for Bayesian Optimization
-max-bo-steps: 9
-
 # Number for clusters
 cluster: 5
 

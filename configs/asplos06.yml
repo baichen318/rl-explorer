@@ -80,7 +80,7 @@ design-space:
 flow: search
 
 # Choose random | crted | prted
-initialize-method: "DAC16"
+initialize-method: "ASPLOS06"
 
 # ClustringBootstrapTED:
 Nrted: 100
@@ -95,7 +95,7 @@ batch: 60
 initialize-size: 200
 
 # Record samples
-initialize-output-path: /research/dept8/gds/cbai/research/design-explorer/data/ml/dataset-dac16/dac16.txt
+initialize-output-path: /research/dept8/gds/cbai/research/design-explorer/data/ml/dataset-asplos06/asplos06-2.txt
 
 # Index for the first config.
 idx: 1
@@ -104,55 +104,36 @@ idx: 1
 vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
 
 # Output path for latency
-latency-output-path: data/ml/dataset-dac16/latency.csv
+latency-output-path: data/ml/dataset-asplos06/latency.csv
 
 # Output path for area
-area-output-path: data/ml/dataset-dac16/area.csv
+area-output-path: data/ml/dataset-asplos06/area.csv
 
 # Collect power
 pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
 
 # Output path for power
-power-output-path: data/ml/dataset-dac16/power.csv
+power-output-path: data/ml/dataset-asplos06/power.csv
 
 # Config. name
 config-name:
-  - chipyard.TestHarness.BOOMDAC16Config1Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config3Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config4Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config5Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config6Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config7Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config8Config-ChipTop
-  - chipyard.TestHarness.BOOMDAC16Config10Config-ChipTop
+  - chipyard.TestHarness.BOOMASPLOS06Config1Config-ChipTop
+  - chipyard.TestHarness.BOOMASPLOS06Config4Config-ChipTop
+  - chipyard.TestHarness.BOOMASPLOS06Config5Config-ChipTop
+  - chipyard.TestHarness.BOOMASPLOS06Config8Config-ChipTop
+  - chipyard.TestHarness.BOOMASPLOS06Config10Config-ChipTop
 
 # Output path for final training set
 dataset-output-path: data/dataset/dataset.csv
 
-# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
-model: xgb
-
-# Learning rate for `dnn-gp`
-learning-rate: 0.001
-
-# Optimizer for `dnn-gp` Adam | SGD
-optimizer: Adam
-
-# Max iteration for `dnn-gp`
-max-epoch: 150
-
-# Max iteration for Bayesian Optimization
-max-bo-steps: 5
-
-# Top K
-top-k: 10
+# Initialize points
+initialize: 30
 
 # Output path for models
-model-output-path: model/bo6-b5
+model-output-path: model/i5-s9-b1
 
 # Output path for results
-rpt-output-path: rpts/bo6-b5
+rpt-output-path: rpts/i5-s9-b1
 
 # Output path for fig.
-fig-output-path: data/figs/bo6-b5/dac16.pdf
-
+fig-output-path: data/figs/i5-s9-b1/

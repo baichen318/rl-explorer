@@ -10,114 +10,18 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from sample import RandomSampler
+from sample import random_sample
 from util import parse_args, get_configs, load_dataset, \
-    split_dataset, rmse, hyper_volume, adrs, strflush, write_csv
-from bayesian_opt import calc_hv
-from vis import plot_predictions_with_gt
+    strflush, write_txt, get_pareto_points, recover_data
+from vis import plot_pareto_set
 from space import parse_design_space
-from handle_data import reference
 
 seed = 2021
 np.random.seed(seed)
 
-def perfcmp(point, score):
-    """
-        point: `np.array`
-        score: `np.array`
-    """
-    # `point[1]` is decodeWidth
-    # scale c.c. and power dissipation
-    ref = [reference[point[1] - 1][0] / 10000, reference[point[1] - 1][1] * 100]
-    return hyper_volume(ref, score)
-
-def _exist_duplicate(s, heap):
-    """
-        s: `float`
-        heap: `list`
-    """
-    for item in heap:
-        if s == item[0]:
-            return True
-
-    return False
-
-def sa_search(model, design_space, logger=None, top_k=5, n_iter=500,
-    early_stop=100, parallel_size=128, log_interval=50):
-    """
-        `model`: <sklearn.model>
-        `design_space`: <DesignSpace>
-        return:
-        `heap_items`: <list> (<tuple> in <list>), specifically,
-        <tuple> is (<int>, <list>) or (hv, configurations)
-    """
-    global pf
-
-    points = design_space.random_sample(parallel_size)
-    _scores = model.predict(points)
-    scores = np.empty(parallel_size)
-    for i, (p, s) in enumerate(zip(points, _scores)):
-        scores[i] = perfcmp(p, s)
-
-    # build heap and insert initial points
-    # `performance, knob`
-    heap_items = [(-1, list(np.empty(design_space.n_dim))) for i in range(top_k)]
-    heapq.heapify(heap_items)
-    visited = set()
-
-    for p, s in zip(points, scores):
-        _p = design_space.knob2point(p)
-        if s > heap_items[0][0] and _p not in visited:
-            pop = heapq.heapreplace(heap_items, (s, p))
-            visited.add(_p)
-
-    temp = (1, 0)
-    cool = 1.0 * (temp[0] - temp[1]) / (n_iter + 1)
-    t = temp[0]
-    k_last_modify = 0
-    k = 0
-    while k < n_iter and k < k_last_modify + early_stop:
-        new_points = np.empty_like(points)
-        for i, p in enumerate(points):
-            new_points[i] = design_space.random_walk(p)
-        _new_scores = model.predict(points)
-        new_scores = np.empty(parallel_size)
-        for i, (p, s) in enumerate(zip(new_points, _new_scores)):
-            new_scores[i] = perfcmp(p, s)
-        ac_prob = np.exp(np.minimum((new_scores - scores) / (t + 1e-5), 1))
-        ac_index = np.random.random(len(ac_prob)) < ac_prob
-        points[ac_index] = new_points[ac_index]
-        scores[ac_index] = new_scores[ac_index]
-
-        for p, s in zip(new_points, new_scores):
-            _p = design_space.knob2point(p)
-            if s > heap_items[0][0] and _p not in visited:
-                if _exist_duplicate(s, heap_items):
-                    continue
-                pop = heapq.heapreplace(heap_items, (s, p))
-                visited.add(_p)
-                k_last_modify = k
-
-        k += 1
-        t -= cool
-
-        if log_interval and k % log_interval == 0:
-            t_str = "%.8f" % t
-            msg = "SA iter: %d\tlast update: %d\tmax-0: %.8f\ttemp: %s\t" % (k,
-                k_last_modify, heap_items[0][0], t_str)
-            if logger:
-                logger.info("[INFO]: %s" % msg)
-            else:
-                print("[INFO]: %s" % msg)
-
-    # big -> small
-    heap_items.sort(key=lambda item: -item[0])
-
-    return heap_items
-
 class SurrogateModel(object):
     """
-        SurrogateModel: 12 traditional basic ML models
+        SurrogateModel: HPCA07 baseline
     """
     def __init__(self):
         super(SurrogateModel, self).__init__()
@@ -144,105 +48,7 @@ class SurrogateModel(object):
         x = self.preprocess.fit_transform(x)
         return np.exp(self.model.predict(x))
 
-class BayesianOptimization(object):
-    """docstring for BayesianOptimization"""
-    def __init__(self, configs):
-        super(BayesianOptimization, self).__init__()
-        self.configs = configs
-        # build model
-        self.model = SurrogateModel()
-        self.space = parse_design_space(self.configs["design-space"])
-        self.sampler = RandomSampler(self.configs)
-        self.dataset = load_dataset(configs["dataset-output-path"])
-        self.unsampled = None
-
-    def sample(self, dataset):
-        return self.sampler.sample(dataset)
-
-    def fit(self, x, y):
-        self.model.fit(x, y)
-
-    def predict(self, x):
-        return self.model.predict(x)
-
-    def run(self):
-        x, y = [], []
-        dataset = self.dataset.copy()
-        for i in range(self.configs["max-bo-steps"]):
-            dataset, sample = self.sample(dataset)
-            _x, _y = split_dataset(sample)
-            # add `_x` & `_y` to `x` & `y` respectively
-            if len(x) == 0:
-                for j in _x:
-                    x.append(j)
-                x = np.array(x)
-                for j in _y:
-                    y.append(j)
-                y = np.array(y)
-            else:
-                for j in _x:
-                    x = np.insert(x, len(x), j, axis=0)
-                for j in _y:
-                    y = np.insert(y, len(y), j, axis=0)
-            self.fit(x, y)
-
-            __y = self.predict(x)
-
-            msg = "[INFO]: Training Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(y[:, 0], __y[:, 0])) + \
-                "RMSE of power: %.8f on %d train data" % (rmse(y[:, 1], __y[:, 1]), len(x))
-            strflush(msg)
-            # validate
-            __x, __y = split_dataset(dataset)
-            ___y = self.predict(__x)
-            msg = "[INFO]: Testing Iter %d: RMSE of c.c.: %.8f, " % ((i + 1), rmse(__y[:, 0], ___y[:, 0])) + \
-                "RMSE of power: %.8f on %d test data" % (rmse(__y[:, 1], ___y[:, 1]), len(__x))
-            strflush(msg)
-
-        self.unsampled = dataset
-
-    def explore(self, logger=None):
-        x, y = split_dataset(self.unsampled)
-        _y = self.predict(x)
-
-        hv = calc_hv(x, _y)
-        # transform `_y` to top predictions
-        pred = []
-        for (idx, _hv) in hv:
-            pred.append(_y[idx])
-        pred = np.array(pred)
-
-        # highlight `self.unsampled`
-        highlight = []
-        for (idx, _hv) in hv:
-            highlight.append(y[idx])
-        highlight = np.array(highlight)
-        # visualize
-        plot_predictions_with_gt(
-            y,
-            pred,
-            highlight,
-            top_k=self.configs["top-k"],
-            title="hpca07",
-            output=self.configs["fig-output-path"],
-        )
-
-        # write results
-        data = []
-        for (idx, _hv) in hv:
-            data.append(np.concatenate((x[idx], y[idx])))
-        data = np.array(data)
-        output = os.path.join(
-            self.configs["rpt-output-path"],
-            "hpca07" + ".rpt"
-        )
-        print("[INFO]: saving results to %s" % output)
-        write_csv(output, data)
-
-    def save(self):
-        output = os.path.join(
-            self.configs["model-output-path"],
-            "hpca07.mdl"
-        )
+    def save(self, output):
         joblib.dump(
             self.model,
             output
@@ -250,21 +56,149 @@ class BayesianOptimization(object):
         msg = "[INFO]: saving model to %s" % output
         strflush(msg)
 
-    def load(self):
-        output = os.path.join(
-            self.configs["model-output-path"],
-            "hpca07.mdl"
-        )
-        self.model = joblib.load(output)
-        msg = "[INFO]: loading model from %s" % output
+    def load(self, path):
+        self.model = joblib.load(path)
+        msg = "[INFO]: loading model from %s" % path
         strflush(msg)
 
+def random_walk(point, x, y):
+    idx = []
+    def _in(point, x, y):
+        for i in range(len(x)):
+            # if (np.abs(point - x[i]) < 1e-4).all():
+            if ((point - x[i]) < 1e-4).all() or ((x[i] - point) < 1e-4).all():
+                idx.append(i)
+                return True
+        return False
+    point = design_space.random_walk(point)
+    while not _in(point, x, y):
+        point = design_space.random_walk(point)
+    return point, np.delete(x, idx, axis=0), np.delete(y, idx, axis=0)
+
+def sa_search(model, dataset, logger=None, top_k=5, n_iter=500,
+    early_stop=100, parallel_size=128, log_interval=50):
+    """
+        model: <sklearn.model>
+        dataset: <tuple>
+        return:
+        heap_items: <list> (<tuple> in <list>), specifically,
+        <tuple> is (<int>, <list>) or (hv, configurations)
+    """
+    x, y = dataset
+    n_dim = x.shape[-1]
+    (x, y), (points, _y) = random_sample(configs, x, y, batch=parallel_size)
+    scores = model.predict(points)
+    # the larger `scores` is, the better the point
+    # (i.e., the area is larger, however, c.c. and power are inversed)
+    scores = np.prod(scores, axis=1)
+
+    # build heap
+    heap_items = [(float('-inf'), - 1 - i) for i in range(top_k)]
+    heapq.heapify(heap_items)
+
+    for p, s in zip(points, scores):
+        if s > heap_items[0][0]:
+            pop = heapq.heapreplace(heap_items, (s, design_space.knob2point(p)))
+
+    temp = (1, 0)
+    cool = 1.0 * (temp[0] - temp[1]) / (n_iter + 1)
+    t = temp[0]
+    k_last_modify = 0
+    k = 0
+    while k < n_iter and k < k_last_modify + early_stop:
+        new_points = np.empty_like(points)
+        for i, p in enumerate(points):
+            new_points[i], x, y = random_walk(p, x, y)
+        new_scores = model.predict(new_points)
+        new_scores = np.prod(new_scores, axis=1)
+        ac_prob = np.exp(np.minimum((new_scores - scores) / (t + 1e-5), 1))
+        ac_index = np.random.random(len(ac_prob)) < ac_prob
+        points[ac_index] = new_points[ac_index]
+        scores[ac_index] = new_scores[ac_index]
+
+        for p, s in zip(new_points, new_scores):
+            if s > heap_items[0][0]:
+                pop = heapq.heapreplace(heap_items, (s, design_space.knob2point(p)))
+                k_last_modify = k
+
+        k += 1
+        t -= cool
+
+        if log_interval and k % log_interval == 0:
+            t_str = "%.8f" % t
+            msg = "SA iter: %d\tlast update: %d\tmax-0: %.8f\ttemp: %s\t" % (k,
+                k_last_modify, heap_items[0][0], t_str)
+            if logger:
+                logger.info("[INFO]: %s" % msg)
+            else:
+                print("[INFO]: %s" % msg)
+
+    # big -> small
+    heap_items.sort(key=lambda item: -item[0])
+    return heap_items
+
 def main():
-    manager = BayesianOptimization(configs)
-    manager.run()
-    manager.explore()
-    manager.save()
+    x, y = load_dataset(configs["dataset-output-path"])
+    total_x, total_y = x.copy(), y.copy()
+    # generate data
+    (x, y), (_x, _y) = random_sample(configs, x, y, batch=configs["initialize"])
+    model = SurrogateModel()
+    # initialize the model
+    model.fit(_x, _y)
+    # search
+    heap = sa_search(
+        model,
+        (x, y),
+        top_k=14,
+        n_iter=70,
+        early_stop=35,
+        parallel_size=8,
+        log_interval=10
+    )
+    pred = []
+    for i, point in heap:
+        pred.append(design_space.point2knob(point))
+    pred = np.array(pred)
+
+    # add `_x` into `pred`
+    for i in _x:
+        pred = np.insert(pred, len(pred), i, axis=0)
+    # get corresponding `_y`
+    idx = []
+    for _pred in pred:
+        for i in range(len(total_x)):
+            if (np.abs(_pred - total_x[i]) < 1e-4).all():
+                idx.append(i)
+                break
+    pareto_set = get_pareto_points(total_y[idx])
+    plot_pareto_set(
+        recover_data(pareto_set),
+        dataset_path=configs["dataset-output-path"],
+        output=os.path.join(
+            configs["fig-output-path"],
+            "hpca07" + ".pdf"
+        )
+    )
+
+    # write results
+    # pareto set
+    write_txt(
+        os.path.join(
+            configs["rpt-output-path"],
+            "hpca07" + "-pareto-set.rpt"
+        ),
+        np.array(pareto_set),
+        fmt="%f"
+    )
+    # model
+    model.save(
+        os.path.join(
+            configs["model-output-path"],
+            "hpca07" + ".mdl"
+        )
+    )
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
+    design_space = parse_design_space(configs["design-space"])
     main()
