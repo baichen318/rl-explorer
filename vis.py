@@ -14,20 +14,20 @@ colors = [
     'c', 'b', 'g', 'r', 'm', 'y', 'k', # 'w'
 ]
 
-def plot_design_space(dataset):
+def plot_design_space(x, y):
     """
         dataset: <numpy.ndarray>
     """
     from handle_data import reference
 
     labels = ["Small", "Medium", "Large", "Mega", "Giga"]
-    plt.rcParams['savefig.dpi'] = 600
-    plt.rcParams['figure.dpi'] = 600
+    # plt.rcParams['savefig.dpi'] = 300
+    # plt.rcParams['figure.dpi'] = 300
 
-    for i in range(len(dataset)):
+    for i in range(len(x)):
         plt.scatter(
-            dataset[i][-2],
-            dataset[i][-1],
+            y[:, 0],
+            y[:, 1],
             s=1,
             marker=markers[-6],
             c=colors[-2],
@@ -42,17 +42,17 @@ def plot_design_space(dataset):
             label=labels[i] + "BoomConfig"
         )
         i += 1
-    plt.legend()
+    plt.legend(loc="best", frameon=False)
     plt.xlabel('C.C.')
     plt.ylabel('Power')
     plt.title('C.C. vs. Power - ' + "design space")
-    # plt.grid()
-    output = os.path.join(
-        os.path.dirname(configs["fig-output-path"]),
-        "design-space" + ".pdf"
-    )
-    print("[INFO]: save the figure", output)
-    plt.savefig(output)
+    plt.grid()
+    # output = os.path.join(
+    #     os.path.dirname(configs["fig-output-path"]),
+    #     "design-space" + ".pdf"
+    # )
+    # print("[INFO]: save the figure", output)
+    plt.savefig("design-space.jpg")
     # plt.show()
 
 def plot_predictions_with_gt(gt, preds, highlight, **kwargs):
@@ -184,33 +184,33 @@ def plot_pareto_set(data, **kwargs):
     plt.savefig(kwargs["output"])
     plt.show()
 
-# def main():
-#     dataset = load_dataset(configs["dataset-output-path"])
-#     plot_design_space(dataset)
+def main():
+    x, y = load_dataset(configs["dataset-output-path"], preprocess=False)
+    plot_design_space(x, y)
 
-def main(rpt=None):
-    data = OrderedDict()
-    for f in os.listdir(configs["rpt-output-path"]):
-        if rpt is not None:
-            if ".rpt" in f and rpt == f:
-                data[f.split('.')[0]] = read_csv(
-                os.path.join(
-                        configs["rpt-output-path"],
-                        f
-                    ),
-                    header=None
-                )
-                break
-        else:
-            if ".rpt" in f:
-                data[f.split('.')[0]] = read_csv(
-                    os.path.join(
-                        configs["rpt-output-path"],
-                        f
-                    ),
-                    header=None
-                )
-    plot_all_model_results(data)
+# def main(rpt=None):
+#     data = OrderedDict()
+#     for f in os.listdir(configs["rpt-output-path"]):
+#         if rpt is not None:
+#             if ".rpt" in f and rpt == f:
+#                 data[f.split('.')[0]] = read_csv(
+#                 os.path.join(
+#                         configs["rpt-output-path"],
+#                         f
+#                     ),
+#                     header=None
+#                 )
+#                 break
+#         else:
+#             if ".rpt" in f:
+#                 data[f.split('.')[0]] = read_csv(
+#                     os.path.join(
+#                         configs["rpt-output-path"],
+#                         f
+#                     ),
+#                     header=None
+#                 )
+#     plot_all_model_results(data)
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)

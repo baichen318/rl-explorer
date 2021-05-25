@@ -130,11 +130,11 @@ config-name:
 dataset-output-path: data/dataset/dataset.csv
 
 # Output path for models
-model-output-path: model/i5-s9-b1
+model-output-path: model/exp-1
 
 # Output path for results
-rpt-output-path: rpts/i5-s9-b1
+rpt-output-path: rpts/exp-1/dac16-pareto-set.rpt
 
 # Output path for fig.
-fig-output-path: data/figs/i5-s9-b1/
+fig-output-path: data/figs/exp-1
 

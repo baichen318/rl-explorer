@@ -9,8 +9,8 @@ from space import parse_design_space
 from util import parse_args, get_configs, create_logger, write_excel, write_txt
 from exception import UnDefinedException
 
-seed = 2021
-# seed = int(time())
+# seed = 2021
+seed = int(time())
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 random.seed(seed)
@@ -258,6 +258,12 @@ class RandomSampler(Sampler):
         y = np.delete(y, idx, axis=0)
         return (x, y), (np.array(_x), np.array(_y))
 
+    def sample_v2(self, problem, batch=1):
+        idx = random.sample(range(0, problem.n_sample), batch)
+        x = problem.x[idx]
+        y = problem.evaluate_true(x)
+        return x.to(torch.float32), y
+
 def crted_sample(configs, problem):
     """
         configs: <dict>
@@ -272,3 +278,13 @@ def crted_sample(configs, problem):
 def random_sample(configs, x, y, batch=1):
     sampler = RandomSampler(configs)
     return sampler.sample(x, y, batch)
+
+def random_sample_v2(configs, problem, batch):
+    """
+        configs: <dict>
+        problem: <MultiObjectiveTestProblem>
+    """
+    sampler = RandomSampler(configs)
+    x, y = sampler.sample_v2(problem, batch)
+    problem.remove_sampled_data(x)
+    return x, y

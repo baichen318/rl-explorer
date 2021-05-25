@@ -258,10 +258,10 @@ def main():
     heap = sa_search(
         (H1, H2),
         (U_x, U_y),
-        top_k=14,
-        n_iter=50,
+        top_k=30,
+        n_iter=10,
         early_stop=25,
-        parallel_size=8,
+        parallel_size=3,
         log_interval=10
     )
     pred = []

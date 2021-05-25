@@ -122,7 +122,7 @@ config-name:
 dataset-output-path: data/dataset/dataset.csv
 
 # Model: lr | lasso | ridge | elastic | svr | xgb | rf | ab | gb | bg | gp | br | ""
-model: lr
+model: xgb
 
 # Number for clusters
 cluster: 5
@@ -131,13 +131,13 @@ cluster: 5
 initialize: 5
 
 # Output path for models
-model-output-path: model/i5-s9-b1/
+model-output-path: model/xgb
 
 # Output path for results
-rpt-output-path: rpts/i5-s9-b1
+rpt-output-path: rpts/xgb/
 
 # Output path for fig.
-fig-output-path: data/figs/i5-s9-b1/
+fig-output-path: data/figs/xgb/
 
 # Flag for `vis-crted`
 vis-crted: False

@@ -149,10 +149,10 @@ def main():
     heap = sa_search(
         model,
         (x, y),
-        top_k=14,
-        n_iter=50,
+        top_k=30,
+        n_iter=10,
         early_stop=35,
-        parallel_size=8,
+        parallel_size=3,
         log_interval=10
     )
     pred = []

@@ -11,7 +11,7 @@ from botorch.utils.multi_objective.hypervolume import Hypervolume
 from botorch.utils.multi_objective.pareto import is_non_dominated
 from botorch.utils.multi_objective.box_decompositions.non_dominated import NondominatedPartitioning
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
-from sample import crted_sample
+from sample import crted_sample, random_sample_v2
 from boom_design_problem import BOOMDesignProblem
 from util import get_configs, parse_args, adrs_v2, recover_data, write_txt
 from vis import plot_pareto_set
@@ -81,6 +81,7 @@ def design_explorer(problem):
     adrs = []
     # generate initial data
     x, y = crted_sample(configs, problem)
+    # x, y = random_sample_v2(configs, problem, batch=5)
     pareto_set = get_pareto_set(y)
 
     adrs.append(
@@ -123,19 +124,17 @@ def design_explorer(problem):
 
     # write results
     # ADRS:
-    write_txt(
-        os.path.join(
-            configs["rpt-output-path"],
-            "dnn-gp-adrs.rpt"
-        ),
-        np.array(adrs),
-        fmt="%f"
-    )
+    # write_txt(
+    #     os.path.join(
+    #         configs["rpt-output-path"],
+    #     ),
+    #     np.array(adrs),
+    #     fmt="%f"
+    # )
     # pareto set
     write_txt(
         os.path.join(
-            configs["rpt-output-path"],
-            "dnn-gp-pareto-set.rpt"
+            configs["rpt-output-path"]
         ),
         np.array(pareto_set),
         fmt="%f"
