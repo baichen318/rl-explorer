@@ -1,6 +1,0 @@
-fetchWidth,decodeWidth,numFetchBufferEntries,numRobEntries,numRasEntries,numIntPhysRegisters,numFpPhysRegisters,numLdqEntries,numStqEntries,maxBrCount,mem_issueWidth,int_issueWidth,fp_issueWidth,DCacheParams_nWays,DCacheParams_nMSHRs,DCacheParams_nTLBEntries,ICacheParams_nWays,ICacheParams_nTLBEntries,ICacheParams_fetchBytes,latency,power
-4 1 16 128 32 48 48 8 8 8 1 1 1 4 8 8 2 32 2,82678.5,0.05215
-4 1 32 130 32 48 48 8 8 20 1 1 1 2 8 8 2 32 2,84103.0,0.054599999999999996
-4 1 40 130 16 48 48 8 8 8 2 1 2 2 8 8 8 32 2,83924.0,0.0572
-4 1 16 128 24 48 48 8 8 8 1 1 1 2 8 16 2 32 2,83948.5,0.051449999999999996
-4 1 16 96 32 48 48 8 8 8 1 1 1 2 4 8 2 32 2,83933.0,0.04875
