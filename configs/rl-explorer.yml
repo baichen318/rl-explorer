@@ -74,79 +74,23 @@ design-space:
   ICacheParams_fetchBytes:
     candidates: [2, 4]
 
-# Flow: initialize | search
-# search includes data collection
-# run VLSI flow manually!
-flow: search
+# Dataset path
+dataset-path: data/dataset/dataset.csv
 
-# Choose random | cbted
-initialize-method: random
+## RL related variables
+# Capacity
+capacity: 10000
 
-# ClustringBootstrapTED:
-Nrted: 59
-mu: 0.1
-sig: 0.1
-batch: 5
+# Linear decay
+epsilon-start: 1
+epsilon-end: 0.1
+epsilon-decay: 1000
 
-# Size
-initialize-size: 200
+# Update target the policy network
+update-target-policy: 4
 
-# Record samples
-initialize-output-path: data/sample
+# Total epoch to train the policy network
+total-epoch: 1000
 
-# Index for the first config.
-idx: 1
-
-# Collect area & Latency
-vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
-
-# Output path for latency
-latency-output-path: data/latency.csv
-
-# Output path for area
-area-output-path: data/area.csv
-
-# Collect power
-pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
-
-# Output path for power
-power-output-path: data/power.csv
-
-# Config. name
-config-name:
-  - chipyard.TestHarness.BOOMConfig1Config-ChipTop
-  - chipyard.TestHarness.BOOMConfig2Config-ChipTop
-  - chipyard.TestHarness.BOOMConfig3Config-ChipTop
-
-# Output path for final training set
-dataset-output-path: data/dataset/dataset.csv
-
-# Learning rate for `dnn-gp`
-learning-rate: 0.001
-
-# Optimizer for `dnn-gp` Adam | SGD
-optimizer: Adam
-
-# Max iteration for `dnn-gp`
-max-epoch: 1000
-
-# Max iteration for Bayesian Optimization
-max-bo-steps: 9
-
-# MLP output dimension
-mlp-output-dim: 6
-
-# Number for clusters
-cluster: 5
-
-# Output path for models
-model-output-path: model/exp-1/dnn-gp-wo-microed.mdl
-
-# Output path for results
-rpt-output-path: rpts/exp-1/dnn-gp-wo-microed.rpt
-
-# Output path for fig.
-fig-output-path: data/figs/exp-1/dnn-gp-wo-microed.pdf
-
-# Flag for `vis-crted`
-vis-crted: False
+# Samples of perturbation
+sample-perturbation: 20
