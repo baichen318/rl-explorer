@@ -48,11 +48,19 @@ def handle_macros():
         "BoomConfigs.scala"
     )
 
-    MACROS["sim.sh"] = os.path.join(
+    MACROS["compile-script"] = os.path.join(
+        MACROS["rl-explorer-root"],
+        "vlsi",
+        "scripts",
+        "compile.sh"
+    )
+
+    MACROS["sim-script"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
         "scripts",
         "sim.sh"
     )
+
 
 handle_macros()

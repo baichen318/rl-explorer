@@ -52,7 +52,6 @@ class DesignSpace(Space):
             for idx, i in enumerate(super().point2knob(point, self.dims))]
 
     def knob2point(self, design):
-        print(design)
         return super().knob2point(
             [self.bounds[self.features[idx]].index(i) \
                 for idx, i in enumerate(design)],

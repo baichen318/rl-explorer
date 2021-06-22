@@ -112,6 +112,8 @@ design-space:
     stride: 1
 
 # mode: generate-design | sim | rl
-mode: generate-design
+mode: sim
 
 design-output-path: design.txt
+
+idx: 1

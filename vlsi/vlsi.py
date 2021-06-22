@@ -1,12 +1,14 @@
 # Author: baichen318@gmail.com
-
-from macros import MACROS
+import os
+import sys
+sys.path.append(os.path.abspath("../util"))
+from util.util import load_txt, execute
+from .macros import MACROS
 
 class VLSI(object):
     """ VLSI Flow """
-    def __init__(self, configs):
+    def __init__(self):
         super(VLSI, self).__init__()
-        self.configs = configs
 
     def steps(self):
         raise NotImplementedError()
@@ -40,7 +42,7 @@ class BasicComponent(object):
         return self.configs["basic-component"]["dcache"]
 
 
-class PreSynthesizeSimulation(VLSI, BasicComponent):
+class PreSynthesizeSimulation(BasicComponent, VLSI):
     """ PreSynthesizeSimulation """
     def __init__(self, configs, **kwargs):
         super(PreSynthesizeSimulation, self).__init__(configs)
@@ -57,7 +59,7 @@ class PreSynthesizeSimulation(VLSI, BasicComponent):
         ]
 
     def __generate_bpd(self):
-        choice = self.boom_configs[4]
+        choice = self.boom_configs[4] - 1
         if choice == 0:
             return "new WithTAGELBPD ++"
         elif choice == 1:
@@ -69,46 +71,42 @@ class PreSynthesizeSimulation(VLSI, BasicComponent):
             return "new WithSWBPD ++"
 
     def __generate_issue_unit(self):
-        return """
-              Seq(
+        return """Seq(
                 IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d),
                 IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d),
                 IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue , dispatchWidth=%d)
-              )
-        """ % (
+              )""" % (
                 self.boom_configs[10],
-                self.issue_unit[self.boom_configs[12]][1],
+                self.issue_unit[self.boom_configs[12] - 1][1],
                 self.boom_configs[7],
                 self.boom_configs[7],
-                self.issue_unit[self.boom_configs[12]][0],
+                self.issue_unit[self.boom_configs[12] - 1][0],
                 self.boom_configs[7],
                 self.boom_configs[11],
-                self.issue_unit[self.boom_configs[12]][2],
+                self.issue_unit[self.boom_configs[12] - 1][2],
                 self.boom_configs[7]
             )
 
     def __generate_registers(self):
-        return """
-              numIntPhysRegisters = %d,
-              numFpPhysRegisters = %d
-        """ % (
-                self.registers[self.boom_configs[9]][0],
-                self.registers[self.boom_configs[9]][1]
+        return """numIntPhysRegisters = %d,
+              numFpPhysRegisters = %d""" % (
+                self.registers[self.boom_configs[9] - 1][0],
+                self.registers[self.boom_configs[9] - 1][1]
             )
 
     def __generate_mulDiv(self):
-        choice = self.boom_configs[13]
+        choice = self.boom_configs[13] - 1
         if choice == 0:
-            return "0",
+            return "0"
         elif choice == 1:
-            return "8",
+            return "8"
         else:
-            assert choice == 3
+            assert choice == 2
             return "XLen"
 
     def __generate_dcache(self):
         def __generate_replacement_policy():
-            choice = self.boom_configs[16]
+            choice = self.boom_configs[16] - 1
             if choice == 0:
                 return "random"
             elif choice == 1:
@@ -117,30 +115,34 @@ class PreSynthesizeSimulation(VLSI, BasicComponent):
                 assert choice == 2
                 return "plru"
 
-        return """
-              Some(
-                DCacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, nMSHRs=%d, replacementPolicy=%s)
-              )
-        """ % (
-                self.dcache[self.boom_configs[15]][0],
-                self.dcache[self.boom_configs[15]][1],
-                self.dcache[self.boom_configs[15]][2],
-                self.dcache[self.boom_configs[15]][3],
-                self.dcache[self.boom_configs[15]][4],
+        return """Some(
+                DCacheParams(
+                  rowBits = site(SystemBusKey).beatBits,
+                  nSets=%d,
+                  nWays=%d,
+                  nTLBSets=%d,
+                  nTLBWays=%d,
+                  nMSHRs=%d,
+                  replacementPolicy="%s"
+                )
+            )""" % (
+                self.dcache[self.boom_configs[15] - 1][0],
+                self.dcache[self.boom_configs[15] - 1][1],
+                self.dcache[self.boom_configs[15] - 1][2],
+                self.dcache[self.boom_configs[15] - 1][3],
+                self.dcache[self.boom_configs[15] - 1][4],
                 __generate_replacement_policy()
             )
 
     def __generate_icache(self):
-        return """
-              Some(
+        return """Some(
                 ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, fetchBytes=%d)
-              )
-        """ % (
-                self.icache[self.boom_configs[0]][0],
-                self.icache[self.boom_configs[0]][1],
-                self.icache[self.boom_configs[0]][2],
-                self.icache[self.boom_configs[0]][3],
-                self.icache[self.boom_configs[0]][4],
+            )""" % (
+                self.icache[self.boom_configs[0] - 1][0],
+                self.icache[self.boom_configs[0] - 1][1],
+                self.icache[self.boom_configs[0] - 1][2],
+                self.icache[self.boom_configs[0] - 1][3],
+                self.icache[self.boom_configs[0] - 1][4],
             )
 
     def __generate_system_bus_key(self):
@@ -177,16 +179,16 @@ class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
               numDCacheBanks = 1,
               ftq = FtqParameters(nEntries=%d),
               fpu = Some(
-                  freechips.rocketchip.tile.FPUParams(
-                      sfmaLatency=4, dfmaLatency=4, divSqrt=true
-                  )
+                freechips.rocketchip.tile.FPUParams(
+                  sfmaLatency=4, dfmaLatency=4, divSqrt=true
+                )
               ),
               mulDiv = Some(
-                  MulDivParams(
-                      mulUnroll=%s,
-                      mulEarlyOut=true,
-                      divEarlyOut=true
-                  )
+                MulDivParams(
+                  mulUnroll=%s,
+                  mulEarlyOut=true,
+                  divEarlyOut=true
+                )
               )
             ),
             dcache = %s,
@@ -201,25 +203,27 @@ class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
     case XLen => 64
   })
 )
-            ''' % (
-                self.core_name,
-                self.__generate_bpd(),
-                self.boom_configs[1],
-                self.boom_configs[7],
-                self.boom_configs[8],
-                self.__generate_issue_unit(),
-                self.__generate_registers(),
-                self.boom_configs[14],
-                self.boom_configs[14],
-                self.boom_configs[6],
-                self.boom_configs[2],
-                self.boom_configs[5],
-                self.__generate_mulDiv(),
-                self.__generate_dcache(),
-                self.__generate_icache(),
-                self.__generate_system_bus_key()
-            )
-        )
+''' % (
+        self.core_name,
+        self.__generate_bpd(),
+        self.boom_configs[1],
+        self.boom_configs[7],
+        self.boom_configs[8],
+        self.__generate_issue_unit(),
+        self.__generate_registers(),
+        self.boom_configs[14],
+        self.boom_configs[14],
+        self.boom_configs[6],
+        self.boom_configs[2],
+        self.boom_configs[5],
+        self.__generate_mulDiv(),
+        self.__generate_dcache(),
+        self.__generate_icache(),
+        self.__generate_system_bus_key()
+    )
+)
+
+        return codes
 
     def _generate_boom_configs(self):
         codes = []
@@ -227,8 +231,10 @@ class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
 class %s extends Config(
   new boom.common.%s(1) ++
   new chipyard.config.AbstractConfig)
-        ''' % (self.soc_name, self.core_name)
+''' % (self.soc_name, self.core_name)
         )
+
+        return codes
 
     def generate_design(self):
         codes = self._generate_config_mixins()
@@ -238,38 +244,118 @@ class %s extends Config(
         with open(MACROS["boom-configs"], 'a') as f:
             f.writelines(codes)
 
+    def generate_scripts(self, batch, start):
+        servers = [
+            "hpc1", "hpc2", "hpc3", "hpc4", "hpc5",
+            "hpc6", "hpc7", "hpc8", "hpc15", # "hpc16"
+        ]
+        stride = batch // len(servers)
+        remainder = batch % len(servers)
+
+        for i in range(len(servers)):
+            s = start
+            e = start + stride - 1
+            if e < s:
+                continue
+            else:
+                execute(
+                    "bash vlsi/scripts/compile.sh -s %d -e %d -x %s -f %s" % (
+                        s,
+                        e,
+                        MACROS["sim-script"],
+                        os.path.join(
+                            MACROS["chipyard-sims-root"],
+                            "compile-%s.sh" % servers[i]
+                        )
+                    )
+                )
+            start = e + 1
+        if remainder > 0:
+            # all in hpc16
+            execute(
+                "bash vlsi/scripts/compile.sh -s %d -e %d -x %s -f %s" % (
+                    start,
+                    start + remainder - 1,
+                    MACROS["sim-script"],
+                    os.path.join(
+                        MACROS["chipyard-sims-root"],
+                        "compile-hpc16.sh"
+                    )
+                )
+            )
+
+
     def build_simv(self):
         os.chdir(MACROS["chipyard-sims-root"])
         # compile & build
-        os.system(
+        execute(
             "make \
             MACROCOMPILER_MODE='-l vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \
             CONFIG=%s" % self.soc_name
         )
         # post-handling
-        os.system(
+        execute(
             "mkdir -p %s" % self.soc_name
         )
-        os.system(
+        execute(
             "mkdir -p output/%s" % self.soc_name
         )
-        os.system(
+        execute(
             "mv %s %s" % ("simv-chipyard-%s*" % self.soc_name, self.soc_name)
         )
-        os.system(
-            "cp %s %s" % (, self.soc_name)
+        execute(
+            "cp %s %s" % (
+                MACROS["sim-script"],
+                os.path.join(MACROS["chipyard-sims-root"], self.soc_name)
+            )
         )
         os.chdir('-')
 
     def simulate(self):
         os.chdir(MACROS["chipyard-sims-root"])
         # pre-handling
-        os.system(
+        execute(
             "sed -i 's/PATTERN/%s/g' sim.sh" % self.soc_name
         )
         # simulate
         for bmark in MACROS["benchmarks"]:
-            os.system(
+            execute(
                 "bash sim.sh %s &" % bmark
             )
 
+
+def test_offline_vlsi(configs):
+    """
+        design_set: <str>
+    """
+    design_set = load_txt(configs["design-output-path"])
+
+    execute(
+        "rm -fr test"
+    )
+    execute(
+        "mkdir -p test"
+    )
+    MACROS["config-mixins"] = os.path.join(
+        "test",
+        "config-mixins.scala"
+    )
+    MACROS["boom-configs"] = os.path.join(
+        "test",
+        "BoomConfigs.scala"
+    )
+    MACROS["chipyard-sims-root"] = "test"
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
