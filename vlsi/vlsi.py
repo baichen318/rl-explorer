@@ -1,619 +1,275 @@
 # Author: baichen318@gmail.com
 
-import os
-import sys
-sys.path.append(os.path.dirname(__file__) + os.sep + '../')
-from glob import glob
-import numpy as np
-from util import parse_args, get_configs, if_exist, \
-    execute, create_logger, mkdir, dump_yaml, read_csv, load_txt
-from macros import MACROS, modify_macros
+from macros import MACROS
 
 class VLSI(object):
-    def __init__(self, kwargs):
-        self.configs = kwargs["configs"]
-        self.idx = str(kwargs['idx'])
-        self.prefix = kwargs["prefix"]
-        self.core_name = self.prefix + "Config" + self.idx
-        self.soc_name = "BOOM" + self.core_name + "Config"
-        self.mode = kwargs["mode"]
-        self.logger = kwargs['logger']
-        if_exist(MACROS['config-mixins'], strict=True)
-        if_exist(MACROS['boom-configs'], strict=True)
-        modify_macros(self.core_name, self.soc_name)
-
-        # variables used by `VLSI`
-        self.latency = None
-        self.power = None
-        self.area = None
+    """ VLSI Flow """
+    def __init__(self, configs):
+        super(VLSI, self).__init__()
+        self.configs = configs
 
     def steps(self):
-        if self.mode == "online":
-            return [
-                'generate_design',
-                'compilation',
-                'synthesis',
-                'generate_simv',
-                'simulation',
-                'record'
-            ]
-        else:
-            assert self.mode == "offline"
-            return [
-                'generate_design'
-            ]
+        raise NotImplementedError()
 
     def run(self):
         for func in self.steps():
             func = getattr(self, func)
             func()
 
-    def generate_config_mixins(self):
-        # fetchWidth decides Ftq_nEntries
-        if self.configs[1] == 1:
-            issueWidth = {
-                "mem": 8,
-                "int": 8,
-                "fp": 8
-            }
-            Ftq_nEntries = 16
-        elif self.configs[1] == 2 or self.configs[1] == 3:
-            Ftq_nEntries = 32
-            if self.configs[1] == 2:
-                issueWidth = {
-                    "mem": 12,
-                    "int": 20,
-                    "fp": 16
-                }
-            else:
-                issueWidth = {
-                    "mem": 16,
-                    "int": 32,
-                    "fp": 24
-                }
+
+class BasicComponent(object):
+    """ BasicComponent """
+    def __init__(self, configs):
+        super(BasicComponent, self).__init__()
+        self.configs = configs
+        self.icache = self.init_icache()
+        self.registers = self.init_registers()
+        self.issue_unit = self.init_issue_unit()
+        self.dcache = self.init_dcache()
+
+    def init_icache(self):
+        return self.configs["basic-component"]["icache"]
+
+    def init_registers(self):
+        return self.configs["basic-component"]["registers"]
+
+    def init_issue_unit(self):
+        return self.configs["basic-component"]["issue-unit"]
+
+    def init_dcache(self):
+        return self.configs["basic-component"]["dcache"]
+
+
+class PreSynthesizeSimulation(VLSI, BasicComponent):
+    """ PreSynthesizeSimulation """
+    def __init__(self, configs, **kwargs):
+        super(PreSynthesizeSimulation, self).__init__(configs)
+        # a 19-dim vector: <torch.Tensor>
+        self.boom_configs = kwargs["boom_configs"]
+        self.soc_name = kwargs["soc_name"]
+        self.core_name = kwargs["core_name"]
+
+    def steps(self):
+        return [
+            "generate_design",
+            "build_simv",
+            "simulate"
+        ]
+
+    def __generate_bpd(self):
+        choice = self.boom_configs[4]
+        if choice == 0:
+            return "new WithTAGELBPD ++"
+        elif choice == 1:
+            return "new WithBoom2BPD ++"
+        elif choice == 2:
+            return "new WithAlpha21264BPD ++"
         else:
-            Ftq_nEntries = 40
-            issueWidth = {
-                "mem": 24,
-                "int": 40,
-                "fp": 32
-            }
+            assert choice == 3
+            return "new WithSWBPD ++"
+
+    def __generate_issue_unit(self):
+        return """
+              Seq(
+                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d),
+                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d),
+                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue , dispatchWidth=%d)
+              )
+        """ % (
+                self.boom_configs[10],
+                self.issue_unit[self.boom_configs[12]][1],
+                self.boom_configs[7],
+                self.boom_configs[7],
+                self.issue_unit[self.boom_configs[12]][0],
+                self.boom_configs[7],
+                self.boom_configs[11],
+                self.issue_unit[self.boom_configs[12]][2],
+                self.boom_configs[7]
+            )
+
+    def __generate_registers(self):
+        return """
+              numIntPhysRegisters = %d,
+              numFpPhysRegisters = %d
+        """ % (
+                self.registers[self.boom_configs[9]][0],
+                self.registers[self.boom_configs[9]][1]
+            )
+
+    def __generate_mulDiv(self):
+        choice = self.boom_configs[13]
+        if choice == 0:
+            return "0",
+        elif choice == 1:
+            return "8",
+        else:
+            assert choice == 3
+            return "XLen"
+
+    def __generate_dcache(self):
+        def __generate_replacement_policy():
+            choice = self.boom_configs[16]
+            if choice == 0:
+                return "random"
+            elif choice == 1:
+                return "lru"
+            else:
+                assert choice == 2
+                return "plru"
+
+        return """
+              Some(
+                DCacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, nMSHRs=%d, replacementPolicy=%s)
+              )
+        """ % (
+                self.dcache[self.boom_configs[15]][0],
+                self.dcache[self.boom_configs[15]][1],
+                self.dcache[self.boom_configs[15]][2],
+                self.dcache[self.boom_configs[15]][3],
+                self.dcache[self.boom_configs[15]][4],
+                __generate_replacement_policy()
+            )
+
+    def __generate_icache(self):
+        return """
+              Some(
+                ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, fetchBytes=%d)
+              )
+        """ % (
+                self.icache[self.boom_configs[0]][0],
+                self.icache[self.boom_configs[0]][1],
+                self.icache[self.boom_configs[0]][2],
+                self.icache[self.boom_configs[0]][3],
+                self.icache[self.boom_configs[0]][4],
+            )
+
+    def __generate_system_bus_key(self):
+        choice = self.boom_configs[7]
+        if choice <= 2:
+            return 8
+        else:
+            return 16
+
+    def _generate_config_mixins(self):
         codes = []
 
         codes.append('''
-class %s extends Config((site, here, up) => {''' % self.core_name
+class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
+  %s
+  new Config((site, here, up) => {
+    case TilesLocated(InSubsystem) => {
+      val prev = up(TilesLocated(InSubsystem), site)
+      val idOffset = overrideIdOffset.getOrElse(prev.size)
+      (0 until n).map { i =>
+        BoomTileAttachParams(
+          tileParams = BoomTileParams(
+            core = BoomCoreParams(
+              fetchWidth = %d,
+              decodeWidth = %d,
+              numRobEntries = %d,
+              issueParams = %s,
+              %s,
+              numLdqEntries = %d,
+              numStqEntries = %d,
+              maxBrCount = %d,
+              numFetchBufferEntries = %d,
+              enablePrefetching = true,
+              numDCacheBanks = 1,
+              ftq = FtqParameters(nEntries=%d),
+              fpu = Some(
+                  freechips.rocketchip.tile.FPUParams(
+                      sfmaLatency=4, dfmaLatency=4, divSqrt=true
+                  )
+              ),
+              mulDiv = Some(
+                  MulDivParams(
+                      mulUnroll=%s,
+                      mulEarlyOut=true,
+                      divEarlyOut=true
+                  )
+              )
+            ),
+            dcache = %s,
+            icache = %s,
+            hartId = i + idOffset
+          ),
+          crossingParams = RocketCrossingParams()
+        )
+      } ++ prev
+    }
+    case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = %d)
+    case XLen => 64
+  })
+)
+            ''' % (
+                self.core_name,
+                self.__generate_bpd(),
+                self.boom_configs[1],
+                self.boom_configs[7],
+                self.boom_configs[8],
+                self.__generate_issue_unit(),
+                self.__generate_registers(),
+                self.boom_configs[14],
+                self.boom_configs[14],
+                self.boom_configs[6],
+                self.boom_configs[2],
+                self.boom_configs[5],
+                self.__generate_mulDiv(),
+                self.__generate_dcache(),
+                self.__generate_icache(),
+                self.__generate_system_bus_key()
+            )
         )
 
-        # backbone
-        codes.append('''
-  case BoomTilesKey => up(BoomTilesKey, site) map { b => b.copy(
-    core = b.core.copy(
-      fetchWidth = %d, // fetchWidth
-      decodeWidth = %d, // decodeWidth
-      numRobEntries = %d, // numRobEntries
-      issueParams = Seq(
-        IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d), // mem_issueWidth
-        IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d), // int_issueWidth
-        IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue , dispatchWidth=%d)), // fp_issueWidth
-      numIntPhysRegisters = %d, // numIntPhysRegisters
-      numFpPhysRegisters = %d, // numFpPhysRegisters
-      numLdqEntries = %d, // numLdqEntries
-      numStqEntries = %d, // numStqEntries
-      maxBrCount = %d, // maxBrCount
-      numFetchBufferEntries = %d, // numFetchBufferEntries
-      numRasEntries = %d, // numRasEntries
-      fpu = Some(freechips.rocketchip.tile.FPUParams(sfmaLatency=4, dfmaLatency=4, divSqrt=true)),
-      ftq = FtqParameters(nEntries=%d),''' % (self.configs[0], self.configs[1],
-            self.configs[3], self.configs[10], issueWidth["mem"], self.configs[1],
-            self.configs[11], issueWidth["int"], self.configs[1], self.configs[12],
-            issueWidth["fp"], self.configs[1], self.configs[5], self.configs[6],
-            self.configs[7], self.configs[8], self.configs[9], self.configs[2],
-            self.configs[4], Ftq_nEntries)
-        )
-        if self.configs[1] == 1:
-            codes.append('''
-      nPerfCounters = 2'''
-            )
-        elif self.configs[1] == 2:
-            codes.append('''
-      nPerfCounters = 6'''
-            )
-        elif self.configs[1] == 4:
-            codes.append('''
-      numDCacheBanks = 2,
-      enablePrefetching = true'''
-            )
-        elif self.configs[1] == 5:
-            codes.append('''
-      numDCacheBanks = 1,
-      enablePrefetching = true'''
-            )
-        codes.append('''
-    ),'''
-        )
-
-        if self.configs[1] == 1 or self.configs[1] == 2:
-            codes.append('''
-    dcache = Some(
-      DCacheParams(
-        rowBits = site(SystemBusKey).beatBits,
-        nSets=64,
-        nWays=%d, // DCacheParams_nWays
-        nMSHRs=%d, // DCacheParams_nMSHRs
-        nTLBEntries=%d // DCacheParams_nTLBEntries
-      )
-    ),
-    icache = Some(
-      ICacheParams(
-        rowBits = site(SystemBusKey).beatBits,
-        nSets=64,
-        nWays=%d, // ICacheParams_ nWays
-        nTLBEntries=%d, // ICacheParams_nTLBEntries
-        fetchBytes=%d*4 // ICacheParams_fetchBytes
-      )
-    )
-  )}''' % (self.configs[13], self.configs[14], self.configs[15],
-             self.configs[16], self.configs[17], self.configs[18])
-            )
-        elif self.configs[2] == 3:
-            codes.append('''
-    dcache = Some(
-      DCacheParams(
-        rowBits = site(SystemBusKey).beatBytes*8,
-        nSets=64,
-        nWays=%d, // DCacheParams_ nWays
-        nMSHRs=%d, // DCacheParams_ nMSHRs
-        nTLBEntries=%d // DCacheParams_ nTLBEntries
-      )
-    ),
-    icache = Some(
-      ICacheParams(
-        rowBits = site(SystemBusKey).beatBytes*8,
-        nSets=64,
-        nWays=%d, // ICacheParams_ nWays
-        nTLBEntries=%d, // ICacheParams_nTLBEntries
-        fetchBytes=%d*4 // ICacheParams_ fetchBytes
-      )
-    )
-  )}''' % (self.configs[13], self.configs[14], self.configs[15],
-             self.configs[16], self.configs[17], self.configs[18])
-            )
-        else:
-            codes.append('''
-    dcache = Some(
-      DCacheParams(
-        rowBits = site(SystemBusKey).beatBytes*8,
-        nSets=64,
-        nWays=%d, // DCacheParams_ nWays
-        nMSHRs=%d, // DCacheParams_ nMSHRs
-        nTLBEntries=%d // DCacheParams_ nTLBEntries
-      )
-    ),
-    icache = Some(
-      ICacheParams(
-        rowBits = site(SystemBusKey).beatBytes*8,
-        nSets=64,
-        nWays=%d, // ICacheParams_ nWays
-        nTLBEntries=%d, // ICacheParams_nTLBEntries
-        fetchBytes=%d*4, // ICacheParams_ fetchBytes
-        prefetch=true
-      )
-    )
-  )}''' % (self.configs[13], self.configs[14], self.configs[15],
-             self.configs[16], self.configs[17], self.configs[18])
-            )
-
-        codes.append('''
-  case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 8)
-  case XLen => 64
-  case MaxHartIdBits => log2Up(site(BoomTilesKey).size)'''
-        )
-        codes.append('''
-})
-
-'''
-        )
-
-        return codes
-
-    def generate_boom_configs(self):
+    def _generate_boom_configs(self):
         codes = []
         codes.append('''
 class %s extends Config(
-  new chipyard.iobinders.WithUARTAdapter ++
-  new chipyard.iobinders.WithTieOffInterrupts ++
-  new chipyard.iobinders.WithBlackBoxSimMem ++
-  new chipyard.iobinders.WithTiedOffDebug ++
-  new chipyard.iobinders.WithSimSerial ++
-  new testchipip.WithTSI ++
-  new chipyard.config.WithBootROM ++
-  new chipyard.config.WithUART ++
-  new chipyard.config.WithL2TLBs(1024) ++
-  new freechips.rocketchip.subsystem.WithNoMMIOPort ++
-  new freechips.rocketchip.subsystem.WithNoSlavePort ++
-  new freechips.rocketchip.subsystem.WithInclusiveCache ++
-  new freechips.rocketchip.subsystem.WithNExtTopInterrupts(0) ++
-  new boom.common.%s ++
-  new boom.common.WithNBoomCores(1) ++
-  new freechips.rocketchip.subsystem.WithCoherentBusTopology ++
-  new freechips.rocketchip.system.BaseConfig)
-        ''' % (self.soc_name, self.core_name))
-
-        return codes
+  new boom.common.%s(1) ++
+  new chipyard.config.AbstractConfig)
+        ''' % (self.soc_name, self.core_name)
+        )
 
     def generate_design(self):
-        codes = self.generate_config_mixins()
-        with open(MACROS['config-mixins'], 'a') as f:
+        codes = self._generate_config_mixins()
+        with open(MACROS["config-mixins"], 'a') as f:
+            f.writelines(codes)
+        codes = self._generate_boom_configs()
+        with open(MACROS["boom-configs"], 'a') as f:
             f.writelines(codes)
 
-        codes = self.generate_boom_configs()
-        with open(MACROS['boom-configs'], 'a') as f:
-            f.writelines(codes)
-
-        self.logger.info("generate design done.")
-
-    def generate_batch_compilation_script(self, batch, start):
-        """
-            `batch`: <int>
-            `start`: <int>
-            `config_name`: <list>
-        """
-        # split files: we have: 10 servers (hpc8 is reserved)
-        #   hpc1, hpc2, hpc3, hpc4, hpc5, hpc6, hpc7, hpc9,
-        #   hpc10, hpc15
-        servers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 15]
-        _batch = batch // 10
-        remainder = batch % 10
-        for i in range(9):
-            s = start
-            e = start + _batch - 1
-            if e < s:
-                continue
-            f = os.path.join(
-                MACROS["chipyard-vlsi-root"],
-                "compile-%s.sh" % servers[i]
-            )
-            cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
-                s, e, self.prefix.upper(), f)
-            execute(cmd, self.logger)
-            start = e + 1
-        # the remainders are left to hpc15
-        s = start
-        e = start + _batch + remainder - 1
-        f = os.path.join(
-            MACROS["chipyard-vlsi-root"],
-            "compile-%s.sh" % servers[-1]
+    def build_simv(self):
+        os.chdir(MACROS["chipyard-sims-root"])
+        # compile & build
+        os.system(
+            "make \
+            MACROCOMPILER_MODE='-l vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \
+            CONFIG=%s" % self.soc_name
         )
-        cmd = "bash vlsi/scripts/compile.sh -s %s -e %s -m %s -f %s" % (
-            s, e, self.prefix.upper(), f)
-        execute(cmd, self.logger)
-
-    def generate_batch_vcs_script(self, batch, start):
-        """
-            `batch`: <int>
-            `start`: <int>
-            `config_name`: <list>
-        """
-        # split files: we have: 10 servers (hpc8 is reserved)
-        #   hpc1, hpc2, hpc3, hpc4, hpc5, hpc6, hpc7, hpc9,
-        #   hpc10, hpc15
-        servers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 15]
-        _batch = batch // 10
-        remainder = batch % 10
-        for i in range(9):
-            s = start
-            e = start + _batch - 1
-            if e < s:
-                continue
-            f = os.path.join(
-                MACROS["chipyard-vlsi-root"],
-                "vcs-%s.sh" % servers[i]
-            )
-            cmd = "bash vlsi/scripts/vcs.sh -s %s -e %s -m %s -f %s" % (
-                s, e, self.prefix.upper(), f)
-            execute(cmd, self.logger)
-            start = e + 1
-        # the remainders are left to hpc15
-        s = start
-        e = start + _batch + remainder - 1
-        f = os.path.join(
-            MACROS["chipyard-vlsi-root"],
-            "vcs-%s.sh" % servers[-1]
+        # post-handling
+        os.system(
+            "mkdir -p %s" % self.soc_name
         )
-        cmd = "bash vlsi/scripts/vcs.sh -s %s -e %s -m %s -f %s" % (
-            s, e, self.prefix.upper(), f)
-        execute(cmd, self.logger)
-
-    def compilation(self):
-        cmd = "cp -f %s %s" % (
-            os.path.join(MACROS["scripts"], "compile.sh"),
-            MACROS["compile-script"]
+        os.system(
+            "mkdir -p output/%s" % self.soc_name
         )
-        execute(cmd, self.logger)
-        cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["compile-script"])
-        execute(cmd, self.logger)
-
-        os.chdir(MACROS["chipyard-vlsi-root"])
-        cmd = "bash %s" % MACROS["compile-script"]
-        execute(cmd, self.logger)
-        os.chdir(os.path.join(MACROS["vlsi-root"], os.path.pardir))
-
-        self.logger.info("compilation done.")
-        
-    def synthesis(self):
-        if_exist(
-            os.path.join(
-                MACROS["syn-rundir"],
-                "ChipTop.mapped.v"
-            ),
-            strict=True
+        os.system(
+            "mv %s %s" % ("simv-chipyard-%s*" % self.soc_name, self.soc_name)
         )
-
-        self.logger.info("synthesis done.")
-
-    def generate_simv(self):
-
-        def pre_misc_work():
-            cmd = "mv -f %s %s/" % (MACROS["hir-file"], MACROS["generated-src"])
-            execute(cmd, self.logger)
-            cmd = "cp -f %s %s/" % (MACROS["sram-vhdl"], MACROS["generated-src"])
-            execute(cmd, self.logger)
-
-        def post_misc_work():
-            cmd = "mv -f %s %s" % (
-                os.path.join(
-                    MACROS["sim-syn-rundir"],
-                    "dhrystone.riscv",
-                    "dramsim2_ini"
-                ),
-                MACROS["sim-syn-rundir"]
-            )
-            execute(cmd, self.logger)
-            # DANGER!
-            cmd = "rm -fr %s" % os.path.join(MACROS["sim-syn-rundir"], "dhrystone.riscv")
-            execute(cmd, self.logger)
-            cmd = "cp -f %s %s/" % (
-                os.path.join(
-                    MACROS["scripts"],
-                    "run.tcl"
-                ),
-                MACROS["sim-syn-rundir"]
-            )
-            execute(cmd, self.logger)
-            cmd = "sed -i 's/PATTERN/%s/g' %s" % (
-                self.soc_name,
-                os.path.join(MACROS["sim-syn-rundir"], "run.tcl")
-            )
-            execute(cmd, self.logger)
-            cmd = "mv -f %s %s/" % (
-                os.path.join(MACROS["chipyard-vlsi-root"], "csrc"),
-                MACROS["sim-syn-rundir"]
-            )
-            execute(cmd, self.logger)
-            cmd = "mv -f %s %s/" % (
-                os.path.join(MACROS["chipyard-vlsi-root"], "vc_hdrs.h"),
-                os.path.join(MACROS["sim-syn-rundir"])
-            )
-            execute(cmd, self.logger)
-
-            # re-link the *.so
-            so_file = glob(
-                os.path.join(
-                    MACROS["sim-syn-rundir"],
-                    "csrc",
-                    "*.so"
-                )
-            )[0]
-            # DANGER!
-            cmd = "rm -f %s" % so_file
-            execute(cmd, self.logger)
-            cmd = "ln -s %s %s" % (
-                os.path.join(
-                    MACROS["sim-syn-rundir"],
-                    "simv.daidir",
-                    os.path.basename(so_file)
-                ),
-                so_file
-            )
-            execute(cmd, self.logger)
-
-        pre_misc_work()
-
-        pattern = "chipyard.TestHarness.%s-ChipTop" % self.soc_name
-
-        cmd = "cp -f %s %s" % (
-            os.path.join(MACROS["scripts"], "vcs.sh"),
-            MACROS["simv-script"]
+        os.system(
+            "cp %s %s" % (, self.soc_name)
         )
-        execute(cmd, self.logger)
-        cmd = "sed -i 's/PATTERN/%s/g' %s" % (self.soc_name, MACROS["simv-script"])
-        execute(cmd, self.logger)
-        os.chdir(MACROS["chipyard-vlsi-root"])
-        cmd = "bash %s" % MACROS["simv-script"]
-        execute(cmd, self.logger)
-        os.chdir(os.path.join(MACROS["vlsi-root"], os.path.pardir))
+        os.chdir('-')
 
-        if_exist(
-            os.path.join(
-                MACROS["sim-syn-rundir"],
-                "simv"
-            ),
-            strict=True
+    def simulate(self):
+        os.chdir(MACROS["chipyard-sims-root"])
+        # pre-handling
+        os.system(
+            "sed -i 's/PATTERN/%s/g' sim.sh" % self.soc_name
         )
-
-        post_misc_work()
-
-        self.logger.info("generate simv done.")
-
-    def simulation(self):
-        cmd =  "cp -f %s %s" % (
-            os.path.join(MACROS["scripts"], "ptpx.sh"),
-            MACROS["sim-syn-rundir"]
-        )
-        execute(cmd, self.logger)
-
-        mkdir(MACROS["sim-path"])
-        mkdir(MACROS["power-path"])
-
-        os.chdir(MACROS["sim-syn-rundir"])
-        cmd = "bash ptpx.sh -s %s -t %s -p %s -r" % (
-            MACROS["sim-path"],
-            MACROS["temp-sim-path"],
-            MACROS["power-path"]
-        )
-        execute(cmd, self.logger)
-        os.chdir(os.path.join(MACROS["vlsi-root"], os.path.pardir))
-
-        self.logger.info("simulation done.")
-
-    def record(self):
-        def generate_latency_yml():
-            latency_dict = {
-                "data-path": os.path.join(MACROS["chipyard-vlsi-root"], "build"),
-                "mode": "latency",
-                "output-path": MACROS["temp-latency-csv"],
-                "config-name": ["chipyard.TestHarness.%s-ChipTop" % self.soc_name]
-            }
-            dump_yaml(MACROS["temp-latency-yml"], latency_dict)
-
-        def generate_power_yml():
-            power_dict = {
-                "data-path": os.path.join(MACROS["power-root"]),
-                "mode": "power",
-                "output-path": MACROS["temp-power-csv"],
-                "config-name": ["%s-benchmarks" % self.core_name]
-            }
-            dump_yaml(MACROS["temp-power-yml"], power_dict)
-
-        def generate_area_yml():
-            area_dict = {
-                "data-path": os.path.join(MACROS["chipyard-vlsi-root"], "build"),
-                "mode": "area",
-                "output-path": MACROS["temp-area-csv"],
-                "config-name": ["chipyard.TestHarness.%s-ChipTop" % self.soc_name]
-            }
-            dump_yaml(MACROS["temp-area-yml"], area_dict)
-
-        # Latency report
-        generate_latency_yml()
-        cmd = "python handle-data.py -c %s" % MACROS["temp-latency-yml"]
-        execute(cmd, self.logger)
-        # Power report
-        generate_power_yml()
-        cmd = "python handle-data.py -c %s" % MACROS["temp-power-yml"]
-        execute(cmd, self.logger)
-        # Area report
-        generate_area_yml()
-        cmd = "python handle-data.py -c %s" % MACROS["temp-area-yml"]
-        execute(cmd, self.logger)
-
-        latency = read_csv(MACROS["temp-latency-csv"])
-        t = 0
-        cnt = 0
-        for v in latency:
-            if not np.isnan(v[1]):
-                t += v[1]
-                cnt += 1
-        t /= cnt
-        self.latency = t
-
-        power = read_csv(MACROS["temp-power-csv"])
-        t = 0
-        cnt = 0
-        for v in power:
-            if not np.isnan(v[-1]):
-                t += v[-1]
-                cnt += 1
-        t /= cnt
-        self.power = t
-
-        self.area = read_csv(MACROS["temp-area-csv"])[0][1]
-
-        # for debugging
-        # self.latency = 0
-        # self.power = 0
-        # self.area = 0
-
-    def clean(self):
-        # DANGER!
-        cmd = "rm -f %s" % MACROS["compile-script"]
-        execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["simv-script"]
-        execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["temp-latency-yml"]
-        execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["temp-power-yml"]
-        execute(cmd, self.logger)
-        cmd = "rm -f %s" % MACROS["temp-area-yml"]
-        execute(cmd, self.logger)
-        # cmd = "rm -f %s" % MACROS["temp-latency-csv"]
-        # execute(cmd, self.logger)
-        # cmd = "rm -f %s" % MACROS["temp-power-csv"]
-        # execute(cmd, self.logger)
-        # cmd = "rm -f %s" % MACROS["temp-area-csv"]
-        # execute(cmd, self.logger)
-
-# Deprecated!
-def vlsi_flow(kwargs, queue=None):
-    vlsi = VLSI(kwargs)
-    vlsi.run()
-
-    ret =  {
-        "latency": vlsi.latency,
-        "power": vlsi.power,
-        "area:": vlsi.area
-    }
-
-    if queue:
-        queue.put(ret)
-    else:
-        return ret
-
-def offline_vlsi_flow_v1():
-    """
-        V1: read from `configs["initialize-output-path"]`
-    """
-    fout = configs["initialize-output-path"]
-    if_exist(
-        fout,
-        strict=True
-    )
-    dataset = load_txt(fout)
-
-    for idx, data in enumerate(dataset):
-        kwargs = {
-            "configs": data,
-            "idx": idx + configs["idx"],
-            "prefix": configs["initialize-method"].upper(),
-            "mode": "offline",
-            "logger": create_logger("logs", "vlsi"),
-        }
-        vlsi = VLSI(kwargs)
-        vlsi.run()
-    vlsi = VLSI(kwargs)
-    vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
-    vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
-
-def offline_vlsi_flow_v2(dataset, configs):
-    """
-        V2: read from <np.array>
-        `dataset`: <np.array>
-    """
-    for idx, data in enumerate(dataset):
-        kwargs = {
-            "configs": data,
-            "idx": idx + configs["idx"],
-            "prefix": "" if configs["flow"] == "initialize" else configs["model"].upper(),
-            "mode": "offline",
-            "logger": create_logger("logs", "vlsi"),
-        }
-        vlsi = VLSI(kwargs)
-        vlsi.run()
-    vlsi.generate_batch_compilation_script(len(dataset), configs["idx"])
-    vlsi.generate_batch_vcs_script(len(dataset), configs["idx"])
-
-if __name__ == "__main__":
-    argv = parse_args()
-    configs = get_configs(argv.configs)
-    offline_vlsi_flow_v1()
+        # simulate
+        for bmark in MACROS["benchmarks"]:
+            os.system(
+                "bash sim.sh %s &" % bmark
+            )
 

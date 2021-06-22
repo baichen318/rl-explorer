@@ -11,22 +11,18 @@ import logging
 from typing import Union
 from datetime import datetime
 from sklearn import metrics
-from exception import NotFoundException, UnDefinedException
 
 def parse_args():
-
     def initialize_parser(parser):
         parser.add_argument('-c', '--configs',
             required=True,
             type=str,
             default='configs.yml',
             help='YAML file to be handled')
-
         return parser
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser = initialize_parser(parser)
-
     return parser.parse_args()
 
 def get_configs(fyaml):
@@ -36,7 +32,6 @@ def get_configs(fyaml):
             configs = yaml.load(f, Loader=yaml.FullLoader)
         except AttributeError:
             configs = yaml.load(f)
-
     return configs
 
 def if_exist(path, strict=False):
@@ -92,23 +87,6 @@ def calc_mape(x, y):
 def timer():
 
     return datetime.now()
-
-def point2knob(p, dims):
-    """convert point form (single integer) to knob form (vector)"""
-    knob = []
-    for dim in dims:
-        knob.append(p % dim)
-        p //= dim
-
-    return knob
-
-def knob2point(knob, dims):
-    """convert knob form (vector) to point form (single integer)"""
-    p = 0
-    for j, k in enumerate(knob):
-        p += int(np.prod(dims[:j])) * k
-
-    return p
 
 def execute(cmd, logger=None):
     if logger:
@@ -180,7 +158,10 @@ def write_txt(path, data, fmt='%i'):
     if dims > 2:
         print("[WARN]: cannot save to %s" % path)
         return
-    print("[INFO]: saving to %s" % path)
+    print(
+        "[INFO]: saving matrix (%d x %d) to %s" %
+        (data.shape[0], data.shape[1], path)
+    )
     np.savetxt(path, data, fmt)
 
 def load_txt(path, fmt=int):

@@ -1,96 +1,117 @@
 # Author: baichen318@gmail.com
 
-# Total constraints:
-#   1. isPow2(fetchWidth)
-#   2. decodeWidth <= fetchWidth
-#   3. icacheParams.nSets <= 64
-#   4. numIntPhysRegisters >= (32 + decodeWidth)
-#   5. numFpPhysRegisters >= (32 + decodeWidth)
-#   6. maxBrCount >= 2
-#   7. numRobEntries % decodeWidth == 0
-#   8. (numLdqEntries - 1) > decodeWidth
-#   9. (numStqEntries - 1) > decodeWidth
-#   10. numFetchBufferEntries > fetchWidth
-#   11. numFetchBufferEntries % decodeWidth == 0
-#   12. fetchWidth = 4, icacheParams.fetchBytes = 2
-#       fetchWidth = 8, icacheParams.fetchBytes = 4
-#   13. numIntPhysRegisters == numFpPhysRegisters
-#   14. numLdqEntries == numStqEntries
-#   15. mem_issueWidth == fp_issueWidth
+# Constraint
+# 1. fetchWidth >= decodeWidth
+# 2. numIntPhysRegisters >= (32 + decodeWidth)
+# 3. numFPPhysRegisters >= (32 + decodeWidth)
+# 4. numRobEntries % decodeWidth == 0
+# 5. numFetchBufferEntries % decodeWidth = 0
+# 6. fetchWidth * 2 = icache.fetchBytes
+# 7. decodeWidth == int_dispatchWidth
+# 8. decodeWidth == int_issueWidth
+# 9. decodeWidth == mem_dispatchWidth
+# 10. decodeWidth == fp_dispatchWidth
+# 11. numLdqEntries == numStqEntries
 
-# Merged constraints (under this design space):
-#   1. decodeWidth <= fetchWidth
-#   2. numRobEntries % decodeWidth == 0
-#   3. numFetchBufferEntries > fetchWidth &&
-#      numFetchBufferEntries % decodeWidth == 0
-#   4. fetchWidth = 4, ICacheParams_fetchBytes = 2
-#      fetchWidth = 8, ICacheParams_fetchBytes = 4
-#   5. numIntPhysRegisters == numFpPhysRegisters
-#   6. numLdqEntries == numStqEntries
-#   7. mem_issueWidth == fp_issueWidth
+basic-component:
+  icache:
+    [
+      # nSets nWays nTLBSets nTLBWays fetchBytes
+      [64, 4, 1, 32, 8],
+      [64, 8, 1, 32, 16],
+      [64, 4, 2, 16, 8],
+      [64, 8, 2, 16, 16],
+      [32, 4, 1, 32, 8],
+      [32, 8, 1, 32, 16],
+      [32, 4, 2, 16, 8],
+      [32, 8, 2, 16, 16]
+    ]
+  registers:
+    [
+      # numIntPhysRegisters numFpPhysRegisters
+      [52, 48],
+      [80, 64],
+      [100, 96],
+      [128, 128],
+      [33, 33],
+      [96, 64]
+    ]
+  issue-unit:
+    [
+      # IQT_INT IQT_MEM IQT_FP
+      [8, 8, 8],
+      [20, 12, 16],
+      [32, 16, 24],
+      [40, 24, 32],
+      [32, 8, 4],
+      [32, 32, 32]
+    ]
+  dcache:
+    [
+      # nSets nWays nTLBSets nTLBWays nMSHRs
+      [64, 4, 1, 8, 2],
+      [64, 8, 1, 16, 4],
+      [64, 8, 1, 32, 8],
+      [32, 4, 1, 8, 2],
+      [32, 8, 1, 16, 4],
+      [32, 8, 1, 32, 8],
+      [64, 4, 2, 8, 2],
+      [64, 8, 2, 16, 4],
+      [64, 8, 2, 32, 8]
+    ]
 
 # Design space
 design-space:
+  icache:
+    start: 1
+    end: 8
+    stride: 1
   fetchWidth:
     candidates: [4, 8]
+  numFetchBufferEntires:
+    candidates: [8, 16, 24, 32, 40]
+  numRasEntries:
+    candidates: [16, 32]
+  bpd:
+    start: 1
+    end: 4
+    stride: 1
+  ftq:
+    candidates: [16, 32, 40]
+  maxBrCount:
+    candidates: [8, 12, 16, 20]
   decodeWidth:
     start: 1
     end: 5
     stride: 1
-  numFetchBufferEntries:
-    candidates: [8, 16, 24, 32, 35, 40]
   numRobEntries:
     candidates: [32, 64, 96, 128, 130]
-  numRasEntries:
-    candidates: [16, 24, 32]
-  numIntPhysRegisters:
-    candidates: [48, 64, 80, 96, 112]
-  numFpPhysRegisters:
-    candidates: [48, 64, 80, 96, 112]
-  numLdqEntries:
-    candidates: [8, 16, 24, 32]
-  numStqEntries:
-    candidates: [8, 16, 24, 32]
-  maxBrCount:
-    candidates: [8, 12, 16, 20]
+  registers:
+    candidates: [1, 2, 3, 4, 5, 6]
   mem_issueWidth:
     candidates: [1, 2]
-  int_issueWidth:
-    start: 1
-    end: 5
-    stride: 1
   fp_issueWidth:
     candidates: [1, 2]
-  DCacheParams_nWays:
-    candidates: [2, 4, 8]
-  DCacheParams_nMSHRs:
-    candidates: [2, 4, 8]
-  DCacheParams_nTLBEntries:
-    candidates: [8, 16, 32]
-  ICacheParams_nWays:
-    candidates: [2, 4, 8]
-  ICacheParams_nTLBEntries:
-    candidates: [8, 16, 32]
-  ICacheParams_fetchBytes:
-    candidates: [2, 4]
+  issueEntries:
+    start: 1
+    end: 6
+    stride: 1
+  mulUnroll:
+    start: 1
+    end: 3
+    stride: 1
+  lsuEntries:
+    candidates: [8, 16, 24, 32]
+  dcache:
+    start: 1
+    end: 9
+    stride: 1
+  dcacheReplacement:
+    start: 1
+    end: 3
+    stride: 1
 
-# Dataset path
-dataset-path: data/dataset/dataset.csv
+# mode: generate-design | sim | rl
+mode: generate-design
 
-## RL related variables
-# Capacity
-capacity: 10000
-
-# Linear decay
-epsilon-start: 1
-epsilon-end: 0.1
-epsilon-decay: 1000
-
-# Update target the policy network
-update-target-policy: 4
-
-# Total epoch to train the policy network
-total-epoch: 1000
-
-# Samples of perturbation
-sample-perturbation: 20
+design-output-path: design.txt
