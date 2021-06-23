@@ -30,6 +30,9 @@ do
     mv simv-chipyard-\${soc_name}* \${soc_name}
     cp ${sim_script} \${soc_name}
     sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
+	cd ${soc_name}
+	bash sim.sh
+	cd -
     sleep 60
 done
 

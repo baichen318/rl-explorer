@@ -10,7 +10,7 @@ class Space(object):
     def __init__(self, dims):
         self.dims = dims
         # calculated manually
-        self.size = 2284277760
+        self.size = 1522851840
         self.n_dim = len(self.dims)
 
     def point2knob(self, p, dims):

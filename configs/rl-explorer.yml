@@ -98,7 +98,7 @@ design-space:
     stride: 1
   mulUnroll:
     start: 1
-    end: 3
+    end: 2
     stride: 1
   lsuEntries:
     candidates: [8, 16, 24, 32]
@@ -125,10 +125,10 @@ benchmarks:
   - mt-matmul
 
 # mode: generate-design | sim | generate-data | rl
-mode: generate-data
+mode: sim
 
 # generate-design: batch x 5 designs
-batch: 20
+batch: 5
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt

@@ -99,12 +99,10 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
     def __generate_mulDiv(self):
         choice = self.boom_configs[13] - 1
         if choice == 0:
-            return "0"
-        elif choice == 1:
-            return "8"
+            return "1"
         else:
-            assert choice == 2
-            return "64"
+            assert choice == 1
+            return "8"
 
     def __generate_dcache(self):
         def __generate_replacement_policy():
