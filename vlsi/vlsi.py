@@ -102,7 +102,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             return "8"
         else:
             assert choice == 2
-            return "XLen"
+            return "64"
 
     def __generate_dcache(self):
         def __generate_replacement_policy():
