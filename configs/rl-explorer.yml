@@ -114,6 +114,9 @@ design-space:
 # mode: generate-design | sim | rl
 mode: sim
 
+# batch x 5 designs
+batch: 20
+
 design-output-path: design.txt
 
 idx: 1

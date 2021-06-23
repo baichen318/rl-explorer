@@ -326,7 +326,7 @@ class %s extends Config(
 
 def test_offline_vlsi(configs):
     """
-        design_set: <str>
+        configs: <dict>
     """
     design_set = load_txt(configs["design-output-path"])
 
@@ -345,6 +345,28 @@ def test_offline_vlsi(configs):
         "BoomConfigs.scala"
     )
     MACROS["chipyard-sims-root"] = "test"
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+
+
+def offline_vlsi(configs):
+    """
+        configs: <dict>
+    """
+    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
+    design_set = load_txt(configs["design-output-path"])
 
     idx = configs["idx"]
     for design in design_set:

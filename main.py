@@ -11,14 +11,14 @@ def generate_design():
         random_state=round(time()),
         basic_component=configs["basic-component"]
     )
-    design = design_space.sample(batch=10)
+    design = design_space.sample(batch=configs["batch"])
     write_txt(configs["design-output-path"], design.numpy())
 
 def sim():
-    from vlsi.vlsi import test_offline_vlsi
+    from vlsi.vlsi import offline_vlsi
 
     if_exist(configs["design-output-path"], strict=True)
-    test_offline_vlsi(configs)
+    offline_vlsi(configs)
 
 def rl_explorer():
     from dse.problem.boom_design_problem import BoomDesignProblem
