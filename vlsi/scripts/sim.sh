@@ -8,6 +8,7 @@ benchmarks=(median qsort rsort towers vvadd multiply dhrystone spmv mt-vvadd mt-
 function sims() {
 	for bmark in ${benchmarks[@]}
 	do
+		echo benchmark: ${bmark}
 		(set -o pipefail &&  \
 			/research/dept8/gds/cbai/research/chipyard/sims/vcs/PATTERN/simv-chipyard-PATTERN \
 				+permissive \
@@ -19,7 +20,7 @@ function sims() {
 				+permissive-off \
 				/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/${bmark}.riscv </dev/null 2> \
 				>(spike-dasm > /research/dept8/gds/cbai/research/chipyard/sims/vcs/output/PATTERN/${bmark}.out) | \
-				tee /research/dept8/gds/cbai/research/chipyard/sims/vcs/output/PATTERN/${bmark}.log)
+				tee /research/dept8/gds/cbai/research/chipyard/sims/vcs/output/PATTERN/${bmark}.log &)
 	done
 }
 
