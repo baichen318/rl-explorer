@@ -117,6 +117,6 @@ mode: sim
 # batch x 5 designs
 batch: 20
 
-design-output-path: design.txt
+design-output-path: data/test/design.txt
 
 idx: 1
