@@ -29,7 +29,7 @@ do
     mkdir -p \${soc_name}
     mv simv-chipyard-\${soc_name}* \${soc_name}
     cp ${sim_script} \${soc_name}
-    sed -i 's/PATTERN/\${soc_name}/g' \${soc_name}/sim.sh
+    sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
     sleep 60
 done
 
