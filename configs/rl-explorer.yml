@@ -125,7 +125,7 @@ benchmarks:
   - mt-matmul
 
 # mode: generate-design | sim | generate-data | rl
-mode: sim
+mode: generate-data
 
 # generate-design: batch x 5 designs
 batch: 20

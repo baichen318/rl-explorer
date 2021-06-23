@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.append(os.path.abspath("../util"))
 import re
+import numpy as np
 from util.util import load_txt, execute, if_exist, write_txt
 from .macros import MACROS
 
@@ -383,42 +384,47 @@ def offline_vlsi(configs):
 
     vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
-def _generate_dataset(dataset, benchmarks, dir_n):
+def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`
     idx = dir_n.strip("Boom").strip("Config")
-    design_set = load_txt(configs["design-output-path"])
     fv = list(design_set[int(idx) - 1])
     # get IPC
     _dataset = []
     ipc = 0
-    for bmark in benchmarks:
+    for bmark in configs["benchmarks"]:
         f = os.path.join(
             MACROS["chipyard-sims-output-root"],
             dir_n,
             bmark + ".log"
         )
-        if_exist(f)
-        with open(f, 'r') as f:
-            cnt = f.readlines()
-        for line in cnt:
-            if "[INFO]" in line and "cycles" in line and "instructions" in line:
-                try:
-                    cycles = re.search(r'\d+\ cycles', line).group()
-                    cycles = int(cycles.split("cycles")[0])
-                    instructions = re.search(r'\d+\ instructions', line).group()
-                    instructions = int(instructions.split("instructions")[0])
-                except AttributeError:
-                    continue
-        if "cycles" in locals() and "instructions" in locals():
-            ipc += instructions / cycles
-            _dataset.append([bmark, instructions, cycles, ipc])
-    dataset.append([idx, fv, _dataset, ipc / len(_dataset)])
+        if if_exist(f):
+            with open(f, 'r') as f:
+                cnt = f.readlines()
+            for line in cnt:
+                if "[INFO]" in line and "cycles" in line and "instructions" in line:
+                    try:
+                        cycles = re.search(r'\d+\ cycles', line).group()
+                        cycles = int(cycles.split("cycles")[0])
+                        instructions = re.search(r'\d+\ instructions', line).group()
+                        instructions = int(instructions.split("instructions")[0])
+                    except AttributeError:
+                        continue
+            if "cycles" in locals() and "instructions" in locals():
+                ipc += instructions / cycles
+                _dataset.append([bmark, instructions, cycles, ipc])
+                del cycles, instructions
+    if len(_dataset) > 0:
+        dataset.append([idx, fv, _dataset, ipc / len(_dataset)])
 
 def generate_dataset(configs):
     def _filter(dataset):
         _dataset = []
         for data in dataset:
-            _dataset.append([i for i in data[1], data[-1]])
+            temp = []
+            for i in data[1]:
+                temp.append(i)
+            temp.append(data[-1])
+            _dataset.append(temp)
 
         return np.array(_dataset)
 
@@ -433,13 +439,15 @@ def generate_dataset(configs):
                     f.write(str(_data[1]) + '\t')
                     f.write(str(_data[2]) + '\t')
                     f.write(str(_data[3]) + '\t')
+                f.write("avg" + '\t')
                 f.write(str(data[3]) + '\n')
 
+    design_set = load_txt(configs["design-output-path"])
     dataset = []
     for dir_n in os.listdir(MACROS["chipyard-sims-output-root"]):
         try:
             re.match(r'Boom\d+Config', dir_n).group()
-            _generate_dataset(dataset, configs["benchmarks"], dir_n)
+            _generate_dataset(configs, design_set, dataset, dir_n)
         except AttributeError:
             continue
     write_txt(configs["data-output-path"], _filter(dataset), fmt="%f")
