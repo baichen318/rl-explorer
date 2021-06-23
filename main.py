@@ -20,6 +20,11 @@ def sim():
     if_exist(configs["design-output-path"], strict=True)
     test_offline_vlsi(configs)
 
+def generate_dataset():
+    from vlsi.vlsi import generate_dataset
+
+    generate_dataset(configs)
+
 def rl_explorer():
     from dse.problem.boom_design_problem import BoomDesignProblem
     from dse.algo.env import MicroArchEnv
@@ -41,6 +46,8 @@ if __name__ == "__main__":
         generate_design()
     elif mode == "sim":
         sim()
+    elif mode == "generate-data":
+        generate_dataset()
     elif mode == "rl":
         rl_explorer()
     else:

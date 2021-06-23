@@ -111,12 +111,30 @@ design-space:
     end: 3
     stride: 1
 
-# mode: generate-design | sim | rl
+# benchmarks
+benchmarks:
+  - median
+  - qsort
+  - rsort
+  - towers
+  - vvadd
+  - multiply
+  - dhrystone
+  - spmv
+  - mt-vvadd
+  - mt-matmul
+
+# mode: generate-design | sim | generate-data | rl
 mode: sim
 
-# batch x 5 designs
+# generate-design: batch x 5 designs
 batch: 20
 
+# generate-design: design-output-path
 design-output-path: data/test/design.txt
 
+# sim: idx
 idx: 1
+
+# generate-data: data-output-path
+data-output-path: data/test/dataset.txt

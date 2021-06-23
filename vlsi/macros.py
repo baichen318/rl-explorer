@@ -4,19 +4,7 @@ import os
 
 MACROS = {
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
-    "rl-explorer-root": "/research/dept8/gds/cbai/research/rl-explorer",
-    "benchmarks": [
-        "median",
-        "qsort",
-        "rsort",
-        "towers",
-        "vvadd",
-        "multiply",
-        "dhrystone",
-        "spmv",
-        "mt-vvadd",
-        "mt-matmul"
-    ]
+    "rl-explorer-root": "/research/dept8/gds/cbai/research/rl-explorer"
 }
 
 def handle_macros():
@@ -24,6 +12,13 @@ def handle_macros():
         MACROS["chipyard-root"],
         "sims",
         "vcs"
+    )
+
+    MACROS["chipyard-sims-output-root"] = os.path.join(
+        MACROS["chipyard-root"],
+        "sims",
+        "vcs",
+        "output"
     )
 
     MACROS["config-mixins"] = os.path.join(
@@ -61,6 +56,5 @@ def handle_macros():
         "scripts",
         "sim.sh"
     )
-
 
 handle_macros()

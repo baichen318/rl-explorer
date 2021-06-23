@@ -2,7 +2,8 @@
 import os
 import sys
 sys.path.append(os.path.abspath("../util"))
-from util.util import load_txt, execute
+import re
+from util.util import load_txt, execute, if_exist, write_txt
 from .macros import MACROS
 
 class VLSI(object):
@@ -318,7 +319,7 @@ class %s extends Config(
             "sed -i 's/PATTERN/%s/g' sim.sh" % self.soc_name
         )
         # simulate
-        for bmark in MACROS["benchmarks"]:
+        for bmark in self.configs["benchmarks"]:
             execute(
                 "bash sim.sh %s &" % bmark
             )
@@ -381,3 +382,73 @@ def offline_vlsi(configs):
         idx = idx + 1
 
     vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+
+def _generate_dataset(dataset, benchmarks, dir_n):
+    # get feature vector `fv`
+    idx = dir_n.strip("Boom").strip("Config")
+    design_set = load_txt(configs["design-output-path"])
+    fv = list(design_set[int(idx) - 1])
+    # get IPC
+    _dataset = []
+    ipc = 0
+    for bmark in benchmarks:
+        f = os.path.join(
+            MACROS["chipyard-sims-output-root"],
+            dir_n,
+            bmark + ".log"
+        )
+        if_exist(f)
+        with open(f, 'r') as f:
+            cnt = f.readlines()
+        for line in cnt:
+            if "[INFO]" in line and "cycles" in line and "instructions" in line:
+                try:
+                    cycles = re.search(r'\d+\ cycles', line).group()
+                    cycles = int(cycles.split("cycles")[0])
+                    instructions = re.search(r'\d+\ instructions', line).group()
+                    instructions = int(instructions.split("instructions")[0])
+                except AttributeError:
+                    continue
+        if "cycles" in locals() and "instructions" in locals():
+            ipc += instructions / cycles
+            _dataset.append([bmark, instructions, cycles, ipc])
+    dataset.append([idx, fv, _dataset, ipc / len(_dataset)])
+
+def generate_dataset(configs):
+    def _filter(dataset):
+        _dataset = []
+        for data in dataset:
+            _dataset.append([i for i in data[1], data[-1]])
+
+        return np.array(_dataset)
+
+    def write_metainfo(path, dataset):
+        print("[INFO]: writing to %s" % path)
+        with open(path, 'w') as f:
+            for data in dataset:
+                f.write(data[0] + '\t')
+                f.write(str(data[1]) + '\t')
+                for _data in data[2]:
+                    f.write(_data[0] + '\t')
+                    f.write(str(_data[1]) + '\t')
+                    f.write(str(_data[2]) + '\t')
+                    f.write(str(_data[3]) + '\t')
+                f.write(str(data[3]) + '\n')
+
+    dataset = []
+    for dir_n in os.listdir(MACROS["chipyard-sims-output-root"]):
+        try:
+            re.match(r'Boom\d+Config', dir_n).group()
+            _generate_dataset(dataset, configs["benchmarks"], dir_n)
+        except AttributeError:
+            continue
+    write_txt(configs["data-output-path"], _filter(dataset), fmt="%f")
+    # save more info.
+
+    write_metainfo(
+        os.path.join(
+            os.path.dirname(configs["data-output-path"]),
+            os.path.basename(configs["data-output-path"]).split(".")[0] + ".info"
+        ),
+        dataset
+    )
