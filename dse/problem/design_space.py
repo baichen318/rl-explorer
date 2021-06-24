@@ -10,7 +10,7 @@ class Space(object):
     def __init__(self, dims):
         self.dims = dims
         # calculated manually
-        self.size = 1522851840
+        self.size = 1373552640
         self.n_dim = len(self.dims)
 
     def point2knob(self, p, dims):
@@ -72,7 +72,7 @@ class DesignSpace(Space):
                     assert design[0] in [2, 4, 6, 8], "[ERROR]: design[0]: %d" % design[0]
                     return v[1]
             elif k == "numFetchBufferEntires":
-                return random.sample([i for i in v if i % decodeWidth == 0], 1)[0]
+                return random.sample([i for i in v if i % decodeWidth == 0 and i > design[1]], 1)[0]
             elif k == "numRobEntries":
                 return random.sample([i for i in v if i % decodeWidth == 0], 1)[0]
             elif k == "registers":
