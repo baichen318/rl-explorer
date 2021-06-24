@@ -11,7 +11,7 @@ def generate_design():
         random_state=round(time()),
         basic_component=configs["basic-component"]
     )
-    design = design_space.sample(batch=configs["batch"])
+    design = design_space.sample(batch=configs["batch"], f=configs["design-output-path"])
     write_txt(configs["design-output-path"], design.numpy())
 
 def sim():

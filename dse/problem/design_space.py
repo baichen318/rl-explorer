@@ -1,10 +1,14 @@
 # Author: baichen318@gmail.com
 
+import os
+import sys
+sys.path.append(os.path.abspath("../../util"))
 import random
 import torch
 import numpy as np
 from time import time
 from collections import OrderedDict
+from util.util import if_exist, load_txt
 
 class Space(object):
     def __init__(self, dims):
@@ -89,9 +93,19 @@ class DesignSpace(Space):
             design.append(__filter(design, k, v))
         return design
 
-    def sample(self, batch):
+    def sample(self, batch, f):
         visited = set()
         samples = []
+
+        # add already sampled dataset
+        def _insert(visited):
+            if if_exist(f):
+                design_set = load_txt(f)
+                for design in design_set:
+                    visited.add(self.knob2point(list(design)))
+
+        _insert(visited)
+
         cnt = 0
         while cnt < batch:
             # randomly sample designs w.r.t. decodeWidth
