@@ -146,10 +146,12 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             )
 
     def __generate_system_bus_key(self):
-        choice = self.boom_configs[7]
-        if choice <= 2:
+        # fetchBytes
+        choice = self.icache[self.boom_configs[0] - 1][4]
+        if choice == 8:
             return 8
         else:
+            assert choice == 16
             return 16
 
     def _generate_config_mixins(self):

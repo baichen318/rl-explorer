@@ -30,9 +30,12 @@ do
     mv simv-chipyard-\${soc_name}* \${soc_name}
     cp ${sim_script} \${soc_name}
     sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
-	cd ${soc_name}
-	bash sim.sh
-	cd -
+	if [[ -e \${soc_name}/simv-chipyard-\${soc_name} ]]
+	then
+		cd ${soc_name}
+		bash sim.sh
+		cd -
+	fi
     sleep 60
 done
 
@@ -63,3 +66,4 @@ done
 
 set_env
 generate_compile_script
+
