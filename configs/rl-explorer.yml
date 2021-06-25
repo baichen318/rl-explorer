@@ -44,7 +44,6 @@ basic-component:
       [20, 12, 16],
       [32, 16, 24],
       [40, 24, 32],
-      [32, 8, 4],
       [32, 32, 32]
     ]
   dcache:
@@ -95,7 +94,7 @@ design-space:
     candidates: [1, 2]
   issueEntries:
     start: 1
-    end: 6
+    end: 5
     stride: 1
   mulUnroll:
     start: 1
