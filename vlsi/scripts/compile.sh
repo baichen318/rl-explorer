@@ -32,7 +32,7 @@ do
     sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
 	if [[ -e \${soc_name}/simv-chipyard-\${soc_name} ]]
 	then
-		cd ${soc_name}
+		cd \${soc_name}
 		bash sim.sh
 		cd -
 	fi
