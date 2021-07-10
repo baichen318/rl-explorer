@@ -39,8 +39,7 @@ def generate_dataset():
     generate_dataset(configs)
 
 def rl_explorer():
-    from dse.problem.boom_design_env import BoomDesignEnv
-    from dse.algo.env import MicroArchEnv
+    from dse.env.boom_design_env import BoomDesignEnv
     from dse.algo.dqn import DQN
 
     env = BoomDesignEnv(configs)

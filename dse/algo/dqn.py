@@ -61,13 +61,11 @@ class ReplayBuffer(object):
         super(ReplayBuffer, self).__init__()
         self.capacity = capacity
         self.buffer = []
-        self.position = 0
 
     def push(self, *args):
-        if len(self.buffer) < self.capacity:
-            self.buffer.append(None)
-        self.buffer[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
+        self.buffer.append(Transition(*args))
+        if len(self.buffer) > self.capacity:
+            del self.buffer[0]
 
     def sample(self, batch_size):
         return random.sample(self.buffer, batch_size)
