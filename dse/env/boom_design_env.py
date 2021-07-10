@@ -56,12 +56,13 @@ class BoomDesignEnv(BasicEnv):
             else:
                 idx += 1
         if self.state[idx] == self.action_list(index):
+            # TODO: this may cause dead-loop!
             pass
         else:
             self.state[idx] = self.env.action_list(index)
 
         # evaluate `self.state` w.r.t. VLSI
-        ipc = online_vlsi(self.configs, self.state)
+        ipc = online_vlsi(self.configs, self.state.numpy())
         # TODO: area & power
         reward = ipc
 

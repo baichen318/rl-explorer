@@ -95,7 +95,7 @@ def execute(cmd, logger=None):
     else:
         print("[INFO]: executing: %s" % cmd)
 
-    os.system(cmd)
+    return os.system(cmd)
 
 def create_logger(path, name):
     """

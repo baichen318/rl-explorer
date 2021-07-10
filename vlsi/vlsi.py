@@ -1,11 +1,11 @@
 # Author: baichen318@gmail.com
 import os
 import sys
-sys.path.append(os.path.abspath("../util"))
 import re
+import time
 import numpy as np
 from util.util import load_txt, execute, if_exist, write_txt
-from .macros import MACROS
+from vlsi.macros import MACROS
 
 class VLSI(object):
     """ VLSI Flow """
@@ -46,6 +46,7 @@ class BasicComponent(object):
 
 class PreSynthesizeSimulation(BasicComponent, VLSI):
     """ PreSynthesizeSimulation """
+    # NOTICE: `counter` may be used in online settings
     counter = 1
     def __init__(self, configs, **kwargs):
         super(PreSynthesizeSimulation, self).__init__(configs)
@@ -330,6 +331,47 @@ class %s extends Config(
                 "bash sim.sh %s &" % bmark
             )
 
+    def query_status(self):
+        def _query_status():
+            root = os.path.join(
+                MACROS["chipyard-sims-output-root"],
+                self.soc_name
+            )
+            for bmark in self.configs["benchmarks"]:
+                f = os.path.join(root, bmark + ".out")
+                if execute("grep -rn \"PASSED\" %s" % f) == 0:
+                    continue
+                else:
+                    return False
+            return True
+
+        while _query_status():
+            time.sleep(60)
+            break
+
+    def get_results(self):
+        root = os.path.join(
+            MACROS["chipyard-sims-output-root"],
+            self.soc_name
+        )
+        ipc = 0
+        for bmark in self.configs["benchmarks"]:
+            f = os.path.join(root, bmark + ".out")
+            with open(f, 'r') as f:
+                cnt = f.readlines()
+                for line in cnt:
+                    if "[INFO]" in line and "cycles" in line and "instructions" in line:
+                        try:
+                            cycles = re.search(r'\d+\ cycles', line).group()
+                            cycles = int(cycles.split("cycles")[0])
+                            instructions = re.search(r'\d+\ instructions', line).group()
+                            instructions = int(instructions.split("instructions")[0])
+                        except AttributeError:
+                            continue
+                if "cycles" in locals() and "instructions" in locals():
+                    ipc += instructions / cycles
+        return ipc
+
 
 def test_offline_vlsi(configs):
     """
@@ -367,7 +409,6 @@ def test_offline_vlsi(configs):
 
     vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
-
 def offline_vlsi(configs):
     """
         configs: <dict>
@@ -393,8 +434,6 @@ def test_online_vlsi(configs, state):
     """
         configs: <dict>
     """
-    design_set = load_txt(configs["design-output-path"])
-
     execute(
         "rm -fr test"
     )
@@ -411,38 +450,40 @@ def test_online_vlsi(configs, state):
     )
     MACROS["chipyard-sims-root"] = "test"
 
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
-
-
-def online_vlsi(configs, state):
-    """
-        configs: <dict>
-        state: <numpy.ndarray>
-    """
-    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
-    design_set = load_txt(configs["design-output-path"])
-
-    idx = configs["idx"]
-
     vlsi_manager = PreSynthesizeSimulation(
         configs,
         boom_configs=state,
         soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter
         core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
     )
+    vlsi_manager.steps = lambda x=None: [
+        "generate_design",
+        "build_simv",
+        "simulate",
+        "query_status"
+    ]
     vlsi_manager.run()
+    return vlsi_manager.get_results()
+
+def online_vlsi(configs, state):
+    """
+        configs: <dict>
+        state: <numpy.ndarray>
+    """
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        boom_configs=state,
+        soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter
+        core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
+    )
+    vlsi_manager.steps = lambda x=None: [
+        "generate_design",
+        "build_simv",
+        "simulate",
+        "query_status"
+    ]
+    vlsi_manager.run()
+    return vlsi_manager.get_results()
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

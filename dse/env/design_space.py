@@ -95,6 +95,7 @@ class DesignSpace(Space):
         return design
 
     def sample(self, batch, f=None):
+        # TODO: sample 5 configs. by default
         visited = set()
         samples = []
 
