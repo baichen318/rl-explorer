@@ -1,3 +1,4 @@
+import random
 import torch
 import copy
 import collections
@@ -19,7 +20,8 @@ class PolicyNetwork(torch.nn.Module):
             torch.nn.ReLU(),
             torch.nn.Linear(500, 50),
             torch.nn.ReLU(),
-            torch.nn.Linear(50, out_dim)
+            torch.nn.Linear(50, out_dim),
+            torch.nn.Softmax(dim=1)
         )
 
     def forward(self, x):
@@ -47,6 +49,7 @@ class ExplorationScheduler(object):
         self._step = 0
 
     def step(self):
+        # TODO: is this the best scheduler?
         # NOTICE: `self._step` is suggested to set zero initially.
         epsilon = self.start + min(self._step / self.decay, 1.0) * (end - start)
         self._step += 1
@@ -78,30 +81,37 @@ class DQN(object):
         super(DQN, self).__init__()
         self.env = env
         self.replay_buffer = ReplayBuffer(
-            capacity=self.env.problem.configs["capacity"]
+            capacity=self.env.configs["capacity"]
         )
         self.policy = PolicyNetwork(
-            in_dim=self.env.problem.space.n_dim,
-            out_dim=1
+            in_dim=self.env.design_space.n_dim,
+            out_dim=sum(self.env.design_space.dims)
         )
         self.target_policy = copy.deepcopy(self.policy)
         self.scheduler = ExplorationScheduler(
-            start=self.env.problem.configs["epsilon-start"],
-            end=self.env.problem.configs["epsilon-end"],
-            decay=self.env.problem.configs["epsilon-decay"]
+            start=self.env.configs["epsilon-start"],
+            end=self.env.configs["epsilon-end"],
+            decay=self.env.configs["epsilon-decay"]
         )
-        self.update_target_policy = self.env.problem.configs["update-target-policy"]
+        self.update_target_policy = self.env.configs["update-target-policy"]
+        self.batch_size = self.env.configs["batch_size"]
+        self.set_random_state()
+
+    def set_random_state(self):
+        random.seed(self.env.seed)
+        torch.manual_seed(self.env.seed)
+        torch.cuda.manual_seed(self.env.seed)
 
     def greedy_select(self, state):
         prob = random.random()
         if prob > self.scheduler.step():
             # exploitation
             with torch.no_grad():
-                return self.policy(state).max(0)[1]
+                return self.policy(state).argmax()
         else:
             # exploration
             return torch.tensor(
-                [random.randrange(len(state))]
+                [random.randrange(len(self.env._action_list))]
             )
 
     def optimize(self):
@@ -135,16 +145,14 @@ class DQN(object):
             next_state, reward, done = self.env.step(action)
             self.env.metric.set_rewards(reward)
 
+            # TODO: how to handle `done`?
             if done:
-                next_state = None
-            else:
-                pass
+                reward = -1
 
             self.replay_buffer.push(state, action, next_state, reward)
+            self.optimize()
 
             state = next_state
-
-            self.optimize()
 
             if (i + 1) % self.update_target_policy == 0:
                 self.target_policy.load(self.policy.state_dict())

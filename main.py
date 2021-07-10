@@ -1,10 +1,23 @@
 # Author: baichen318@gmail.com
 
+import sys, os
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(__file__), "dse")
+)
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(__file__), "util")
+)
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(__file__), "vlsi")
+)
 from time import time
 from util.util import parse_args, get_configs, write_txt, if_exist
 
 def generate_design():
-    from dse.problem.design_space import parse_design_space
+    from dse.env.design_space import parse_design_space
 
     design_space = parse_design_space(
         configs["design-space"],
@@ -26,12 +39,11 @@ def generate_dataset():
     generate_dataset(configs)
 
 def rl_explorer():
-    from dse.problem.boom_design_problem import BoomDesignProblem
+    from dse.problem.boom_design_env import BoomDesignEnv
     from dse.algo.env import MicroArchEnv
     from dse.algo.dqn import DQN
 
-    problem = BoomDesignProblem(configs)
-    env = MicroArchEnv(problem)
+    env = BoomDesignEnv(configs)
     agent = DQN(env)
 
     agent.train()

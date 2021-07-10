@@ -46,12 +46,14 @@ class BasicComponent(object):
 
 class PreSynthesizeSimulation(BasicComponent, VLSI):
     """ PreSynthesizeSimulation """
+    counter = 1
     def __init__(self, configs, **kwargs):
         super(PreSynthesizeSimulation, self).__init__(configs)
         # a 19-dim vector: <torch.Tensor>
         self.boom_configs = kwargs["boom_configs"]
         self.soc_name = kwargs["soc_name"]
         self.core_name = kwargs["core_name"]
+        self.tick()
 
     def steps(self):
         return [
@@ -59,6 +61,9 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             "build_simv",
             "simulate"
         ]
+
+    def tick(self):
+        PreSynthesizeSimulation.counter += 1
 
     def __generate_bpd(self):
         choice = self.boom_configs[4] - 1
@@ -383,6 +388,61 @@ def offline_vlsi(configs):
         idx = idx + 1
 
     vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+
+def test_online_vlsi(configs, state):
+    """
+        configs: <dict>
+    """
+    design_set = load_txt(configs["design-output-path"])
+
+    execute(
+        "rm -fr test"
+    )
+    execute(
+        "mkdir -p test"
+    )
+    MACROS["config-mixins"] = os.path.join(
+        "test",
+        "config-mixins.scala"
+    )
+    MACROS["boom-configs"] = os.path.join(
+        "test",
+        "BoomConfigs.scala"
+    )
+    MACROS["chipyard-sims-root"] = "test"
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+
+
+def online_vlsi(configs, state):
+    """
+        configs: <dict>
+        state: <numpy.ndarray>
+    """
+    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
+    design_set = load_txt(configs["design-output-path"])
+
+    idx = configs["idx"]
+
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        boom_configs=state,
+        soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter
+        core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
+    )
+    vlsi_manager.run()
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

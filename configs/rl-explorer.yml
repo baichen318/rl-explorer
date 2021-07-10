@@ -138,3 +138,11 @@ idx: 1
 
 # generate-data: data-output-path
 data-output-path: data/test/dataset.txt
+
+# total epoch
+total-epoch: 1000
+epsilon-start: 1
+epsilon-end: 0.1
+epsilon-decay: 0.05
+capacity: 5000
+update-target-policy: 5
