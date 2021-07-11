@@ -45,10 +45,9 @@ def rl_explorer():
     env = BoomDesignEnv(configs)
     agent = DQN(env)
 
-    agent.train()
-    agent.test()
-
-# 1. split dataset into A and B, train on A, evaluate ADRS and visualize on B
+    for i in range(configs["episode"]):
+        agent.run(i)
+    agent.search()
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)

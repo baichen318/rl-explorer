@@ -11,7 +11,7 @@ import logging
 from typing import Union
 from datetime import datetime
 from sklearn import metrics
-from .exception import NotFoundException
+from util.exception import NotFoundException
 
 def parse_args():
     def initialize_parser(parser):

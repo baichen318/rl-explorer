@@ -1,3 +1,5 @@
+# Author: baichen318@gmail.com
+
 import random
 import torch
 import copy
@@ -92,7 +94,12 @@ class DQN(object):
             decay=self.env.configs["epsilon-decay"]
         )
         self.update_target_policy = self.env.configs["update-target-policy"]
-        self.batch_size = self.env.configs["batch_size"]
+        self.batch_size = self.env.configs["batch-size"]
+        self.gamma = self.env.configs["gamma"]
+        self.optimizer = torch.optim.Adam(
+            self.policy.parameters(),
+            lr=self.env.configs["learning-rate"]
+        )
         self.set_random_state()
 
     def set_random_state(self):
@@ -105,6 +112,8 @@ class DQN(object):
         if prob > self.scheduler.step():
             # exploitation
             with torch.no_grad():
+                # NOTICE: we use `argmax`, we can also consider `max(1)[1]`
+                # to find the largest index
                 return self.policy(state).argmax()
         else:
             # exploration
@@ -115,43 +124,45 @@ class DQN(object):
     def optimize(self):
         if len(self.replay_buffer) < self.batch_size:
             return
-        transitions = self.replay_buffer.sample(self.batch_size)
-        transitions = Transition(*zip(*transitions))
-        non_terminate_mask = torch.tensor(
-            tuple(map(lambda s: s is not None, transitions.next_state)),
-            dtype=torch.bool
-        )
-        non_terminate_states = torch.cat(
-            [s for s in transitions.next_state if s is not None]
-        )
-        state_batch = torch.cat(transitions.state)
-        action_batch = torch.cat(batch.action)
-        reward_batch = torch.cat(batch.reward)
+        transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
+        transitions.state = torch.cat(transitions.state)
+        transitions.action = torch.cat(transitions.action)
+        transitions.next_state = torch.cat(transitions.next_state)
+        transitions.reward = torch.cat(transitions.reward)
+        # current Q value
+        current_q = self.policy(transitions.state).gather(1, transitions.action)
+        # expected Q value
+        max_next_q = self.policy(transitions.next_state).detach().max(1)[0]
+        expected_q = transitions.reward + (self.gamma * max_next_q)
+        # Huber loss
+        loss = F.smooth_l1_loss(current_q, expected_q)
+        # backpropagation
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
-        states = torch.zeros((self.batch_size, ))
-        for i in range(self.batch_size):
-            states[i] = state_batch[i][action_batch[i]]
-        qval = self.policy(states)
-        # next_state
-        pass
-
-    def train(self):
+    def run(self, episode):
         iterator = tqdm.tqdm(range(self.env.problem.configs["total-epoch"]))
         state = self.env.reset()
         for i in iterator:
             action = self.greedy_select(state)
             next_state, reward, done = self.env.step(action)
-            self.env.metric.set_rewards(reward)
-
             # TODO: how to handle `done`?
             if done:
                 reward = -1
-
-            self.replay_buffer.push(state, action, next_state, reward)
+            self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
             self.optimize()
-
             state = next_state
+            if done:
+                msg = "[INFO]: episode: %d, step: %d" % (episode, i + 1)
+                self.env.logger.info(msg)
+                break
 
-            if (i + 1) % self.update_target_policy == 0:
-                self.target_policy.load(self.policy.state_dict())
-                self.policy.save()
+    def search(self):
+        for i in self.env.problem.configs["search-round"]:
+            state = self.env.reset()
+            self.env.step(
+                self.policy(state).argmax()
+            )
+        msg = "[INFO]: search done."
+        self.env.logger.info(msg)

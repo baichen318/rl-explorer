@@ -1,17 +1,23 @@
 # Author: baichen318@gmail.com
 
+import os
 import torch
 import random
 import time
 import numpy as np
 from design_space import parse_design_space
 from vlsi.vlsi import online_vlsi
+from util.util import create_logger
 
 class BasicEnv(object):
     """ BasicProblem """
     def __init__(self, configs):
         super(BasicProblem, self).__init__()
         self.configs = configs
+        self.logger = create_logger(
+            os.path.dirname(self.configs["log"]),
+            os.path.basename(self.configs["log"])
+        )
 
 class BoomDesignEnv(BasicEnv):
     """ BoomDesignProblem """
@@ -24,6 +30,8 @@ class BoomDesignEnv(BasicEnv):
         )
         self.state = None
         self._action_list = self.construct_action_list()
+        # maximal `step` call times
+        self.n_step = 0
         self.seed = seed
         self.set_random_state(self.seed)
 
@@ -65,13 +73,22 @@ class BoomDesignEnv(BasicEnv):
         ipc = online_vlsi(self.configs, self.state.numpy())
         # TODO: area & power
         reward = ipc
-
-        # TODO
+        if reward > self.best_ipc:
+            self.best_ipc = reward
+            self.last_update = self.n_step
+            msg = "[INFO]: current state: %s, ipc: %.8f" % (
+                self.state.numpy(),
+                self.best_ipc
+            )
+            self.logger.info(msg)
         done = bool(
-
+            self.n_step > self.configs["total-step"] or \
+            (self.n_step - self.last_update) >= self.configs["early-stopping"]
         )
+        self.n_step += 1
         return self.state, reward, done
 
     def reset(self):
         self.state = self.design_space.sample(1)
+        self.best_ipc = online_vlsi(self.configs, self.state.numpy())
         return self.state

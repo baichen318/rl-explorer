@@ -139,10 +139,18 @@ idx: 1
 # generate-data: data-output-path
 data-output-path: data/test/dataset.txt
 
-# total epoch
+# RL related
+episode: 200
 total-epoch: 1000
 epsilon-start: 1
 epsilon-end: 0.1
 epsilon-decay: 0.05
 capacity: 5000
 update-target-policy: 5
+total-step: 10000
+early-stopping: 100
+batch-size: 128
+gamma: 0.8
+learning-rate: 0.001
+log: logs/dqn
+search-round: 2000
