@@ -69,10 +69,14 @@ class BoomDesignEnv(BasicEnv):
         else:
             self.state[idx] = self.env.action_list(index)
 
-        # evaluate `self.state` w.r.t. VLSI
-        ipc = online_vlsi(self.configs, self.state.numpy())
-        # TODO: area & power
-        reward = ipc
+        # if `self.state` is invalid, assign -1 to the reward directly
+        if self.design_space.validate(self.state.numpy()):
+            reward = -1
+        else:
+            # evaluate `self.state` w.r.t. VLSI
+            ipc = online_vlsi(self.configs, self.state.numpy())
+            # TODO: area & power
+            reward = ipc
         if reward > self.best_ipc:
             self.best_ipc = reward
             self.last_update = self.n_step

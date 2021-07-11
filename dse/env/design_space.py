@@ -65,6 +65,7 @@ class DesignSpace(Space):
 
     def _sample(self, decodeWidth):
         def __filter(design, k, v):
+            # validate w.r.t. `decodeWidth`
             if k == "icache":
                 if decodeWidth >= min(self.bounds[self.features[1]]):
                     return random.sample([2, 4, 6, 8], 1)[0]
@@ -121,6 +122,28 @@ class DesignSpace(Space):
                 samples.append(design)
             cnt += 1
         return torch.Tensor(samples)
+
+    def validate(self, configs):
+        # validate w.r.t. `configs`
+        # `fetchWidth` >= `decodeWidth`
+        if not (configs[1] >= configs[7]):
+            return False
+        # `numIntPhysRegisters` >= (32 + `decodeWidth`)
+        if not (self.basic_component["registers"][configs[9]][0] >= (32 + configs[7])):
+            return False
+        # `numRobEntries` % `decodeWidth` = 0
+        if not (configs[8] % configs[7] == 0):
+            return False
+        # `numFetchBufferEntries` % `decodeWidth` = 0
+        if not (configs[2] % configs[7] == 0):
+            return False
+        # `fetchWidth` * 2 = `icache.fetchBytes`
+        if not ((configs[1] << 1) == self.basic_component["icache"][configs[0]][-1]):
+            return False
+        # `numFetchBufferEntries` > `fetchWidth`
+        if not (configs[2] > configs[1]):
+            return False
+        return True
 
 def parse_design_space(design_space, **kwargs):
     bounds = OrderedDict()
