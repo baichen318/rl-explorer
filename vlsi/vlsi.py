@@ -4,8 +4,8 @@ import sys
 import re
 import time
 import numpy as np
-from util.util import load_txt, execute, if_exist, write_txt
-from vlsi.macros import MACROS
+from util import load_txt, execute, if_exist, write_txt
+from macros import MACROS
 
 class VLSI(object):
     """ VLSI Flow """
@@ -67,7 +67,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         PreSynthesizeSimulation.counter += 1
 
     def __generate_bpd(self):
-        choice = self.boom_configs[4] - 1
+        choice = self.boom_configs[4]
         if choice == 0:
             return "new WithTAGELBPD ++"
         elif choice == 1:
@@ -85,25 +85,25 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
                 IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue , dispatchWidth=%d)
               )""" % (
                 self.boom_configs[10],
-                self.issue_unit[self.boom_configs[12] - 1][1],
+                self.issue_unit[self.boom_configs[12]][1],
                 self.boom_configs[7],
                 self.boom_configs[7],
-                self.issue_unit[self.boom_configs[12] - 1][0],
+                self.issue_unit[self.boom_configs[12]][0],
                 self.boom_configs[7],
                 self.boom_configs[11],
-                self.issue_unit[self.boom_configs[12] - 1][2],
+                self.issue_unit[self.boom_configs[12]][2],
                 self.boom_configs[7]
             )
 
     def __generate_registers(self):
         return """numIntPhysRegisters = %d,
               numFpPhysRegisters = %d""" % (
-                self.registers[self.boom_configs[9] - 1][0],
-                self.registers[self.boom_configs[9] - 1][1]
+                self.registers[self.boom_configs[9]][0],
+                self.registers[self.boom_configs[9]][1]
             )
 
     def __generate_mulDiv(self):
-        choice = self.boom_configs[13] - 1
+        choice = self.boom_configs[13]
         if choice == 0:
             return "1"
         else:
@@ -112,12 +112,13 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
 
     def __generate_dcache(self):
         def __generate_replacement_policy():
-            choice = self.boom_configs[16] - 1
+            choice = self.boom_configs[16]
             if choice == 0:
                 return "random"
             elif choice == 1:
                 return "lru"
             else:
+                print("choice:", choice)
                 assert choice == 2
                 return "plru"
 
@@ -132,11 +133,11 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
                   replacementPolicy="%s"
                 )
             )""" % (
-                self.dcache[self.boom_configs[15] - 1][0],
-                self.dcache[self.boom_configs[15] - 1][1],
-                self.dcache[self.boom_configs[15] - 1][2],
-                self.dcache[self.boom_configs[15] - 1][3],
-                self.dcache[self.boom_configs[15] - 1][4],
+                self.dcache[self.boom_configs[15]][0],
+                self.dcache[self.boom_configs[15]][1],
+                self.dcache[self.boom_configs[15]][2],
+                self.dcache[self.boom_configs[15]][3],
+                self.dcache[self.boom_configs[15]][4],
                 __generate_replacement_policy()
             )
 
@@ -144,16 +145,16 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         return """Some(
                 ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, fetchBytes=%d)
             )""" % (
-                self.icache[self.boom_configs[0] - 1][0],
-                self.icache[self.boom_configs[0] - 1][1],
-                self.icache[self.boom_configs[0] - 1][2],
-                self.icache[self.boom_configs[0] - 1][3],
-                self.icache[self.boom_configs[0] - 1][4],
+                self.icache[self.boom_configs[0]][0],
+                self.icache[self.boom_configs[0]][1],
+                self.icache[self.boom_configs[0]][2],
+                self.icache[self.boom_configs[0]][3],
+                self.icache[self.boom_configs[0]][4],
             )
 
     def __generate_system_bus_key(self):
         # fetchBytes
-        choice = self.icache[self.boom_configs[0] - 1][4]
+        choice = self.icache[self.boom_configs[0]][4]
         if choice == 8:
             return 8
         else:
@@ -450,19 +451,21 @@ def test_online_vlsi(configs, state):
     )
     MACROS["chipyard-sims-root"] = "test"
 
-    vlsi_manager = PreSynthesizeSimulation(
-        configs,
-        boom_configs=state,
-        soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter
-        core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
-    )
-    vlsi_manager.steps = lambda x=None: [
-        "generate_design",
-        "build_simv",
-        "simulate",
-        "query_status"
-    ]
-    vlsi_manager.run()
+    for _state in state:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=_state,
+            soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter,
+            core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
+        )
+        vlsi_manager.steps = lambda x=None: [
+            "generate_design",
+            # "build_simv",
+            # "simulate",
+            # "query_status"
+        ]
+        vlsi_manager.run()
+    vlsi_manager.get_results = lambda x=None: np.random.randn()
     return vlsi_manager.get_results()
 
 def online_vlsi(configs, state):
@@ -473,7 +476,7 @@ def online_vlsi(configs, state):
     vlsi_manager = PreSynthesizeSimulation(
         configs,
         boom_configs=state,
-        soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter
+        soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter,
         core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
     )
     vlsi_manager.steps = lambda x=None: [

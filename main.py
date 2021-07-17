@@ -14,7 +14,7 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
 from time import time
-from util.util import parse_args, get_configs, write_txt, if_exist
+from util import parse_args, get_configs, write_txt, if_exist
 
 def generate_design():
     from dse.env.design_space import parse_design_space

@@ -8,7 +8,7 @@ import torch
 import numpy as np
 from time import time
 from collections import OrderedDict
-from util.util import if_exist, load_txt
+from util import if_exist, load_txt
 
 class Space(object):
     def __init__(self, dims):
@@ -45,12 +45,13 @@ class DesignSpace(Space):
         super().__init__(dims)
         self.set_random_state(kwargs["random_state"])
         self.basic_component = kwargs["basic_component"]
+        self.visited = set()
 
     def set_random_state(self, random_state):
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
+        random.seed(random_state)
+        np.random.seed(random_state)
+        torch.manual_seed(random_state)
+        torch.cuda.manual_seed(random_state)
 
     def point2knob(self, point):
         return [self.bounds[self.features[idx]][i] \
@@ -68,23 +69,23 @@ class DesignSpace(Space):
             # validate w.r.t. `decodeWidth`
             if k == "icache":
                 if decodeWidth >= min(self.bounds[self.features[1]]):
-                    return random.sample([2, 4, 6, 8], 1)[0]
+                    return random.sample([1, 3, 5, 7], 1)[0]
                 else:
                     return random.sample(v, 1)[0]
             elif k == "fetchWidth":
-                if design[0] in [1, 3, 5, 7]:
+                if design[0] in [0, 2, 4, 6]:
                     return v[0]
                 else:
-                    assert design[0] in [2, 4, 6, 8], "[ERROR]: design[0]: %d" % design[0]
+                    assert design[0] in [1, 3, 5, 7], "[ERROR]: design[0]: %d" % design[0]
                     return v[1]
             elif k == "numFetchBufferEntires":
                 return random.sample([i for i in v if i % decodeWidth == 0 and i > design[1]], 1)[0]
             elif k == "numRobEntries":
                 return random.sample([i for i in v if i % decodeWidth == 0], 1)[0]
             elif k == "registers":
-                return random.sample([idx + 1 for idx, i in enumerate(v) \
-                    if self.basic_component["registers"][i - 1][0] >= (32 + decodeWidth) and \
-                        self.basic_component["registers"][i - 1][1] >= (32 + decodeWidth)], 1)[0]
+                return random.sample([idx for idx, i in enumerate(v) \
+                    if self.basic_component["registers"][i][0] >= (32 + decodeWidth) and \
+                        self.basic_component["registers"][i][1] >= (32 + decodeWidth)], 1)[0]
             elif k == "decodeWidth":
                 return decodeWidth
             else:
@@ -96,8 +97,7 @@ class DesignSpace(Space):
         return design
 
     def sample(self, batch, f=None):
-        # TODO: sample 5 configs. by default
-        visited = set()
+        # NOTICE: sample 5 configs. by default
         samples = []
 
         # add already sampled dataset
@@ -107,7 +107,7 @@ class DesignSpace(Space):
                 for design in design_set:
                     visited.add(self.knob2point(list(design)))
 
-        _insert(visited)
+        _insert(self.visited)
 
         cnt = 0
         while cnt < batch:
@@ -115,13 +115,40 @@ class DesignSpace(Space):
             for decodeWidth in self.bounds[self.features[7]]:
                 design = self._sample(decodeWidth)
                 point = self.knob2point(design)
-                while point in visited:
+                while point in self.visited:
                     design = self._sample(decodeWidth)
                     point = self.knob2point(design)
-                visited.add(point)
+                self.visited.add(point)
                 samples.append(design)
             cnt += 1
         return torch.Tensor(samples)
+
+    def sample_wo_decodewidth(self, batch, f=None):
+        # NOTICE: sample 1 configs. by default
+        samples = []
+
+        # add already sampled dataset
+        def _insert(visited):
+            if isinstance(f, str) and if_exist(f):
+                design_set = load_txt(f)
+                for design in design_set:
+                    visited.add(self.knob2point(list(design)))
+
+        _insert(self.visited)
+
+        cnt = 0
+        while cnt < batch:
+            # randomly sample designs w.r.t. decodeWidth
+            decodeWidth = random.sample(self.bounds["decodeWidth"], 1)[0]
+            design =self._sample(decodeWidth)
+            point = self.knob2point(design)
+            while point in self.visited:
+                design = self._sample(decodeWidth)
+                point = self.knob2point(design)
+            self.visited.add(point)
+            samples.append(design)
+            cnt += 1
+        return torch.Tensor(samples).long()
 
     def validate(self, configs):
         # validate w.r.t. `configs`

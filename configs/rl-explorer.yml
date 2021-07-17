@@ -63,8 +63,8 @@ basic-component:
 # Design space
 design-space:
   icache:
-    start: 1
-    end: 8
+    start: 0
+    end: 7
     stride: 1
   fetchWidth:
     candidates: [4, 8]
@@ -73,8 +73,8 @@ design-space:
   numRasEntries:
     candidates: [16, 32]
   bpd:
-    start: 1
-    end: 4
+    start: 0
+    end: 3
     stride: 1
   ftq:
     candidates: [16, 32, 40]
@@ -87,28 +87,30 @@ design-space:
   numRobEntries:
     candidates: [32, 64, 96, 128, 130]
   registers:
-    candidates: [1, 2, 3, 4, 5, 6]
+    start: 0
+    end: 5
+    stride: 1
   mem_issueWidth:
     candidates: [1, 2]
   fp_issueWidth:
     candidates: [1, 2]
   issueEntries:
-    start: 1
-    end: 5
+    start: 0
+    end: 4
     stride: 1
   mulUnroll:
-    start: 1
-    end: 2
+    start: 0
+    end: 1
     stride: 1
   lsuEntries:
     candidates: [8, 16, 24, 32]
   dcache:
-    start: 1
-    end: 9
+    start: 0
+    end: 8
     stride: 1
   dcacheReplacement:
-    start: 1
-    end: 3
+    start: 0
+    end: 2
     stride: 1
 
 # benchmarks
@@ -125,7 +127,7 @@ benchmarks:
   - mt-matmul
 
 # mode: generate-design | sim | generate-data | rl
-mode: generate-design
+mode: rl
 
 # generate-design: batch x 5 designs
 batch: 5
@@ -141,7 +143,7 @@ data-output-path: data/test/dataset.txt
 
 # RL related
 episode: 200
-total-epoch: 1000
+total-epoch: 800
 epsilon-start: 1
 epsilon-end: 0.1
 epsilon-decay: 0.05
@@ -149,7 +151,7 @@ capacity: 5000
 update-target-policy: 5
 total-step: 10000
 early-stopping: 100
-batch-size: 128
+batch-size: 16
 gamma: 0.8
 learning-rate: 0.001
 log: logs/dqn

@@ -2,6 +2,7 @@
 
 import random
 import torch
+import torch.nn.functional as F
 import copy
 import collections
 import tqdm
@@ -53,7 +54,7 @@ class ExplorationScheduler(object):
     def step(self):
         # TODO: is this the best scheduler?
         # NOTICE: `self._step` is suggested to set zero initially.
-        epsilon = self.start + min(self._step / self.decay, 1.0) * (end - start)
+        epsilon = self.start + min(self._step / self.decay, 1.0) * (self.end - self.start)
         self._step += 1
         return epsilon
         
@@ -114,26 +115,26 @@ class DQN(object):
             with torch.no_grad():
                 # NOTICE: we use `argmax`, we can also consider `max(1)[1]`
                 # to find the largest index
-                return self.policy(state).argmax()
+                return self.policy(state.float()).argmax().unsqueeze(0)
         else:
             # exploration
             return torch.tensor(
-                [random.randrange(len(self.env._action_list))]
+                [random.randrange(len(self.env.action_list))]
             )
 
     def optimize(self):
         if len(self.replay_buffer) < self.batch_size:
             return
         transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
-        transitions.state = torch.cat(transitions.state)
-        transitions.action = torch.cat(transitions.action)
-        transitions.next_state = torch.cat(transitions.next_state)
-        transitions.reward = torch.cat(transitions.reward)
+        batch_state = torch.cat(transitions.state)
+        batch_action = torch.cat(transitions.action)
+        batch_next_state = torch.cat(transitions.next_state)
+        batch_reward = torch.cat(transitions.reward)
         # current Q value
-        current_q = self.policy(transitions.state).gather(1, transitions.action)
+        current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
         # expected Q value
-        max_next_q = self.policy(transitions.next_state).detach().max(1)[0]
-        expected_q = transitions.reward + (self.gamma * max_next_q)
+        max_next_q = self.policy(batch_next_state.float()).detach().max(1)[0]
+        expected_q = batch_reward + (self.gamma * max_next_q)
         # Huber loss
         loss = F.smooth_l1_loss(current_q, expected_q)
         # backpropagation
@@ -142,14 +143,15 @@ class DQN(object):
         self.optimizer.step()
 
     def run(self, episode):
-        iterator = tqdm.tqdm(range(self.env.problem.configs["total-epoch"]))
+        iterator = tqdm.tqdm(range(self.env.configs["total-epoch"]))
         state = self.env.reset()
         for i in iterator:
             action = self.greedy_select(state)
-            next_state, reward, done = self.env.step(action)
+            print("action:", action)
+            next_state, reward, done = self.env.step(action[0])
             # TODO: how to handle `done`?
             if done:
-                reward = -1
+                reward = 0
             self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
             self.optimize()
             state = next_state
