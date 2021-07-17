@@ -161,10 +161,11 @@ class DQN(object):
                 break
 
     def search(self):
-        for i in self.env.problem.configs["search-round"]:
+        iterator = tqdm.tqdm(range(self.env.configs["search-round"]))
+        for i in iterator:
             state = self.env.reset()
             self.env.step(
-                self.policy(state).argmax()
+                self.policy(state.float()).argmax()
             )
         msg = "[INFO]: search done."
         self.env.logger.info(msg)

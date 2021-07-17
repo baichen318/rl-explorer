@@ -155,4 +155,4 @@ batch-size: 16
 gamma: 0.8
 learning-rate: 0.001
 log: logs/dqn
-search-round: 2000
+search-round: 500
