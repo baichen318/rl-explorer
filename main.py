@@ -47,7 +47,23 @@ def rl_explorer():
 
     for i in range(configs["episode"]):
         agent.run(i)
-    agent.search()
+    agent.save()
+    # agent.search()
+
+def test_rl_explorer():
+     """
+        debug version of `rl_explorer`
+    """
+    from dse.env.boom_design_env import BoomDesignEnv
+    from dse.algo.dqn import DQN
+
+    env = BoomDesignEnv(configs)
+    agent = DQN(env)
+
+    for i in range(configs["episode"]):
+        agent.test_run(i)
+    agent.save()
+    # agent.search()
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
@@ -59,6 +75,9 @@ if __name__ == "__main__":
     elif mode == "generate-data":
         generate_dataset()
     elif mode == "rl":
-        rl_explorer()
+        if configs["debug"]:
+            test_rl_explorer()
+        else:
+            rl_explorer()
     else:
         raise NotImplementedError()

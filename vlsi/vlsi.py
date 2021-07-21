@@ -318,7 +318,7 @@ class %s extends Config(
                 os.path.join(MACROS["chipyard-sims-root"], self.soc_name)
             )
         )
-        os.chdir('-')
+        execute("cd -")
 
     def simulate(self):
         os.chdir(MACROS["chipyard-sims-root"])
@@ -473,18 +473,19 @@ def online_vlsi(configs, state):
         configs: <dict>
         state: <numpy.ndarray>
     """
-    vlsi_manager = PreSynthesizeSimulation(
-        configs,
-        boom_configs=state,
-        soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter,
-        core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
-    )
-    vlsi_manager.steps = lambda x=None: [
-        "generate_design",
-        "build_simv",
-        "simulate",
-        "query_status"
-    ]
+    for _state in state:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=state,
+            soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter,
+            core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
+        )
+        vlsi_manager.steps = lambda x=None: [
+            "generate_design",
+            "build_simv",
+            "simulate",
+            "query_status"
+        ]
     vlsi_manager.run()
     return vlsi_manager.get_results()
 

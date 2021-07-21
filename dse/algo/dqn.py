@@ -1,5 +1,6 @@
 # Author: baichen318@gmail.com
 
+import os
 import random
 import torch
 import torch.nn.functional as F
@@ -7,6 +8,7 @@ import copy
 import collections
 import tqdm
 import math
+from util import mkdir
 
 Transition = collections.namedtuple(
     "Transition", ("state", "action", "next_state", "reward")
@@ -30,12 +32,13 @@ class PolicyNetwork(torch.nn.Module):
     def forward(self, x):
         return self.mlp(x)
 
-    def save(self, p):
-        print("[INFO]: saving to %s" % p)
+    def save(self, p, logger):
+        mkdir(p)
+        logger.info("[INFO]: saving to %s" % p)
         torch.save(self.mlp.state_dict(), p)
 
-    def load(self, p):
-        print("[INFO]: loading from %s" % p)
+    def load(self, p, logger):
+        logger.info("[INFO]: loading from %s" % p)
         if isinstance(p, 'str'):
             self.mlp = torch.load(p)
         else:
@@ -52,9 +55,8 @@ class ExplorationScheduler(object):
         self._step = 0
 
     def step(self):
-        # TODO: is this the best scheduler?
         # NOTICE: `self._step` is suggested to set zero initially.
-        epsilon = self.start + min(self._step / self.decay, 1.0) * (self.end - self.start)
+        epsilon = self.end + (self.start - self.end) * math.exp(-1. * self._step / self.decay)
         self._step += 1
         return epsilon
         
@@ -88,11 +90,11 @@ class DQN(object):
             in_dim=self.env.design_space.n_dim,
             out_dim=sum(self.env.design_space.dims)
         )
-        self.target_policy = copy.deepcopy(self.policy)
+        # self.target_policy = copy.deepcopy(self.policy)
         self.scheduler = ExplorationScheduler(
             start=self.env.configs["epsilon-start"],
             end=self.env.configs["epsilon-end"],
-            decay=self.env.configs["epsilon-decay"]
+            decay=self.env.configs["episode"]
         )
         self.update_target_policy = self.env.configs["update-target-policy"]
         self.batch_size = self.env.configs["batch-size"]
@@ -101,6 +103,7 @@ class DQN(object):
             self.policy.parameters(),
             lr=self.env.configs["learning-rate"]
         )
+        self.episode_durations = []
         self.set_random_state()
 
     def set_random_state(self):
@@ -143,29 +146,62 @@ class DQN(object):
         self.optimizer.step()
 
     def run(self, episode):
-        iterator = tqdm.tqdm(range(self.env.configs["total-epoch"]))
+        iterator = 0
         state = self.env.reset()
-        for i in iterator:
+        while True:
             action = self.greedy_select(state)
-            print("action:", action)
             next_state, reward, done = self.env.step(action[0])
-            # TODO: how to handle `done`?
-            if done:
-                reward = 0
             self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
             self.optimize()
             state = next_state
+            iterator += 1
             if done:
-                msg = "[INFO]: episode: %d, step: %d" % (episode, i + 1)
+                msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
                 self.env.logger.info(msg)
+                self.episode_durations.append(iterator)
                 break
 
-    def search(self):
-        iterator = tqdm.tqdm(range(self.env.configs["search-round"]))
-        for i in iterator:
-            state = self.env.reset()
-            self.env.step(
-                self.policy(state.float()).argmax()
-            )
-        msg = "[INFO]: search done."
-        self.env.logger.info(msg)
+    def test_run(self, episode):
+        """
+            debug version of `run`
+        """
+        iterator = 0
+        state = self.env.test_eset()
+        while True:
+            action = self.greedy_select(state)
+            next_state, reward, done = self.env.test_step(action[0])
+            self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
+            self.optimize()
+            state = next_state
+            iterator += 1
+            if done:
+                msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
+                self.env.logger.info(msg)
+                self.episode_durations.append(iterator)
+                break
+
+    def save(self):
+        self.policy.save(
+            self.env.configs["model-path"],
+            self.env.logger
+        )
+
+    # def search(self):
+    #     iterator = tqdm.tqdm(range(self.env.configs["search-round"]))
+    #     for i in iterator:
+    #         state = self.env.reset()
+    #         self.env.step(
+    #             self.policy(state.float()).argmax()
+    #         )
+    #     msg = "[INFO]: search done."
+    #     self.env.logger.info(msg)
+
+    # def test_search(self):
+    #     iterator = tqdm.tqdm(range(self.env.configs["search-round"]))
+    #     for i in iterator:
+    #         state = self.env.test_reset()
+    #         self.env.test_step(
+    #             self.policy(state.float()).argmax()
+    #         )
+    #     msg = "[INFO]: search done."
+    #     self.env.logger.info(msg)

@@ -143,7 +143,6 @@ data-output-path: data/test/dataset.txt
 
 # RL related
 episode: 200
-total-epoch: 800
 epsilon-start: 1
 epsilon-end: 0.1
 epsilon-decay: 0.05
@@ -156,3 +155,5 @@ gamma: 0.8
 learning-rate: 0.001
 log: logs/dqn
 search-round: 500
+model-path: models/dqn
+debug: True

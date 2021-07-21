@@ -63,7 +63,45 @@ class BoomDesignEnv(BasicEnv):
         # TODO: this may cause dead-loop!
         self.state[0][idx] = self.action_list[action]
         # if `self.state` is invalid, assign -1 to the reward directly
-        if self.design_space.validate(self.state[0].numpy()):
+        if not self.design_space.validate(self.state[0].numpy()):
+            reward = -1
+        else:
+            # evaluate `self.state` w.r.t. VLSI
+            ipc = online_vlsi(self.configs, self.state.numpy())
+            # TODO: area & power
+            reward = ipc
+        if reward > self.best_ipc:
+            self.best_ipc = reward
+            self.last_update = self.n_step
+            msg = "[INFO]: current state: %s, ipc: %.8f" % (
+                self.state.numpy(),
+                self.best_ipc
+            )
+            self.logger.info(msg)
+        done = bool(
+            self.n_step > self.configs["total-step"] or \
+            (self.n_step - self.last_update) >= self.configs["early-stopping"] or \
+            (reward == -1)
+        )
+        self.n_step += 1
+        return self.state, reward, done
+
+    def test_step(self, action):
+        """
+            debug version of `step`
+        """
+        # TODO: `self.state` is not a batch, currently support sequential RL
+        s, idx = 0, 0
+        for dim in self.design_space.dims:
+            s += dim
+            if action < s:
+                break
+            else:
+                idx += 1
+        # TODO: this may cause dead-loop!
+        self.state[0][idx] = self.action_list[action]
+        # if `self.state` is invalid, assign -1 to the reward directly
+        if not self.design_space.validate(self.state[0].numpy()):
             reward = -1
         else:
             # evaluate `self.state` w.r.t. VLSI
@@ -80,13 +118,18 @@ class BoomDesignEnv(BasicEnv):
             self.logger.info(msg)
         done = bool(
             self.n_step > self.configs["total-step"] or \
-            (self.n_step - self.last_update) >= self.configs["early-stopping"]
+            (self.n_step - self.last_update) >= self.configs["early-stopping"] or \
+            (reward == -1)
         )
         self.n_step += 1
         return self.state, reward, done
 
     def reset(self):
         self.state = self.design_space.sample_wo_decodewidth(1)
-        self.best_ipc = test_online_vlsi(self.configs, self.state.numpy())
+        self.best_ipc = online_vlsi(self.configs, self.state.numpy())
         return self.state
 
+    def test_reset(self):
+        self.state = self.design_space.sample_wo_decodewidth(1)
+        self.best_ipc = test_online_vlsi(self.configs, self.state.numpy())
+        return self.state
