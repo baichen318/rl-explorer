@@ -33,9 +33,9 @@ class PolicyNetwork(torch.nn.Module):
         return self.mlp(x)
 
     def save(self, p, logger):
-        mkdir(p)
-        logger.info("[INFO]: saving to %s" % p)
-        torch.save(self.mlp.state_dict(), p)
+        mkdir(os.path.dirname(p))
+        logger.info("[INFO]: saving to %s" % p + "pt")
+        torch.save(self.mlp.state_dict(), p + ".pt")
 
     def load(self, p, logger):
         logger.info("[INFO]: loading from %s" % p)
@@ -96,7 +96,7 @@ class DQN(object):
             end=self.env.configs["epsilon-end"],
             decay=self.env.configs["episode"]
         )
-        self.update_target_policy = self.env.configs["update-target-policy"]
+        # self.update_target_policy = self.env.configs["update-target-policy"]
         self.batch_size = self.env.configs["batch-size"]
         self.gamma = self.env.configs["gamma"]
         self.optimizer = torch.optim.Adam(
@@ -166,7 +166,7 @@ class DQN(object):
             debug version of `run`
         """
         iterator = 0
-        state = self.env.test_eset()
+        state = self.env.test_reset()
         while True:
             action = self.greedy_select(state)
             next_state, reward, done = self.env.test_step(action[0])

@@ -51,7 +51,7 @@ def rl_explorer():
     # agent.search()
 
 def test_rl_explorer():
-     """
+    """
         debug version of `rl_explorer`
     """
     from dse.env.boom_design_env import BoomDesignEnv
