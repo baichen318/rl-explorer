@@ -47,6 +47,7 @@ def rl_explorer():
 
     for i in range(configs["episode"]):
         agent.run(i)
+        agent.save_episode()
     agent.save()
     # agent.search()
 

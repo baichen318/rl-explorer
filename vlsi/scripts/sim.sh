@@ -3,7 +3,7 @@
 
 # set -ex
 
-benchmarks=(median qsort rsort towers vvadd multiply dhrystone spmv mt-vvadd mt-matmul)
+benchmarks=(median towers dhrystone spmv mt-vvadd mt-matmul)
 
 function sims() {
 	for bmark in ${benchmarks[@]}

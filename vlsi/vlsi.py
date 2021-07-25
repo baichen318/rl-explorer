@@ -118,7 +118,6 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             elif choice == 1:
                 return "lru"
             else:
-                print("choice:", choice)
                 assert choice == 2
                 return "plru"
 
@@ -318,19 +317,23 @@ class %s extends Config(
                 os.path.join(MACROS["chipyard-sims-root"], self.soc_name)
             )
         )
-        execute("cd -")
+        os.chdir(MACROS["rl-explorer-root"])
 
     def simulate(self):
-        os.chdir(MACROS["chipyard-sims-root"])
+        os.chdir(
+            os.path.join(
+                MACROS["chipyard-sims-root"],
+                self.soc_name
+            )
+        )
         # pre-handling
         execute(
             "sed -i 's/PATTERN/%s/g' sim.sh" % self.soc_name
         )
         # simulate
-        for bmark in self.configs["benchmarks"]:
-            execute(
-                "bash sim.sh %s &" % bmark
-            )
+        execute(
+            "bash sim.sh"
+        )
 
     def query_status(self):
         def _query_status():
@@ -340,15 +343,16 @@ class %s extends Config(
             )
             for bmark in self.configs["benchmarks"]:
                 f = os.path.join(root, bmark + ".out")
-                if execute("grep -rn \"PASSED\" %s" % f) == 0:
+                if os.path.exists(f) and execute("grep -rn \"PASSED\" %s" % f) == 0:
                     continue
                 else:
                     return False
             return True
 
-        while _query_status():
+        # TODO: should we set the maximum time period?
+        print("[INFO]:", "querying results...")
+        while not _query_status():
             time.sleep(60)
-            break
 
     def get_results(self):
         root = os.path.join(
@@ -357,7 +361,7 @@ class %s extends Config(
         )
         ipc = 0
         for bmark in self.configs["benchmarks"]:
-            f = os.path.join(root, bmark + ".out")
+            f = os.path.join(root, bmark + ".log")
             with open(f, 'r') as f:
                 cnt = f.readlines()
                 for line in cnt:
@@ -369,9 +373,11 @@ class %s extends Config(
                             instructions = int(instructions.split("instructions")[0])
                         except AttributeError:
                             continue
-                if "cycles" in locals() and "instructions" in locals():
-                    ipc += instructions / cycles
-        return ipc
+                    if "cycles" in locals() and "instructions" in locals():
+                        ipc += instructions / cycles
+                        del cycles
+                        del instructions
+        return ipc / len(self.configs["benchmarks"])
 
 
 def test_offline_vlsi(configs):
@@ -476,7 +482,7 @@ def online_vlsi(configs, state):
     for _state in state:
         vlsi_manager = PreSynthesizeSimulation(
             configs,
-            boom_configs=state,
+            boom_configs=_state,
             soc_name="Boom%dConfig" % PreSynthesizeSimulation.counter,
             core_name="WithN%dBooms" % PreSynthesizeSimulation.counter
         )

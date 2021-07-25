@@ -116,11 +116,11 @@ design-space:
 # benchmarks
 benchmarks:
   - median
-  - qsort
-  - rsort
+  # - qsort
+  # - rsort
   - towers
-  - vvadd
-  - multiply
+  # - vvadd
+  # - multiply
   - dhrystone
   - spmv
   - mt-vvadd
@@ -156,4 +156,5 @@ learning-rate: 0.001
 log: logs/dqn
 search-round: 500
 model-path: models/dqn
-debug: True
+buffer-path: models/buffer
+debug: False

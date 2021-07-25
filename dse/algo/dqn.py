@@ -8,6 +8,7 @@ import copy
 import collections
 import tqdm
 import math
+import pickle
 from util import mkdir
 
 Transition = collections.namedtuple(
@@ -74,6 +75,16 @@ class ReplayBuffer(object):
 
     def sample(self, batch_size):
         return random.sample(self.buffer, batch_size)
+
+    def save(self, path):
+        with open(path, "wb") as f:
+            pickle.dump(self.buffer, f)
+        print("[INFO]: save the buffer to %s" % path)
+
+    def load(self, path):
+        with open(path, "rb") as f:
+            self.buffer = pickle.load(f)
+        print("[INFO]: load the buffer from %s" % path)
 
     def __len__(self):
         return len(self.buffer)
@@ -160,6 +171,9 @@ class DQN(object):
                 self.env.logger.info(msg)
                 self.episode_durations.append(iterator)
                 break
+
+    def save_episode(self):
+        self.replay_buffer.save(self.env.configs["buffer-path"])
 
     def test_run(self, episode):
         """
