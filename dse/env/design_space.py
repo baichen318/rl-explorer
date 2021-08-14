@@ -96,8 +96,10 @@ class DesignSpace(Space):
             design.append(__filter(design, k, v))
         return design
 
-    def sample(self, batch, f=None):
-        # NOTICE: sample 5 configs. by default
+    def sample_v1(self, batch, f=None):
+        """
+            V1: uniformly sample configs. w.r.t. `decodeWidth`
+        """
         samples = []
 
         # add already sampled dataset
@@ -123,8 +125,11 @@ class DesignSpace(Space):
             cnt += 1
         return torch.Tensor(samples)
 
-    def sample_wo_decodewidth(self, batch, f=None):
-        # NOTICE: sample 1 configs. by default
+    def sample_v2(self, batch, f=None):
+        """
+            V2: sample configs. w.r.t. `decodeWidth`,
+            but not UNIFORMLY!
+        """
         samples = []
 
         # add already sampled dataset

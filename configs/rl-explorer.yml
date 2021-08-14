@@ -129,8 +129,8 @@ benchmarks:
 # mode: generate-design | sim | generate-data | rl
 mode: rl
 
-# generate-design: batch x 5 designs
-batch: 5
+# generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
+batch: 32
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt
@@ -157,4 +157,4 @@ log: logs/dqn
 search-round: 500
 model-path: models/dqn
 buffer-path: models/buffer
-debug: False
+debug: True

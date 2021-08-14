@@ -91,21 +91,26 @@ class BoomDesignEnv(BasicEnv):
             debug version of `step`
         """
         # TODO: `self.state` is not a batch, currently support sequential RL
-        s, idx = 0, 0
-        for dim in self.design_space.dims:
-            s += dim
-            if action < s:
-                break
-            else:
-                idx += 1
-        # TODO: this may cause dead-loop!
-        self.state[0][idx] = self.action_list[action]
+        s, idx, batch = 0, 0, action.shape[0]
+        for i in range(batch):
+            for dim in self.design_space.dims:
+                s += dim
+                if action[i] < s:
+                    break
+                else:
+                    idx += 1
+            # TODO: this may cause dead-loop!
+            self.state[i][idx] = self.action_list[action[i]]
+        reward = [-1 for i in range(batch)]
         # if `self.state` is invalid, assign -1 to the reward directly
-        if not self.design_space.validate(self.state[0].numpy()):
-            reward = -1
-        else:
-            # evaluate `self.state` w.r.t. VLSI
-            ipc = test_online_vlsi(self.configs, self.state.numpy())
+        for i in range(batch):
+            if self.design_space.validate(self.state[i].numpy()):
+                reward[i] = 0
+        # evaluate `self.state` w.r.t. VLSI
+        ipc = test_online_vlsi(
+            self.configs,
+            self.state[torch.where(torch.tensor(reward) == 0)].numpy()
+        )
             # TODO: area & power
             reward = ipc
         if reward > self.best_ipc:
@@ -125,11 +130,13 @@ class BoomDesignEnv(BasicEnv):
         return self.state, reward, done
 
     def reset(self):
-        self.state = self.design_space.sample_wo_decodewidth(1)
+        self.state = self.design_space.sample_v2(self.configs["batch"])
+        print(self.state, self.state.shape)
+        exit()
         self.best_ipc = online_vlsi(self.configs, self.state.numpy())
         return self.state
 
     def test_reset(self):
-        self.state = self.design_space.sample_wo_decodewidth(1)
+        self.state = self.design_space.sample_v2(self.configs["batch"])
         self.best_ipc = test_online_vlsi(self.configs, self.state.numpy())
         return self.state

@@ -8,4 +8,6 @@ $ python main.py -c configs/rl-explorer.yml
 
 ## TODO
 - Sample:
-    * sample one or five configs.?
+    * Sample batch configs.
+- Invalid configs.:
+    * Assign a large negtive reward

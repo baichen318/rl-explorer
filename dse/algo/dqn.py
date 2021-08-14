@@ -77,7 +77,7 @@ class ReplayBuffer(object):
         return random.sample(self.buffer, batch_size)
 
     def save(self, path):
-        with open(path, "wb") as f:
+        with open(os.path.join(path, "buffer.pkl"), "wb") as f:
             pickle.dump(self.buffer, f)
         print("[INFO]: save the buffer to %s" % path)
 
@@ -129,11 +129,11 @@ class DQN(object):
             with torch.no_grad():
                 # NOTICE: we use `argmax`, we can also consider `max(1)[1]`
                 # to find the largest index
-                return self.policy(state.float()).argmax().unsqueeze(0)
+                return self.policy(state.float()).argmax(dim=1)
         else:
             # exploration
             return torch.tensor(
-                [random.randrange(len(self.env.action_list))]
+                [random.randrange(len(self.env.action_list)) for i in range(self.env.configs["batch"])]
             )
 
     def optimize(self):
@@ -143,11 +143,14 @@ class DQN(object):
         batch_state = torch.cat(transitions.state)
         batch_action = torch.cat(transitions.action)
         batch_next_state = torch.cat(transitions.next_state)
+        print(batch_state.shape, batch_action.shape, batch_next_state.shape)
+        exit()
         batch_reward = torch.cat(transitions.reward)
         # current Q value
         current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
         # expected Q value
         max_next_q = self.policy(batch_next_state.float()).detach().max(1)[0]
+        print(self.batch_size, max_next_q.shape, batch_reward.shape)
         expected_q = batch_reward + (self.gamma * max_next_q)
         # Huber loss
         loss = F.smooth_l1_loss(current_q, expected_q)
@@ -183,6 +186,8 @@ class DQN(object):
         state = self.env.test_reset()
         while True:
             action = self.greedy_select(state)
+            print(action, action.shape)
+            exit()
             next_state, reward, done = self.env.test_step(action[0])
             self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
             self.optimize()

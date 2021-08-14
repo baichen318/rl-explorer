@@ -4,10 +4,14 @@ import os
 
 MACROS = {
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
-    "rl-explorer-root": "/research/dept8/gds/cbai/research/rl-explorer"
 }
 
 def handle_macros():
+    MACROS["rl-explorer-root"] = os.path.join(
+        os.path.abspath(os.path.dirname(__file__)),
+        os.path.pardir
+    )
+
     MACROS["chipyard-sims-root"] = os.path.join(
         MACROS["chipyard-root"],
         "sims",
@@ -43,11 +47,11 @@ def handle_macros():
         "BoomConfigs.scala"
     )
 
-    MACROS["compile-script"] = os.path.join(
+    MACROS["generate-auto-vlsi"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
         "scripts",
-        "compile.sh"
+        "generate-auto-vlsi.sh"
     )
 
     MACROS["sim-script"] = os.path.join(

@@ -3,6 +3,7 @@
 
 # set -ex
 
+# NOTICE: need to align with *.yml!
 benchmarks=(median towers dhrystone spmv mt-vvadd mt-matmul)
 
 function sims() {
@@ -14,7 +15,7 @@ function sims() {
 				+permissive \
 				+dramsim \
 				+dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \
-				+max-cycles=10000000  \
+				+max-cycles=700000  \
 				+ntb_random_seed_automatic \
 				+verbose \
 				+permissive-off \

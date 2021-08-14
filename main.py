@@ -14,7 +14,7 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
 from time import time
-from util import parse_args, get_configs, write_txt, if_exist
+from util import parse_args, get_configs, write_txt, if_exist, mkdir
 
 def generate_design():
     from dse.env.design_space import parse_design_space
@@ -24,7 +24,7 @@ def generate_design():
         random_state=round(time()),
         basic_component=configs["basic-component"]
     )
-    design = design_space.sample(batch=configs["batch"], f=configs["design-output-path"])
+    design = design_space.sample_v1(batch=configs["batch"], f=configs["design-output-path"])
     write_txt(configs["design-output-path"], design.numpy())
 
 def sim():
@@ -63,12 +63,15 @@ def test_rl_explorer():
 
     for i in range(configs["episode"]):
         agent.test_run(i)
+        agent.save_episode()
     agent.save()
     # agent.search()
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
     mode = configs["mode"]
+    mkdir(configs["model-path"])
+    mkdir(configs["buffer-path"])
     if mode == "generate-design":
         generate_design()
     elif mode == "sim":
