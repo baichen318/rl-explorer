@@ -124,7 +124,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             elif choice == 1:
                 return "lru"
             else:
-                assert choice == 2
+                assert choice == 2, "[ERROR]: choice = %d, should be 2." % choice
                 return "plru"
 
         return """Some(
@@ -463,7 +463,8 @@ def test_online_vlsi(configs, state):
         # "query_status"
     ]
     vlsi_manager.run()
-    vlsi_manager.get_results = lambda x=None: np.random.randn()
+    vlsi_manager.get_results = lambda x=None: [np.random.randn() \
+        for i in range(state.shape[0])]
     return vlsi_manager.get_results()
 
 def online_vlsi(configs, state):

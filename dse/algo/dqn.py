@@ -4,6 +4,7 @@ import os
 import random
 import torch
 import torch.nn.functional as F
+import numpy as np
 import copy
 import collections
 import tqdm
@@ -34,17 +35,14 @@ class PolicyNetwork(torch.nn.Module):
         return self.mlp(x)
 
     def save(self, p, logger):
-        mkdir(os.path.dirname(p))
-        logger.info("[INFO]: saving to %s" % p + "pt")
-        torch.save(self.mlp.state_dict(), p + ".pt")
+        p = os.path.join(p, "dqn.pt")
+        torch.save(self.mlp.state_dict(), p)
+        logger.info("[INFO]: saving to %s" % p)
 
     def load(self, p, logger):
+        p = os.path.join(p, "dqn.pt")
+        self.mlp.load_state_dict(torch.load(p))
         logger.info("[INFO]: loading from %s" % p)
-        if isinstance(p, 'str'):
-            self.mlp = torch.load(p)
-        else:
-            assert isinstance(p, 'dict')
-            self.mlp.load_state_dict(p)
 
 class ExplorationScheduler(object):
     """ ExplorationScheduler """
@@ -76,15 +74,18 @@ class ReplayBuffer(object):
     def sample(self, batch_size):
         return random.sample(self.buffer, batch_size)
 
-    def save(self, path):
-        with open(os.path.join(path, "buffer.pkl"), "wb") as f:
-            pickle.dump(self.buffer, f)
-        print("[INFO]: save the buffer to %s" % path)
+    def save(self, path, logger):
+        np.save(
+            os.path.join(path, "buffer.npy"),
+            np.array(self.buffer, dtype=object),
+        )
+        logger.info("[INFO]: save the buffer to %s" % path)
 
-    def load(self, path):
-        with open(path, "rb") as f:
-            self.buffer = pickle.load(f)
-        print("[INFO]: load the buffer from %s" % path)
+    def load(self, path, logger):
+        npy = np.load(os.path.join(path, "buffer.npy"), allow_pickle=True)
+        for _npy in npy:
+            self.push(*_npy)
+        logger.info("[INFO]: load the buffer from %s" % path)
 
     def __len__(self):
         return len(self.buffer)
@@ -133,19 +134,21 @@ class DQN(object):
         else:
             # exploration
             return torch.tensor(
-                [random.randrange(len(self.env.action_list)) for i in range(self.env.configs["batch"])]
+                [random.randrange(len(self.env.action_list)) \
+                 for i in range(self.env.configs["batch"])]
             )
 
     def optimize(self):
+        def f(x):
+            return x.unsqueeze(0)
+
         if len(self.replay_buffer) < self.batch_size:
             return
         transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
-        batch_state = torch.cat(transitions.state)
-        batch_action = torch.cat(transitions.action)
-        batch_next_state = torch.cat(transitions.next_state)
-        print(batch_state.shape, batch_action.shape, batch_next_state.shape)
-        exit()
-        batch_reward = torch.cat(transitions.reward)
+        batch_state = torch.cat(tuple(map(f, transitions.state)))
+        batch_action = torch.cat(tuple(map(f, transitions.action)))
+        batch_next_state = torch.cat(tuple(map(f, transitions.next_state)))
+        batch_reward = torch.cat(tuple(map(f, transitions.reward)))
         # current Q value
         current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
         # expected Q value
@@ -164,19 +167,29 @@ class DQN(object):
         state = self.env.reset()
         while True:
             action = self.greedy_select(state)
-            next_state, reward, done = self.env.step(action[0])
-            self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
+            next_state, reward, done = self.env.step(action)
+            for i in range(self.env.configs["batch"]):
+                self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
             self.optimize()
             state = next_state
             iterator += 1
             if done:
                 msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
-                self.env.logger.info(msg)
+                self.env.configs["logger"].info(msg)
                 self.episode_durations.append(iterator)
                 break
 
     def save_episode(self):
-        self.replay_buffer.save(self.env.configs["buffer-path"])
+        self.replay_buffer.save(
+            self.env.configs["model-path"],
+            self.env.configs["logger"]
+        )
+
+    def load_episode(self, path):
+        self.replay_buffer.load(
+            path,
+            self.env.configs["logger"]
+        )
 
     def test_run(self, episode):
         """
@@ -186,25 +199,29 @@ class DQN(object):
         state = self.env.test_reset()
         while True:
             action = self.greedy_select(state)
-            print(action, action.shape)
-            exit()
-            next_state, reward, done = self.env.test_step(action[0])
-            self.replay_buffer.push(state, action, next_state, torch.Tensor([reward]))
+            next_state, reward, done = self.env.test_step(action)
+            for i in range(self.env.configs["batch"]):
+                self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
             self.optimize()
             state = next_state
             iterator += 1
             if done:
                 msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
-                self.env.logger.info(msg)
+                self.env.configs["logger"].info(msg)
                 self.episode_durations.append(iterator)
                 break
 
     def save(self):
         self.policy.save(
             self.env.configs["model-path"],
-            self.env.logger
+            self.env.configs["logger"]
         )
 
+    def load(self, path):
+        self.policy.load(
+            path,
+            self.env.configs["logger"]
+        )
     # def search(self):
     #     iterator = tqdm.tqdm(range(self.env.configs["search-round"]))
     #     for i in iterator:

@@ -114,7 +114,7 @@ def create_logger(path, name):
     logging.getLogger('').addHandler(console)
     logger.info("[INFO]: create logger: %s/%s" % (path, name))
 
-    return logger
+    return logger, time_str
 
 def dump_yaml(path, yml_dict):
     with open(path, 'w') as f:

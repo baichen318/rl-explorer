@@ -142,14 +142,14 @@ idx: 1
 data-output-path: data/test/dataset.txt
 
 # RL related
-episode: 100
+episode: 5
 epsilon-start: 1
 epsilon-end: 0.1
 epsilon-decay: 0.05
 capacity: 5000
 update-target-policy: 5
-total-step: 150
-early-stopping: 100
+total-step: 10
+early-stopping: 5
 batch-size: 16
 gamma: 0.8
 learning-rate: 0.001

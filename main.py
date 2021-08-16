@@ -14,7 +14,7 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
 from time import time
-from util import parse_args, get_configs, write_txt, if_exist, mkdir
+from util import parse_args, get_configs, write_txt, if_exist, mkdir, create_logger
 
 def generate_design():
     from dse.env.design_space import parse_design_space
@@ -42,6 +42,14 @@ def rl_explorer():
     from dse.env.boom_design_env import BoomDesignEnv
     from dse.algo.dqn import DQN
 
+    logger, time_str = create_logger(
+        os.path.dirname(configs["log"]),
+        os.path.basename(configs["log"])
+    )
+    configs["logger"] = logger
+    configs["model-path"] = os.path.join("models", "model-%s" % time_str)
+    mkdir(configs["model-path"])
+
     env = BoomDesignEnv(configs)
     agent = DQN(env)
 
@@ -58,6 +66,14 @@ def test_rl_explorer():
     from dse.env.boom_design_env import BoomDesignEnv
     from dse.algo.dqn import DQN
 
+    logger, time_str = create_logger(
+        os.path.dirname(configs["log"]),
+        os.path.basename(configs["log"])
+    )
+    configs["logger"] = logger
+    configs["model-path"] = os.path.join("models", "model-%s" % time_str)
+    mkdir(configs["model-path"])
+
     env = BoomDesignEnv(configs)
     agent = DQN(env)
 
@@ -70,8 +86,6 @@ def test_rl_explorer():
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
     mode = configs["mode"]
-    mkdir(configs["model-path"])
-    mkdir(configs["buffer-path"])
     if mode == "generate-design":
         generate_design()
     elif mode == "sim":

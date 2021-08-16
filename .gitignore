@@ -149,4 +149,5 @@ img/
 # area.csv
 test.py
 *.pdf
+test/
 

@@ -7,17 +7,12 @@ import time
 import numpy as np
 from dse.env.design_space import parse_design_space
 from vlsi import online_vlsi, test_online_vlsi
-from util import create_logger
 
 class BasicEnv(object):
     """ BasicEnv """
     def __init__(self, configs):
         super(BasicEnv, self).__init__()
         self.configs = configs
-        self.logger = create_logger(
-            os.path.dirname(self.configs["log"]),
-            os.path.basename(self.configs["log"])
-        )
 
 class BoomDesignEnv(BasicEnv):
     """ BoomDesignEnv """
@@ -52,47 +47,8 @@ class BoomDesignEnv(BasicEnv):
         return torch.Tensor(action_list)
 
     def step(self, action):
-        # TODO: `self.state` is not a batch, currently support sequential RL
-        s, idx = 0, 0
-        for dim in self.design_space.dims:
-            s += dim
-            if action < s:
-                break
-            else:
-                idx += 1
-        # TODO: this may cause dead-loop!
-        self.state[0][idx] = self.action_list[action]
-        # if `self.state` is invalid, assign -1 to the reward directly
-        if not self.design_space.validate(self.state[0].numpy()):
-            reward = -1
-        else:
-            # evaluate `self.state` w.r.t. VLSI
-            ipc = online_vlsi(self.configs, self.state.numpy())
-            # TODO: area & power
-            reward = ipc
-        if reward > self.best_ipc:
-            self.best_ipc = reward
-            self.last_update = self.n_step
-            msg = "[INFO]: current state: %s, ipc: %.8f" % (
-                self.state.numpy(),
-                self.best_ipc
-            )
-            self.logger.info(msg)
-        done = bool(
-            self.n_step > self.configs["total-step"] or \
-            (self.n_step - self.last_update) >= self.configs["early-stopping"] or \
-            (reward == -1)
-        )
-        self.n_step += 1
-        return self.state, reward, done
-
-    def test_step(self, action):
-        """
-            debug version of `step`
-        """
-        # TODO: `self.state` is not a batch, currently support sequential RL
-        s, idx, batch = 0, 0, action.shape[0]
-        for i in range(batch):
+        for i in range(self.configs["batch"]):
+            s, idx = 0, 0
             for dim in self.design_space.dims:
                 s += dim
                 if action[i] < s:
@@ -101,42 +57,96 @@ class BoomDesignEnv(BasicEnv):
                     idx += 1
             # TODO: this may cause dead-loop!
             self.state[i][idx] = self.action_list[action[i]]
-        reward = [-1 for i in range(batch)]
+        reward, ipc = [-1 for i in range(self.configs["batch"])], [0 for i in range(self.configs["batch"])]
         # if `self.state` is invalid, assign -1 to the reward directly
-        for i in range(batch):
+        for i in range(self.configs["batch"]):
             if self.design_space.validate(self.state[i].numpy()):
                 reward[i] = 0
+        # `valid_idx`: <tuple>
+        valid_idx = torch.where(torch.tensor(reward) == 0)
         # evaluate `self.state` w.r.t. VLSI
-        ipc = test_online_vlsi(
+        valid_ipc = online_vlsi(
             self.configs,
-            self.state[torch.where(torch.tensor(reward) == 0)].numpy()
+            self.state[valid_idx].numpy()
         )
-            # TODO: area & power
-            reward = ipc
-        if reward > self.best_ipc:
+        for i in range(len(valid_idx[0])):
+            ipc[valid_idx[0][i]] = valid_ipc[i]
+        # TODO: area & power
+        ipc = torch.tensor(ipc)
+        reward = ipc
+        if max(reward) > max(self.best_ipc):
             self.best_ipc = reward
+            best_idx = int(torch.where(self.best_ipc == max(self.best_ipc))[0])
             self.last_update = self.n_step
-            msg = "[INFO]: current state: %s, ipc: %.8f" % (
+            msg = "[INFO]: current state: %s, best state: %s, best ipc: %.8f" % (
                 self.state.numpy(),
-                self.best_ipc
+                self.state.numpy()[best_idx],
+                max(self.best_ipc)
             )
-            self.logger.info(msg)
+            self.configs["logger"].info(msg)
         done = bool(
             self.n_step > self.configs["total-step"] or \
             (self.n_step - self.last_update) >= self.configs["early-stopping"] or \
-            (reward == -1)
+            torch.all(reward, -1)
+        )
+        self.n_step += 1
+        return self.state, reward, done
+
+    def test_step(self, action):
+        """
+            debug version of `step`
+        """
+        for i in range(self.configs["batch"]):
+            s, idx = 0, 0
+            for dim in self.design_space.dims:
+                s += dim
+                if action[i] < s:
+                    break
+                else:
+                    idx += 1
+            # TODO: this may cause dead-loop!
+            self.state[i][idx] = self.action_list[action[i]]
+        reward, ipc = [-1 for i in range(self.configs["batch"])], [0 for i in range(self.configs["batch"])]
+        # if `self.state` is invalid, assign -1 to the reward directly
+        for i in range(self.configs["batch"]):
+            if self.design_space.validate(self.state[i].numpy()):
+                reward[i] = 0
+        # `valid_idx`: <tuple>
+        valid_idx = torch.where(torch.tensor(reward) == 0)
+        # evaluate `self.state` w.r.t. VLSI
+        valid_ipc = test_online_vlsi(
+            self.configs,
+            self.state[valid_idx].numpy()
+        )
+        for i in range(len(valid_idx[0])):
+            ipc[valid_idx[0][i]] = valid_ipc[i]
+        # TODO: area & power
+        ipc = torch.tensor(ipc)
+        reward = ipc
+        if max(reward) > max(self.best_ipc):
+            self.best_ipc = reward
+            best_idx = int(torch.where(self.best_ipc == max(self.best_ipc))[0])
+            self.last_update = self.n_step
+            msg = "[INFO]: current state: %s, best state: %s, best ipc: %.8f" % (
+                self.state.numpy(),
+                self.state.numpy()[best_idx],
+                max(self.best_ipc)
+            )
+            self.configs["logger"].info(msg)
+        done = bool(
+            self.n_step > self.configs["total-step"] or \
+            (self.n_step - self.last_update) >= self.configs["early-stopping"] or \
+            torch.all(reward, -1)
         )
         self.n_step += 1
         return self.state, reward, done
 
     def reset(self):
         self.state = self.design_space.sample_v2(self.configs["batch"])
-        print(self.state, self.state.shape)
-        exit()
-        self.best_ipc = online_vlsi(self.configs, self.state.numpy())
+        self.best_ipc = torch.tensor(online_vlsi(self.configs, self.state.numpy()))
         return self.state
 
     def test_reset(self):
         self.state = self.design_space.sample_v2(self.configs["batch"])
-        self.best_ipc = test_online_vlsi(self.configs, self.state.numpy())
+        self.best_ipc = torch.tensor(test_online_vlsi(self.configs, self.state.numpy()))
         return self.state
