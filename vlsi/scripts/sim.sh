@@ -15,7 +15,7 @@ function sims() {
 				+permissive \
 				+dramsim \
 				+dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \
-				+max-cycles=700000  \
+				+max-cycles=635000  \
 				+ntb_random_seed_automatic \
 				+verbose \
 				+permissive-off \

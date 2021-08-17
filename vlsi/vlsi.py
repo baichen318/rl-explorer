@@ -55,6 +55,9 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         self.soc_name = kwargs["soc_name"]
         self.core_name = kwargs["core_name"]
         self.batch = len(self.soc_name)
+        # record every status of each design
+        # -1: running, 0: success, -2: failure
+        self.status = [-1 for i in range(self.batch)]
 
     def steps(self):
         return [
@@ -320,28 +323,44 @@ class %s extends Config(
         os.chdir(MACROS["rl-explorer-root"])
 
     def query_status(self):
-        def _query_status():
+        def _validate(x):
+            if x == 0 or x == -2:
+                # if a status equals to -2, we do not collect its results
+                return True
+            elif x == -1:
+                return False
+
+        def _query_status(status):
             for idx in range(self.batch):
+                if status[idx] == 0 or status[idx] == -2:
+                    continue
                 root = os.path.join(
                     MACROS["chipyard-sims-output-root"],
                     self.soc_name[idx]
                 )
+                s = 0
                 for bmark in self.configs["benchmarks"]:
                     f = os.path.join(root, bmark + ".out")
                     if os.path.exists(f) and execute("grep -rn \"PASSED\" %s" % f) == 0:
                         continue
+                    elif os.path.exists(f) and execute("grep -rn \"hung\" %s" % f) == 0:
+                        s = -2
+                        break
                     else:
-                        return False
-            return True
+                        s = -1
+                status[idx] = s
+            return status
 
         # TODO: should we set the maximum time period?
         print("[INFO]:", "querying results...")
-        while not _query_status():
+        while all(list(map(_validate, _query_status(self.status)))):
             time.sleep(30)
 
     def get_results(self):
         ipc = [0 for i in range(self.batch)]
         for idx in range(self.batch):
+            if self.status[idx] == -2:
+                continue
             root = os.path.join(
                 MACROS["chipyard-sims-output-root"],
                 self.soc_name[i]
@@ -464,7 +483,7 @@ def test_online_vlsi(configs, state):
     ]
     vlsi_manager.run()
     vlsi_manager.get_results = lambda x=None: [np.random.randn() \
-        for i in range(state.shape[0])]
+        for i in range(vlsi_manager.batch)]
     return vlsi_manager.get_results()
 
 def online_vlsi(configs, state):
