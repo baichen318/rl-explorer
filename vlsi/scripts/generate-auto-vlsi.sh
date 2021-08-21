@@ -27,8 +27,8 @@ do
     echo compiling \${idx}-th Config.
     soc_name=Boom\${idx}Config
     make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
-    # 15 sec. would be suitable
-    sleep 15
+    # 220 sec. would be suitable
+    sleep 220
 done
 
 # verify all simv have been generated
@@ -64,8 +64,8 @@ do
         bash sim.sh
         cd -
     fi
-    # 15 sec. would be suitable
-    sleep 15
+    # 20 sec. would be suitable
+    sleep 20
 done
 
 EOF
