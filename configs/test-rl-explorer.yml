@@ -130,7 +130,7 @@ benchmarks:
 mode: rl
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 32
+batch: 2
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt
@@ -146,7 +146,7 @@ episode: 5
 epsilon-start: 1
 epsilon-end: 0.1
 epsilon-decay: 0.05
-capacity: 5000
+capacity: 10000
 update-target-policy: 5
 total-step: 10
 early-stopping: 5
@@ -155,4 +155,4 @@ gamma: 0.8
 learning-rate: 0.001
 log: logs/dqn
 search-round: 500
-debug: True
+debug: False
