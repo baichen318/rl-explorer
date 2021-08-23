@@ -122,7 +122,7 @@ benchmarks:
   # - vvadd
   # - multiply
   - dhrystone
-  - spmv
+  # - spmv
   - mt-vvadd
   - mt-matmul
 
@@ -130,13 +130,13 @@ benchmarks:
 mode: rl
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 2
+batch: 12
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt
 
 # sim: idx
-idx: 1
+idx: 7
 
 # generate-data: data-output-path
 data-output-path: data/test/dataset.txt

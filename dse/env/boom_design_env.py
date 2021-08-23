@@ -17,7 +17,7 @@ class BasicEnv(object):
 class BoomDesignEnv(BasicEnv):
     """ BoomDesignEnv """
     # def __init__(self, configs, seed=int(time.time())):
-    def __init__(self, configs, seed=1):
+    def __init__(self, configs, seed=int(time.time())):
         super(BoomDesignEnv, self).__init__(configs)
         self.design_space = parse_design_space(
             self.configs["design-space"],

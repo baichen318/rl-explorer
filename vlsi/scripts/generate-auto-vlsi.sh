@@ -27,12 +27,13 @@ do
     echo compiling \${idx}-th Config.
     soc_name=Boom\${idx}Config
     make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
-    # 200 sec. would be suitable
-    sleep 200
+    # 215 sec. would be suitable
+    sleep 215
 done
 
 # verify all simv have been generated
 count=\`expr ${end} - ${start} + 1\`
+success_idx=()
 c=0
 while [[ \${c} -lt \${count} ]]
 do
@@ -48,7 +49,21 @@ do
             cp ${sim_script} \${soc_name}
             sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
             c=\`expr \${c} + 1\`
-        fi
+			success_idx[\${#success_idx[*]}]=\${soc_name}
+		else
+			if [[ ! \${success_idx[@]} =~ \${soc_name} ]]
+			then
+				ps aux | grep cbai | grep \${soc_name} | grep -v grep > /dev/null
+				ret=\$?
+				if [[ \${ret} != 0 ]]
+				then
+					# no process
+					echo re-compiling \${soc_name}
+					make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
+					sleep 180
+				fi
+			fi
+		fi
     done
     # 15 sec. would be suitable
     sleep 15

@@ -170,6 +170,7 @@ class DQN(object):
             next_state, reward, done = self.env.step(action)
             for i in range(self.env.configs["batch"]):
                 self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
+            self.save_buffer()
             self.optimize()
             state = next_state
             iterator += 1
@@ -178,6 +179,18 @@ class DQN(object):
                 self.env.configs["logger"].info(msg)
                 self.episode_durations.append(iterator)
                 break
+
+    def save_buffer(self):
+        self.replay_buffer.save(
+            self.env.configs["model-path"],
+            self.env.configs["logger"]
+        )
+
+    def load_buffer(self, path):
+        self.replay_buffer.load(
+            path,
+            self.env.configs["logger"]
+        )
 
     def save_episode(self):
         self.replay_buffer.save(
@@ -202,6 +215,7 @@ class DQN(object):
             next_state, reward, done = self.env.test_step(action)
             for i in range(self.env.configs["batch"]):
                 self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
+            self.save_buffer()
             self.optimize()
             state = next_state
             iterator += 1

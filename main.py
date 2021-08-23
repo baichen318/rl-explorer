@@ -14,6 +14,7 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
 from time import time
+from vlsi import PreSynthesizeSimulation
 from util import parse_args, get_configs, write_txt, if_exist, mkdir, create_logger
 
 def generate_design():
@@ -52,10 +53,11 @@ def rl_explorer():
 
     env = BoomDesignEnv(configs)
     agent = DQN(env)
+    PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
 
     for i in range(configs["episode"]):
         agent.run(i)
-        agent.save_episode()
+        # agent.save_episode()
     agent.save()
     # agent.search()
 
@@ -76,10 +78,11 @@ def test_rl_explorer():
 
     env = BoomDesignEnv(configs)
     agent = DQN(env)
+    PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
 
     for i in range(configs["episode"]):
         agent.test_run(i)
-        agent.save_episode()
+        # agent.save_episode()
     agent.save()
     # agent.search()
 

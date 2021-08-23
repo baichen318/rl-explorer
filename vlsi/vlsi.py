@@ -67,8 +67,13 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         ]
 
     @staticmethod
-    def set_tick(i):
-        PreSynthesizeSimulation.counter = i
+    def set_tick(i, logger=None):
+        # NOTICE: `idx` in *.yml refers to no. configs that begins to run
+        PreSynthesizeSimulation.counter = i - 1
+        if logger:
+            logger.info("[INFO]: setting the idx: %d" % i)
+        else:
+            print("[INFO]: setting the idx: %d" % i)
 
     @staticmethod
     def tick():
@@ -363,7 +368,7 @@ class %s extends Config(
                 continue
             root = os.path.join(
                 MACROS["chipyard-sims-output-root"],
-                self.soc_name[i]
+                self.soc_name[idx]
             )
             _ipc = 0
             for bmark in self.configs["benchmarks"]:
@@ -587,3 +592,4 @@ def generate_dataset(configs):
         ),
         dataset
     )
+
