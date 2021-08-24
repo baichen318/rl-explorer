@@ -13,3 +13,5 @@ $ python main.py -c configs/rl-explorer.yml
 	* auto-vlsi.sh needs to handle error compilations
 - Invalid configs.:
     * Assign a large negtive reward
+- Transition:
+    * Record transitions in the buffer

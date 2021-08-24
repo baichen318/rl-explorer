@@ -180,6 +180,27 @@ class DQN(object):
                 self.episode_durations.append(iterator)
                 break
 
+    def test_run(self, episode):
+        """
+            debug version of `run`
+        """
+        iterator = 0
+        state = self.env.test_reset()
+        while True:
+            action = self.greedy_select(state)
+            next_state, reward, done = self.env.test_step(action)
+            for i in range(self.env.configs["batch"]):
+                self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
+            self.save_buffer()
+            self.optimize()
+            state = next_state
+            iterator += 1
+            if done:
+                msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
+                self.env.configs["logger"].info(msg)
+                self.episode_durations.append(iterator)
+                break
+
     def save_buffer(self):
         self.replay_buffer.save(
             self.env.configs["model-path"],
@@ -204,26 +225,6 @@ class DQN(object):
             self.env.configs["logger"]
         )
 
-    def test_run(self, episode):
-        """
-            debug version of `run`
-        """
-        iterator = 0
-        state = self.env.test_reset()
-        while True:
-            action = self.greedy_select(state)
-            next_state, reward, done = self.env.test_step(action)
-            for i in range(self.env.configs["batch"]):
-                self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
-            self.save_buffer()
-            self.optimize()
-            state = next_state
-            iterator += 1
-            if done:
-                msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
-                self.env.configs["logger"].info(msg)
-                self.episode_durations.append(iterator)
-                break
 
     def save(self):
         self.policy.save(

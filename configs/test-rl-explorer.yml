@@ -130,13 +130,13 @@ benchmarks:
 mode: rl
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 12
+batch: 32
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt
 
 # sim: idx
-idx: 7
+idx: 1
 
 # generate-data: data-output-path
 data-output-path: data/test/dataset.txt

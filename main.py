@@ -55,10 +55,9 @@ def rl_explorer():
     agent = DQN(env)
     PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
 
-    for i in range(configs["episode"]):
+    for i in range(1, configs["episode"] + 1):
         agent.run(i)
-        # agent.save_episode()
-    agent.save()
+        agent.save()
     # agent.search()
 
 def test_rl_explorer():
@@ -80,10 +79,9 @@ def test_rl_explorer():
     agent = DQN(env)
     PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
 
-    for i in range(configs["episode"]):
+    for i in range(1, configs["episode"] + 1):
         agent.test_run(i)
-        # agent.save_episode()
-    agent.save()
+        agent.save()
     # agent.search()
 
 if __name__ == "__main__":

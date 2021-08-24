@@ -96,7 +96,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         return """Seq(
                 IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d),
                 IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d),
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue , dispatchWidth=%d)
+                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue, dispatchWidth=%d)
               )""" % (
                 self.boom_configs[idx][10],
                 self.issue_unit[self.boom_configs[idx][12]][1],

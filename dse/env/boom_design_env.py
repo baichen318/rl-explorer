@@ -138,15 +138,16 @@ class BoomDesignEnv(BasicEnv):
             (self.n_step - self.last_update) >= self.configs["early-stopping"] or \
             torch.all(reward, -1)
         )
-        self.n_step += 1
+        # Notice: redefine `self.n_step`
+        self.n_step += self.configs["batch"]
         return self.state, reward, done
 
     def reset(self):
         self.state = self.design_space.sample_v2(self.configs["batch"])
         self.best_ipc = torch.tensor(online_vlsi(self.configs, self.state.numpy()))
-        return self.state
+        return self.state.clone()
 
     def test_reset(self):
         self.state = self.design_space.sample_v2(self.configs["batch"])
         self.best_ipc = torch.tensor(test_online_vlsi(self.configs, self.state.numpy()))
-        return self.state
+        return self.state.clone()
