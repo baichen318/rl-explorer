@@ -168,6 +168,10 @@ class DQN(object):
         while True:
             action = self.greedy_select(state)
             next_state, reward, done = self.env.step(action)
+            msg = "[INFO]: state: {}, action: {}, next_state: {}, reward: {}, done: {}".format(
+                state, action, next_state, reward, done
+            )
+            self.env.configs["logger"].info(msg)
             for i in range(self.env.configs["batch"]):
                 self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
             self.save_buffer()
