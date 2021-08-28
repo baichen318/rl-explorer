@@ -15,7 +15,8 @@ sys.path.insert(
 )
 from time import time
 from vlsi import PreSynthesizeSimulation
-from util import parse_args, get_configs, write_txt, if_exist, mkdir, create_logger
+from util import parse_args, get_configs, write_txt, if_exist, \
+    mkdir, create_logger, execute
 
 def generate_design():
     from dse.env.design_space import parse_design_space
@@ -51,6 +52,8 @@ def rl_explorer():
     configs["model-path"] = os.path.join("models", "model-%s" % time_str)
     mkdir(configs["model-path"])
 
+    # Notice: we should modify `self.configs["batch"]`
+    configs["batch"] = configs["batch"] * 5
     env = BoomDesignEnv(configs)
     agent = DQN(env)
     PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
@@ -74,7 +77,10 @@ def test_rl_explorer():
     configs["logger"] = logger
     configs["model-path"] = os.path.join("models", "model-%s" % time_str)
     mkdir(configs["model-path"])
+    execute("rm -rf test")
 
+    # Notice: we should modify `self.configs["batch"]`
+    configs["batch"] = configs["batch"] * 5
     env = BoomDesignEnv(configs)
     agent = DQN(env)
     PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])

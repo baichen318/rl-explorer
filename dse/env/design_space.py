@@ -34,7 +34,7 @@ class Space(object):
 
         return p
 
-class DesignSpace(Space):
+class BOOMDesignSpace(Space):
     def __init__(self, features, bounds, dims, **kwargs):
         """
             features: <list>
@@ -66,28 +66,23 @@ class DesignSpace(Space):
 
     def _sample(self, decodeWidth):
         def __filter(design, k, v):
+            # Notice: Google sheet
             # validate w.r.t. `decodeWidth`
-            if k == "icache":
-                if decodeWidth >= min(self.bounds[self.features[1]]):
-                    return random.sample([1, 3, 5, 7], 1)[0]
-                else:
-                    return random.sample(v, 1)[0]
-            elif k == "fetchWidth":
-                if design[0] in [0, 2, 4, 6]:
-                    return v[0]
-                else:
-                    assert design[0] in [1, 3, 5, 7], "[ERROR]: design[0]: %d" % design[0]
-                    return v[1]
-            elif k == "numFetchBufferEntires":
-                return random.sample([i for i in v if i % decodeWidth == 0 and i > design[1]], 1)[0]
-            elif k == "numRobEntries":
-                return random.sample([i for i in v if i % decodeWidth == 0], 1)[0]
-            elif k == "registers":
-                return random.sample([idx for idx, i in enumerate(v) \
-                    if self.basic_component["registers"][i][0] >= (32 + decodeWidth) and \
-                        self.basic_component["registers"][i][1] >= (32 + decodeWidth)], 1)[0]
+            if k == "fetchWidth":
+                def f(x):
+                    return x >= decodeWidth
+                return random.sample(list(filter(f, self.bounds["fetchWidth"])), 1)[0]
+            elif k == "ifu-buffers":
+                def f(x):
+                    return (self.basic_component["ifu-buffers"][x][0] % decodeWidth == 0 \
+                        and self.basic_component["ifu-buffers"][x][0] > design[1])
+                return random.sample(list(filter(f, self.bounds["ifu-buffers"])), 1)[0]
             elif k == "decodeWidth":
                 return decodeWidth
+            elif k == "numRobEntries":
+                def f(x):
+                    return x % decodeWidth == 0
+                return random.sample(list(filter(f, self.bounds["numRobEntries"])), 1)[0]
             else:
                 return random.sample(v, 1)[0]
 
@@ -114,8 +109,9 @@ class DesignSpace(Space):
         cnt = 0
         while cnt < batch:
             # randomly sample designs w.r.t. decodeWidth
-            for decodeWidth in self.bounds[self.features[7]]:
+            for decodeWidth in self.bounds[self.features[4]]:
                 design = self._sample(decodeWidth)
+                print(design)
                 point = self.knob2point(design)
                 while point in self.visited:
                     design = self._sample(decodeWidth)
@@ -123,11 +119,11 @@ class DesignSpace(Space):
                 self.visited.add(point)
                 samples.append(design)
             cnt += 1
-        return torch.Tensor(samples)
+        return torch.Tensor(samples).long()
 
     def sample_v2(self, batch, f=None):
         """
-            V2: sample configs. w.r.t. `decodeWidth`,
+            V2: sample configs. w.r.t. random `decodeWidth`,
             but not UNIFORMLY!
         """
         samples = []
@@ -155,25 +151,37 @@ class DesignSpace(Space):
             cnt += 1
         return torch.Tensor(samples).long()
 
+    def sample_v3(self, batch, decodeWidth):
+        """
+            V3: sample configs. w.r.t. pre-defined `decodeWidth`
+        """
+        samples = []
+
+        cnt = 0
+        while cnt < batch:
+            design =self._sample(decodeWidth)
+            point = self.knob2point(design)
+            while point in self.visited:
+                design = self._sample(decodeWidth)
+                point = self.knob2point(design)
+            self.visited.add(point)
+            samples.append(design)
+            cnt += 1
+        return torch.Tensor(samples).long()
+
     def validate(self, configs):
         # validate w.r.t. `configs`
         # `fetchWidth` >= `decodeWidth`
-        if not (configs[1] >= configs[7]):
-            return False
-        # `numIntPhysRegisters` >= (32 + `decodeWidth`)
-        if not (self.basic_component["registers"][configs[9]][0] >= (32 + configs[7])):
+        if not (configs[1] >= configs[4]):
             return False
         # `numRobEntries` % `decodeWidth` = 0
-        if not (configs[8] % configs[7] == 0):
+        if not (configs[5] % configs[4] == 0):
             return False
         # `numFetchBufferEntries` % `decodeWidth` = 0
-        if not (configs[2] % configs[7] == 0):
-            return False
-        # `fetchWidth` * 2 = `icache.fetchBytes`
-        if not ((configs[1] << 1) == self.basic_component["icache"][configs[0]][-1]):
+        if not (self.basic_component["ifu-buffers"][configs[2]][0] % configs[4] == 0):
             return False
         # `numFetchBufferEntries` > `fetchWidth`
-        if not (configs[2] > configs[1]):
+        if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
             return False
         return True
 
@@ -195,4 +203,5 @@ def parse_design_space(design_space, **kwargs):
         # generate dims
         dims.append(len(temp))
 
-    return DesignSpace(features, bounds, dims, **kwargs)
+    return BOOMDesignSpace(features, bounds, dims, **kwargs)
+

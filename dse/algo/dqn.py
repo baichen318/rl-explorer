@@ -16,18 +16,28 @@ Transition = collections.namedtuple(
     "Transition", ("state", "action", "next_state", "reward")
 )
 
+def weight_init(m):
+    if isinstance(m, torch.nn.Linear):
+        torch.nn.init.xavier_normal_(m.weight)
+        torch.nn.init.constant_(m.bias, 0)
+    elif isinstance(m, torch.nn.Conv2d):
+        torch.nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+    elif isinstance(m, torch.nn.BatchNorm2d):
+        torch.nn.init.constant_(m.weight, 1)
+        torch.nn.init.constant_(m,bias, 0)
+
 class PolicyNetwork(torch.nn.Module):
     """ PolicyNetwork """
     def __init__(self, in_dim, out_dim):
         super(PolicyNetwork, self).__init__()
         self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(in_dim, 1000),
-            torch.nn.ReLU(),
-            torch.nn.Linear(1000, 500),
-            torch.nn.ReLU(),
-            torch.nn.Linear(500, 50),
-            torch.nn.ReLU(),
-            torch.nn.Linear(50, out_dim),
+            torch.nn.Linear(in_dim, 100),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(100, 50),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(50, 10),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(10, out_dim),
             torch.nn.Softmax(dim=1)
         )
 
@@ -58,6 +68,10 @@ class ExplorationScheduler(object):
         epsilon = self.end + (self.start - self.end) * math.exp(-1. * self._step / self.decay)
         self._step += 1
         return epsilon
+
+    def inspect(self):
+        epsilon = self.end + (self.start - self.end) * math.exp(-1. * self._step / self.decay)
+        return "%.4f" % epsilon
         
 class ReplayBuffer(object):
     """ ReplayBuffer """
@@ -106,7 +120,8 @@ class DQN(object):
         self.scheduler = ExplorationScheduler(
             start=self.env.configs["epsilon-start"],
             end=self.env.configs["epsilon-end"],
-            decay=self.env.configs["episode"]
+            # decay=self.env.configs["episode"]
+            decay=100
         )
         # self.update_target_policy = self.env.configs["update-target-policy"]
         self.batch_size = self.env.configs["batch-size"]
@@ -116,6 +131,10 @@ class DQN(object):
             lr=self.env.configs["learning-rate"]
         )
         self.episode_durations = []
+        # initialize the policy
+        # self.policy.apply(weight_init)
+        # for p in self.policy.parameters():
+        #     print(p)
         self.set_random_state()
 
     def set_random_state(self):
@@ -124,19 +143,26 @@ class DQN(object):
         torch.cuda.manual_seed(self.env.seed)
 
     def greedy_select(self, state):
+        """
+            return: action: <torch.Tensor> (torch.LongTensor) with torch.Size([n])
+        """
         prob = random.random()
+        self.env.configs["logger"].info("[INFO]: epsilon: %s, %s" % \
+            (self.scheduler.inspect(), "exploitation" if prob > self.scheduler.step() else "exploration")
+        )
         if prob > self.scheduler.step():
             # exploitation
             with torch.no_grad():
                 # NOTICE: we use `argmax`, we can also consider `max(1)[1]`
                 # to find the largest index
+                print("policy:", self.policy(state.float()), self.policy(state.float()).argmax(dim=1))
                 return self.policy(state.float()).argmax(dim=1)
         else:
-            # exploration
-            return torch.tensor(
+            # exploration: `self.env.configs["batch"]`
+            return torch.Tensor(
                 [random.randrange(len(self.env.action_list)) \
                  for i in range(self.env.configs["batch"])]
-            )
+            ).long()
 
     def optimize(self):
         def f(x):
@@ -144,23 +170,25 @@ class DQN(object):
 
         if len(self.replay_buffer) < self.batch_size:
             return
-        transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
-        batch_state = torch.cat(tuple(map(f, transitions.state)))
-        batch_action = torch.cat(tuple(map(f, transitions.action)))
-        batch_next_state = torch.cat(tuple(map(f, transitions.next_state)))
-        batch_reward = torch.cat(tuple(map(f, transitions.reward)))
-        # current Q value
-        current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
-        # expected Q value
-        max_next_q = self.policy(batch_next_state.float()).detach().max(1)[0]
-        print(self.batch_size, max_next_q.shape, batch_reward.shape)
-        expected_q = batch_reward + (self.gamma * max_next_q)
-        # Huber loss
-        loss = F.smooth_l1_loss(current_q, expected_q)
-        # backpropagation
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        # 5 is currently pre-defined threshold
+        for i in range(5):
+            transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
+            batch_state = torch.cat(tuple(map(f, transitions.state)))
+            batch_action = torch.cat(tuple(map(f, transitions.action)))
+            batch_next_state = torch.cat(tuple(map(f, transitions.next_state)))
+            batch_reward = torch.cat(tuple(map(f, transitions.reward)))
+            # current Q value
+            current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
+            # expected Q value
+            max_next_q = self.policy(batch_next_state.float()).detach().max(1)[0]
+            expected_q = (batch_reward + (self.gamma * max_next_q)).unsqueeze(0)
+            # Huber loss
+            loss = F.smooth_l1_loss(current_q, expected_q)
+            self.env.configs["logger"].info("[INFO]: loss: %.8f" % loss)
+            # backpropagation
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
 
     def run(self, episode):
         iterator = 0
@@ -173,10 +201,15 @@ class DQN(object):
             )
             self.env.configs["logger"].info(msg)
             for i in range(self.env.configs["batch"]):
-                self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
+                self.replay_buffer.push(
+                    state[i].clone(),
+                    action[i].clone(),
+                    next_state[i].clone(),
+                    reward[i].clone()
+                )
             self.save_buffer()
             self.optimize()
-            state = next_state
+            state = next_state.clone()
             iterator += 1
             if done:
                 msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
@@ -196,11 +229,17 @@ class DQN(object):
             msg = "[INFO]: state: {}, action: {}, next_state: {}, reward: {}, done: {}".format(
                 state, action, next_state, reward, done
             )
+            self.env.configs["logger"].info(msg)
             for i in range(self.env.configs["batch"]):
-                self.replay_buffer.push(state[i], action[i], next_state[i], reward[i])
+                self.replay_buffer.push(
+                    state[i].clone(),
+                    action[i].clone(),
+                    next_state[i].clone(),
+                    reward[i].clone()
+                )
             self.save_buffer()
             self.optimize()
-            state = next_state
+            state = next_state.clone()
             iterator += 1
             if done:
                 msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
@@ -244,6 +283,7 @@ class DQN(object):
             path,
             self.env.configs["logger"]
         )
+
     # def search(self):
     #     iterator = tqdm.tqdm(range(self.env.configs["search-round"]))
     #     for i in iterator:
