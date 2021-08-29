@@ -146,4 +146,4 @@ gamma: 0.9
 learning-rate: 0.001
 log: logs/dqn
 search-round: 500
-debug: True
+debug: False

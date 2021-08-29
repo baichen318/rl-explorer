@@ -186,13 +186,14 @@ class BoomDesignEnv(BasicEnv):
         return self.state, reward, done
 
     def re_init(self):
+        self.configs["logger"].info("[INFO]: re-generate designs...")
         state = torch.Tensor()
         for i in range(len(self.init_ipc)):
             if self.init_ipc[i] == 0:
                 state = torch.cat(
                     (
                         state,
-                        self.design_space.sample_v3(1, self.state[i][4])
+                        self.design_space.sample_v3(1, int(self.state[i][4]))
                     )
                 )
         ipc = torch.Tensor(online_vlsi(self.configs, state.numpy()))
@@ -206,13 +207,14 @@ class BoomDesignEnv(BasicEnv):
                 k += 1
 
     def test_re_init(self):
+        self.configs["logger"].info("[INFO]: re-generate designs...")
         state = torch.Tensor()
         for i in range(len(self.init_ipc)):
             if self.init_ipc[i] == 0:
                 state = torch.cat(
                     (
                         state,
-                        self.design_space.sample_v3(1, self.state[i][4])
+                        self.design_space.sample_v3(1, int(self.state[i][4]))
                     )
                 )
         ipc = torch.Tensor(test_online_vlsi(self.configs, state.numpy()))

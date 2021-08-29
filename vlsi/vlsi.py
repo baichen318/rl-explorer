@@ -266,6 +266,7 @@ class %s extends Config(
         return codes
 
     def generate_design(self):
+        self.configs["logger"].info("[INFO]: generate design...")
         codes = self._generate_config_mixins()
         with open(MACROS["config-mixins"], 'a') as f:
             f.writelines(codes)
@@ -315,6 +316,7 @@ class %s extends Config(
 
     def compile_and_simulate(self):
         # generate auto-vlsi.sh
+        self.configs["logger"].info("[INFO]: generate auto-vlsi script...")
         execute(
             "bash %s -s %d -e %d -x %s -f %s" % (
                 MACROS["generate-auto-vlsi"],
@@ -334,6 +336,7 @@ class %s extends Config(
         os.chdir(MACROS["rl-explorer-root"])
 
     def query_status(self):
+        self.configs["logger"].info("[INFO]: query status...")
         def _validate(x):
             if x == 0 or x == -2:
                 # if a status equals to -2, we do not collect its results
@@ -372,8 +375,7 @@ class %s extends Config(
 
         self.status = [-1 for i in range(self.batch)]
         # TODO: should we set the maximum time period?
-        print("[INFO]:", "querying results...")
-        while all(list(map(_validate, _query_status(self.status)))):
+        while not all(list(map(_validate, _query_status(self.status)))):
             time.sleep(30)
 
     def get_results(self):
