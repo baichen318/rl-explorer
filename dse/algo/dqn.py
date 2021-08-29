@@ -155,7 +155,6 @@ class DQN(object):
             with torch.no_grad():
                 # NOTICE: we use `argmax`, we can also consider `max(1)[1]`
                 # to find the largest index
-                print("policy:", self.policy(state.float()), self.policy(state.float()).argmax(dim=1))
                 return self.policy(state.float()).argmax(dim=1)
         else:
             # exploration: `self.env.configs["batch"]`
@@ -207,7 +206,9 @@ class DQN(object):
                     next_state[i].clone(),
                     reward[i].clone()
                 )
+            # save the checkpoint
             self.save_buffer()
+            self.save()
             self.optimize()
             state = next_state.clone()
             iterator += 1
@@ -237,7 +238,9 @@ class DQN(object):
                     next_state[i].clone(),
                     reward[i].clone()
                 )
+            # save the checkpoint
             self.save_buffer()
+            self.save()
             self.optimize()
             state = next_state.clone()
             iterator += 1

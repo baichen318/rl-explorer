@@ -60,7 +60,6 @@ def rl_explorer():
 
     for i in range(1, configs["episode"] + 1):
         agent.run(i)
-        agent.save()
     # agent.search()
 
 def test_rl_explorer():
@@ -87,7 +86,6 @@ def test_rl_explorer():
 
     for i in range(1, configs["episode"] + 1):
         agent.test_run(i)
-        agent.save()
     # agent.search()
 
 if __name__ == "__main__":
