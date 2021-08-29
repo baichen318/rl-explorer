@@ -195,7 +195,7 @@ class BoomDesignEnv(BasicEnv):
                         state,
                         self.design_space.sample_v3(1, int(self.state[i][4]))
                     )
-                )
+                ).long()
         ipc = torch.Tensor(online_vlsi(self.configs, state.numpy()))
 
         # replace the current state
@@ -216,7 +216,7 @@ class BoomDesignEnv(BasicEnv):
                         state,
                         self.design_space.sample_v3(1, int(self.state[i][4]))
                     )
-                )
+                ).long()
         ipc = torch.Tensor(test_online_vlsi(self.configs, state.numpy()))
 
         # replace the current state
@@ -236,6 +236,8 @@ class BoomDesignEnv(BasicEnv):
         # If some configs. cannot simulate, we need to re-initialize it
         while not (torch.where(self.init_ipc == 0)[0].shape[0] == 0):
             self.re_init()
+        msg = "[INFO]: reset state: %s, reset ipc: %s" % (self.state, self.best_ipc)
+        self.configs["logger"].info(msg)
         return self.state.clone()
 
     def test_reset(self):
@@ -247,4 +249,6 @@ class BoomDesignEnv(BasicEnv):
         # If some configs. cannot simulate, we need to re-initialize it
         while not (torch.where(self.init_ipc == 0)[0].shape[0] == 0):
             self.test_re_init()
+        msg = "[INFO]: reset state: %s, reset ipc: %s" % (self.state, self.best_ipc)
+        self.configs["logger"].info(msg)
         return self.state.clone()

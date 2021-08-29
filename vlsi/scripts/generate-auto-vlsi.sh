@@ -26,7 +26,7 @@ for idx in \${arr[@]}
 do
     echo compiling \${idx}-th Config.
     soc_name=Boom\${idx}Config
-    make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
+    make -j80 MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
     # 100 sec. would be suitable
     sleep 100
 done
@@ -59,7 +59,7 @@ do
 				then
 					# no process
 					echo re-compiling \${soc_name}
-					make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
+					make -j 80 MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} &
 					sleep 180
 				fi
 			fi

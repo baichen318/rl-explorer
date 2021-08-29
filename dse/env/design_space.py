@@ -69,9 +69,10 @@ class BOOMDesignSpace(Space):
             # Notice: Google sheet
             # validate w.r.t. `decodeWidth`
             if k == "fetchWidth":
-                def f(x):
-                    return x >= decodeWidth
-                return random.sample(list(filter(f, self.bounds["fetchWidth"])), 1)[0]
+                if decodeWidth <= 2:
+                    return self.bounds["fetchWidth"][0]
+                else:
+                    return self.bounds["fetchWidth"][1]
             elif k == "ifu-buffers":
                 def f(x):
                     return (self.basic_component["ifu-buffers"][x][0] % decodeWidth == 0 \
@@ -111,7 +112,6 @@ class BOOMDesignSpace(Space):
             # randomly sample designs w.r.t. decodeWidth
             for decodeWidth in self.bounds[self.features[4]]:
                 design = self._sample(decodeWidth)
-                print(design)
                 point = self.knob2point(design)
                 while point in self.visited:
                     design = self._sample(decodeWidth)
@@ -182,6 +182,12 @@ class BOOMDesignSpace(Space):
             return False
         # `numFetchBufferEntries` > `fetchWidth`
         if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
+            return False
+        # `fetchWidth` = 4 when `decodeWidth` <= 2
+        if not (configs[1] == 4 and configs[4] <= 2):
+            return False
+        # `fetchWidth` = 8 when `decodeWidth` > 2
+        if not (configs[1] == 8 and configs[4] > 2):
             return False
         return True
 
