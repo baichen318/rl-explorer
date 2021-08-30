@@ -36,16 +36,12 @@ basic-component:
       [20, 36, 28]
   ]
   dcache: [
-      # nSets nWays nTLBSets nTLBWays nMSHRs
-      [64, 4, 1, 8, 2],
-      [64, 8, 1, 16, 4],
-      [64, 8, 1, 32, 8],
-      [32, 4, 1, 8, 2],
-      [32, 8, 1, 16, 4],
-      [32, 8, 1, 32, 8],
-      [64, 4, 2, 8, 2],
-      [64, 8, 2, 16, 4],
-      [64, 8, 2, 32, 8]
+      # nMSHRs, nTLBWays
+      [2, 8],
+      [4, 16],
+      [8, 32],
+      [16, 48],
+      [4, 8]
   ]
   lsu: [
       # numLdqEntries numStqEntries
