@@ -388,11 +388,12 @@ class %s extends Config(
                 MACROS["chipyard-sims-output-root"],
                 self.soc_name[idx]
             )
-            _ipc, cycles, instructions = 0, 0, 0
+            _ipc = 0
             for bmark in self.configs["benchmarks"]:
                 f = os.path.join(root, bmark + ".log")
                 with open(f, 'r') as f:
                     cnt = f.readlines()
+                    cycles, instructions = 0, 0
                     for line in cnt:
                         if "[INFO]" in line and "cycles" in line and "instructions" in line:
                             try:
@@ -409,6 +410,7 @@ class %s extends Config(
                             )
                             self.configs["logger"].info(msg)
                             _ipc += __ipc
+                            break
             ipc[idx] = _ipc / len(self.configs["benchmarks"])
             msg = "[INFO]: Configs.: %s, IPC: %.8f" % (self.soc_name[idx], ipc[idx])
             self.configs["logger"].info(msg)
