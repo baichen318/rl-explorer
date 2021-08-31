@@ -360,6 +360,9 @@ class %s extends Config(
                         s[i] = 0
                     elif os.path.exists(f) and execute("grep -rn \"hung\" %s" % f) == 0:
                         s[i] = -2
+                    elif os.path.exists(f):
+                        # Notice: time out
+                        pass
                     else:
                         s[i] = -1
                 if -2 in s:
@@ -376,7 +379,7 @@ class %s extends Config(
         self.status = [-1 for i in range(self.batch)]
         # TODO: should we set the maximum time period?
         while not all(list(map(_validate, _query_status(self.status)))):
-            time.sleep(30)
+            time.sleep(15)
 
     def get_results(self):
         ipc = [0 for i in range(self.batch)]

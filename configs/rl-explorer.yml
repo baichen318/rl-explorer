@@ -107,7 +107,7 @@ benchmarks:
   - towers
   # - vvadd
   # - multiply
-  - dhrystone
+  # - dhrystone
   # - spmv
   - mt-vvadd
   - mt-matmul

@@ -51,6 +51,10 @@ do
             sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
             c=\`expr \${c} + 1\`
 			success_idx[\${#success_idx[*]}]=\${soc_name}
+            cd \${soc_name}
+            bash sim.sh
+            cd -
+	        sleep 15
 		else
 			if [[ ! \${success_idx[@]} =~ \${soc_name} ]]
 			then
@@ -68,20 +72,6 @@ do
     done
     # 10 sec. would be suitable
     sleep 10
-done
-
-# simulate
-for idx in \`seq ${start} ${end}\`
-do
-    soc_name=Boom\${idx}Config
-    if [[ -e \${soc_name}/simv-chipyard-\${soc_name} ]]
-    then
-        cd \${soc_name}
-        bash sim.sh
-        cd -
-    fi
-    # 20 sec. would be suitable
-    sleep 20
 done
 
 EOF

@@ -110,7 +110,7 @@ class BOOMDesignSpace(Space):
         cnt = 0
         while cnt < batch:
             # randomly sample designs w.r.t. decodeWidth
-            for decodeWidth in self.bounds[self.features[4]]:
+            for decodeWidth in self.bounds[self.features[4]][::-1]:
                 design = self._sample(decodeWidth)
                 point = self.knob2point(design)
                 while point in self.visited:
@@ -184,11 +184,13 @@ class BOOMDesignSpace(Space):
         if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
             return False
         # `fetchWidth` = 4 when `decodeWidth` <= 2
-        if not (configs[1] == 4 and configs[4] <= 2):
-            return False
+        if configs[4] <= 2:
+            if not (configs[1] == 4):
+                return False
         # `fetchWidth` = 8 when `decodeWidth` > 2
-        if not (configs[1] == 8 and configs[4] > 2):
-            return False
+        if configs[4] > 2:
+            if not (configs[1] == 8):
+                return False
         return True
 
 def parse_design_space(design_space, **kwargs):

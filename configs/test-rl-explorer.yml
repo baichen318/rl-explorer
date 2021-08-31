@@ -107,7 +107,7 @@ benchmarks:
   - towers
   # - vvadd
   # - multiply
-  - dhrystone
+  # - dhrystone
   # - spmv
   - mt-vvadd
   - mt-matmul
@@ -117,7 +117,7 @@ mode: rl
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
 # batch x 5
-batch: 2
+batch: 1
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt

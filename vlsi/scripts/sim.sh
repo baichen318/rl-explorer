@@ -4,7 +4,7 @@
 # set -ex
 
 # NOTICE: need to align with *.yml!
-benchmarks=(median towers dhrystone mt-vvadd mt-matmul)
+benchmarks=(median towers mt-vvadd mt-matmul)
 
 function sims() {
 	for bmark in ${benchmarks[@]}

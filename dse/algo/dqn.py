@@ -189,8 +189,8 @@ class DQN(object):
             loss.backward()
             self.optimizer.step()
 
-    def run(self, episode):
-        iterator = 0
+    def run(self, rl_round):
+        episode = 0
         state = self.env.reset()
         while True:
             action = self.greedy_select(state)
@@ -211,18 +211,18 @@ class DQN(object):
             self.save()
             self.optimize()
             state = next_state.clone()
-            iterator += 1
+            episode += 1
             if done:
-                msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
+                msg = "[INFO]: round: %d, episode: %d" % (rl_round, episode)
                 self.env.configs["logger"].info(msg)
-                self.episode_durations.append(iterator)
+                self.episode_durations.append(episode)
                 break
 
-    def test_run(self, episode):
+    def test_run(self, rl_round):
         """
             debug version of `run`
         """
-        iterator = 0
+        episode = 0
         state = self.env.test_reset()
         while True:
             action = self.greedy_select(state)
@@ -243,11 +243,11 @@ class DQN(object):
             self.save()
             self.optimize()
             state = next_state.clone()
-            iterator += 1
+            episode += 1
             if done:
-                msg = "[INFO]: episode: %d, step: %d" % (episode, iterator)
+                msg = "[INFO]: round: %d, episode: %d" % (rl_round, episode)
                 self.env.configs["logger"].info(msg)
-                self.episode_durations.append(iterator)
+                self.episode_durations.append(episode)
                 break
 
     def save_buffer(self):
