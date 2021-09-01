@@ -350,7 +350,9 @@ class %s extends Config(
                 # Notice: handle these unexpected behavior to make auto-vlsi more robust
                 # when one of these unexpected behavior occurs, we need to re-compile and simulate
                 # case #1
-                if os.path.exists(f) and execute("test -s %s" % f) != 0:
+                if os.path.exists(f) and \
+                    (execute("test -s %s" % f) != 0 or \
+                     execute("test -s %s" % f.strip(".out") + ".log") != 0):
                     # this may occur when simv is successfully generated but run failed without
                     # generating any output
                     self.configs["logger"].info("[WARN]: empty simulation result.")
@@ -364,6 +366,11 @@ class %s extends Config(
                 if not os.path.isdir(os.path.join(MACROS["chipyard-sims-root"], soc_name)):
                     # this may occur when simv is not generated successfully
                     self.configs["logger"].info("[WARN]: simv is not generated.")
+                    return True
+                # case #4
+                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f):
+                    # this case may be covered by case # 1
+                    self.configs["logger"].info("[WARN]: text file busy.")
                     return True
                 return False
                 

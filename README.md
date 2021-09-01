@@ -8,11 +8,5 @@ $ python main.py -c configs/rl-explorer.yml
 
 ## TODO
 - VLSI:
-	* Log each running compilation
 	* Re-run when compilation occurs errors
-	* auto-vlsi.sh needs to handle error compilations
-	* Distributed compilation
-- Invalid configs.:
-    * Assign a large negtive reward
-- Transition:
-    * Record transitions in the buffer
+	* Reward settings are not valid
