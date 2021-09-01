@@ -51,10 +51,11 @@ do
             sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
             c=\`expr \${c} + 1\`
 			success_idx[\${#success_idx[*]}]=\${soc_name}
+            # simulate
             cd \${soc_name}
             bash sim.sh
             cd -
-	        sleep 15
+            sleep 15
 		else
 			if [[ ! \${success_idx[@]} =~ \${soc_name} ]]
 			then

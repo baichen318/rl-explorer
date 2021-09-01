@@ -5,8 +5,8 @@ import torch
 import random
 import time
 import numpy as np
-from dse.env.design_space import parse_design_space
-from vlsi import online_vlsi, test_online_vlsi
+from dse.env.rocket.design_space import parse_design_space
+from vlsi.rocket.vlsi import online_vlsi, test_online_vlsi
 
 class BasicEnv(object):
     """ BasicEnv """
@@ -14,11 +14,11 @@ class BasicEnv(object):
         super(BasicEnv, self).__init__()
         self.configs = configs
 
-class BoomDesignEnv(BasicEnv):
-    """ BoomDesignEnv """
+class RocketDesignEnv(BasicEnv):
+    """ RocketDesignEnv """
     # def __init__(self, configs, seed=int(time.time())):
     def __init__(self, configs, seed=2021):
-        super(BoomDesignEnv, self).__init__(configs)
+        super(RocketDesignEnv, self).__init__(configs)
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],
@@ -193,7 +193,7 @@ class BoomDesignEnv(BasicEnv):
                 state = torch.cat(
                     (
                         state,
-                        self.design_space.sample_v3(1, int(self.state[i][4]))
+                        self.design_space.sample(1, int(self.state[i][4]))
                     )
                 ).long()
         ipc = torch.Tensor(online_vlsi(self.configs, state.numpy()))
@@ -214,7 +214,7 @@ class BoomDesignEnv(BasicEnv):
                 state = torch.cat(
                     (
                         state,
-                        self.design_space.sample_v3(1, int(self.state[i][4]))
+                        self.design_space.sample(1, int(self.state[i][4]))
                     )
                 ).long()
         ipc = torch.Tensor(test_online_vlsi(self.configs, state.numpy()))
@@ -228,8 +228,7 @@ class BoomDesignEnv(BasicEnv):
                 k += 1
 
     def reset(self):
-        # Notice: `self.configs["batch"] // 5` is required
-        self.state = self.design_space.sample_v1(self.configs["batch"] // 5)
+        self.state = self.design_space.sample(self.configs["batch"])
         self.init_ipc = torch.Tensor(online_vlsi(self.configs, self.state.numpy()))
         self.best_ipc = self.init_ipc.clone()
         self.best_idx = torch.where(self.best_ipc == max(self.best_ipc))[0]
@@ -241,8 +240,7 @@ class BoomDesignEnv(BasicEnv):
         return self.state.clone()
 
     def test_reset(self):
-        # Notice: `self.configs["batch"] // 5` is required
-        self.state = self.design_space.sample_v1(self.configs["batch"] // 5)
+        self.state = self.design_space.sample(self.configs["batch"])
         self.init_ipc = torch.Tensor(test_online_vlsi(self.configs, self.state.numpy()))
         self.best_ipc = self.init_ipc.clone()
         self.best_idx = torch.where(self.best_ipc == max(self.best_ipc))[0]

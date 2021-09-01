@@ -103,7 +103,7 @@ def create_logger(path, name):
         name: prefix name of a log file
     """
     time_str = time.strftime("%Y-%m-%d-%H-%M")
-    log_file = '{}_{}.log'.format(name, time_str)
+    log_file = '{}-{}.log'.format(name, time_str)
     mkdir(path)
     log_file = os.path.join(path, log_file)
     head = "%(asctime)-15s %(message)s"

@@ -120,7 +120,7 @@ class DQN(object):
         self.scheduler = ExplorationScheduler(
             start=self.env.configs["epsilon-start"],
             end=self.env.configs["epsilon-end"],
-            # decay=self.env.configs["episode"]
+            # decay=self.env.configs["rl-round"]
             decay=100
         )
         # self.update_target_policy = self.env.configs["update-target-policy"]

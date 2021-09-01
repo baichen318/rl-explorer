@@ -115,8 +115,12 @@ benchmarks:
 # mode: generate-design | sim | generate-data | rl
 mode: rl
 
+# design: boom | rocket | cva6
+design: cva6
+
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 32
+# batch x 5
+batch: 1
 
 # generate-design: design-output-path
 design-output-path: data/test/design.txt
@@ -128,17 +132,17 @@ idx: 1
 data-output-path: data/test/dataset.txt
 
 # RL related
-episode: 100
-epsilon-start: 1
+episode: 5
+epsilon-start: 0.75
 epsilon-end: 0.1
-epsilon-decay: 0.05
-capacity: 5000
+epsilon-decay: 10
+capacity: 1000000
 update-target-policy: 5
-total-step: 150
-early-stopping: 100
+total-step: 64
+early-stopping: 64
 batch-size: 16
-gamma: 0.8
+gamma: 0.9
 learning-rate: 0.001
-log: logs/dqn
+log: logs/dqn-cva6
 search-round: 500
-debug: True
+debug: False

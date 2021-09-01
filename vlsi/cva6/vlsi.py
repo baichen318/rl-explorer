@@ -5,7 +5,7 @@ import re
 import time
 import numpy as np
 from util import load_txt, execute, if_exist, write_txt
-from macros import MACROS
+from vlsi.cva6.macros import MACROS
 
 class VLSI(object):
     """ VLSI Flow """
@@ -397,7 +397,7 @@ class %s extends Config(
                         )
                         execute("mkdir -p %s; mkdir -p %s; chmod +x simv-chipyard-%s;" % (
                                 self.soc_name[idx],
-                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx])
+                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx]),
                                 self.soc_name[idx]
                             )
                         )

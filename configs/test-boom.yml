@@ -13,6 +13,8 @@
 # 10. decodeWidth == fp_dispatchWidth
 # 11. numLdqEntries == numStqEntries
 # 12. numFetchBufferEntries > fetchWidth
+# 13. fetchWidth = 4 when decodeWidth = 1, 2
+# 14. fetchWidth = 8 when decodeWidth = 3, 4, 5
 
 basic-component:
   registers: [
@@ -59,7 +61,8 @@ basic-component:
     [24, 32],
     [32, 40],
     [40, 32],
-    [30, 30]
+    [30, 30],
+    [45, 40]
   ]
 
 # Design space
@@ -72,7 +75,7 @@ design-space:
     candidates: [4, 8]
   ifu-buffers:
     start: 0
-    end: 5
+    end: 6
     stride: 1
   maxBrCount:
     candidates: [8, 12, 16, 20]
@@ -81,7 +84,7 @@ design-space:
     end: 5
     stride: 1
   numRobEntries:
-    candidates: [32, 64, 96, 128, 130]
+    candidates: [32, 64, 84, 96, 105, 120, 128, 130]
   registers:
     start: 0
     end: 6
@@ -102,18 +105,21 @@ design-space:
 # benchmarks
 benchmarks:
   - median
+  - mt-vvadd
+  - mt-matmul
+  - towers
   # - qsort
   # - rsort
-  - towers
   # - vvadd
   # - multiply
   # - dhrystone
   # - spmv
-  - mt-vvadd
-  - mt-matmul
 
 # mode: generate-design | sim | generate-data | rl
 mode: rl
+
+# design: boom | rocket | cva6
+design: boom
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
 # batch x 5
@@ -129,7 +135,7 @@ idx: 1
 data-output-path: data/test/dataset.txt
 
 # RL related
-episode: 5
+rl-round: 5
 epsilon-start: 0.75
 epsilon-end: 0.1
 epsilon-decay: 10
@@ -140,6 +146,6 @@ early-stopping: 64
 batch-size: 16
 gamma: 0.9
 learning-rate: 0.001
-log: logs/dqn
+log: logs/dqn-boom
 search-round: 500
-debug: False
+debug: True

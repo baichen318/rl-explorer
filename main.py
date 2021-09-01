@@ -14,7 +14,6 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
 from time import time
-from vlsi import PreSynthesizeSimulation
 from util import parse_args, get_configs, write_txt, if_exist, \
     mkdir, create_logger, execute
 
@@ -41,24 +40,38 @@ def generate_dataset():
     generate_dataset(configs)
 
 def rl_explorer():
-    from dse.env.boom_design_env import BoomDesignEnv
     from dse.algo.dqn import DQN
-
     logger, time_str = create_logger(
         os.path.dirname(configs["log"]),
         os.path.basename(configs["log"])
     )
     configs["logger"] = logger
-    configs["model-path"] = os.path.join("models", "model-%s" % time_str)
+    configs["model-path"] = os.path.join("models", "%s-%s" % (
+        os.path.basename(configs["log"]),
+        time_str)
+    )
     mkdir(configs["model-path"])
 
-    # Notice: we should modify `self.configs["batch"]`
-    configs["batch"] = configs["batch"] * 5
-    env = BoomDesignEnv(configs)
+    if configs["design"] == "boom":
+        from dse.env.boom.design_env import BoomDesignEnv
+        from vlsi.boom.vlsi import PreSynthesizeSimulation
+        # Notice: we should modify `self.configs["batch"]`
+        configs["batch"] = configs["batch"] * 5
+        env = BoomDesignEnv(configs)
+    elif configs["design"] == "rocket":
+        from dse.env.rocket.design_env import RocketDesignEnv
+        from vlsi.rocket.vlsi import PreSynthesizeSimulation
+        env = RocketDesignEnv(configs)
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: deisng: %s not support." % configs["design"]
+        from dse.env.cva6.design_env import CVA6DesignEnv
+        from vlsi.cva6.vlsi import PreSynthesizeSimulation
+        configs["design"] = CVA6DesignEnv(configs)
     agent = DQN(env)
     PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
 
-    for i in range(1, configs["episode"] + 1):
+    for i in range(1, configs["rl-round"] + 1):
         agent.run(i)
     # agent.search()
 
@@ -66,25 +79,38 @@ def test_rl_explorer():
     """
         debug version of `rl_explorer`
     """
-    from dse.env.boom_design_env import BoomDesignEnv
     from dse.algo.dqn import DQN
-
     logger, time_str = create_logger(
         os.path.dirname(configs["log"]),
         os.path.basename(configs["log"])
     )
     configs["logger"] = logger
-    configs["model-path"] = os.path.join("models", "model-%s" % time_str)
+    configs["model-path"] = os.path.join("models", "%s-%s" % (
+        os.path.basename(configs["log"]),
+        time_str)
+    )
     mkdir(configs["model-path"])
-    execute("rm -rf test")
 
-    # Notice: we should modify `self.configs["batch"]`
-    configs["batch"] = configs["batch"] * 5
-    env = BoomDesignEnv(configs)
+    if configs["design"] == "boom":
+        from dse.env.boom.design_env import BoomDesignEnv
+        from vlsi.boom.vlsi import PreSynthesizeSimulation
+        # Notice: we should modify `self.configs["batch"]`
+        configs["batch"] = configs["batch"] * 5
+        env = BoomDesignEnv(configs)
+    elif configs["design"] == "rocket":
+        from dse.env.rocket.design_env import RocketDesignEnv
+        from vlsi.rocket.vlsi import PreSynthesizeSimulation
+        env = RocketDesignEnv(configs)
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: deisng: %s not support." % configs["design"]
+        from dse.env.cva6.design_env import CVA6DesignEnv
+        from vlsi.cva6.vlsi import PreSynthesizeSimulation
+        configs["design"] = CVA6DesignEnv(configs)
     agent = DQN(env)
     PreSynthesizeSimulation.set_tick(configs["idx"], configs["logger"])
 
-    for i in range(1, configs["episode"] + 1):
+    for i in range(1, configs["rl-round"] + 1):
         agent.test_run(i)
     # agent.search()
 
