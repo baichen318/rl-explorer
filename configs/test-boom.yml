@@ -135,7 +135,7 @@ idx: 1
 data-output-path: data/test/dataset.txt
 
 # RL related
-rl-round: 5
+rl-round: 1
 epsilon-start: 0.75
 epsilon-end: 0.1
 epsilon-decay: 10

@@ -169,31 +169,33 @@ class DQN(object):
 
         if len(self.replay_buffer) < self.batch_size:
             return
-        # 5 is currently pre-defined threshold
-        for i in range(5):
-            transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
-            batch_state = torch.cat(tuple(map(f, transitions.state)))
-            batch_action = torch.cat(tuple(map(f, transitions.action)))
-            batch_next_state = torch.cat(tuple(map(f, transitions.next_state)))
-            batch_reward = torch.cat(tuple(map(f, transitions.reward)))
-            # current Q value
-            current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
-            # expected Q value
-            max_next_q = self.policy(batch_next_state.float()).detach().max(1)[0]
-            expected_q = (batch_reward + (self.gamma * max_next_q)).unsqueeze(0)
-            # Huber loss
-            loss = F.smooth_l1_loss(current_q, expected_q)
-            self.env.configs["logger"].info("[INFO]: loss: %.8f" % loss)
-            # backpropagation
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+        transitions = Transition(*zip(*self.replay_buffer.sample(self.batch_size)))
+        batch_state = torch.cat(tuple(map(f, transitions.state)))
+        batch_action = torch.cat(tuple(map(f, transitions.action)))
+        batch_next_state = torch.cat(tuple(map(f, transitions.next_state)))
+        batch_reward = torch.cat(tuple(map(f, transitions.reward)))
+        # current Q value
+        current_q = self.policy(batch_state.float()).gather(1, batch_action.unsqueeze(0))
+        # expected Q value
+        max_next_q = self.policy(batch_next_state.float()).detach().max(1)[0]
+        expected_q = (batch_reward + (self.gamma * max_next_q)).unsqueeze(0)
+        # Huber loss
+        loss = F.smooth_l1_loss(current_q, expected_q)
+        self.env.configs["logger"].info("[INFO]: loss: %.8f" % loss)
+        # backpropagation
+        self.optimizer.zero_grad()
+        loss.backward()
+        for param in self.policy.parameters():
+            param.grad.data.clamp_(-1, 1)
+        self.optimizer.step()
 
     def run(self, rl_round):
         episode = 0
         state = self.env.reset()
         while True:
             action = self.greedy_select(state)
+            msg = "[INFO]: get action: {}".format(action)
+            self.env.configs["logger"].info(msg)
             next_state, reward, done = self.env.step(action)
             msg = "[INFO]: state: {}, action: {}, next_state: {}, reward: {}, done: {}".format(
                 state, action, next_state, reward, done
@@ -201,16 +203,16 @@ class DQN(object):
             self.env.configs["logger"].info(msg)
             for i in range(self.env.configs["batch"]):
                 self.replay_buffer.push(
-                    state[i].clone(),
-                    action[i].clone(),
-                    next_state[i].clone(),
-                    reward[i].clone()
+                    state[i],
+                    action[i],
+                    next_state[i],
+                    reward[i]
                 )
             # save the checkpoint
             self.save_buffer()
             self.save()
             self.optimize()
-            state = next_state.clone()
+            state = self.env.get_next_state(reward)
             episode += 1
             if done:
                 msg = "[INFO]: round: %d, episode: %d" % (rl_round, episode)
@@ -226,6 +228,8 @@ class DQN(object):
         state = self.env.test_reset()
         while True:
             action = self.greedy_select(state)
+            msg = "[INFO]: get action: {}".format(action)
+            self.env.configs["logger"].info(msg)
             next_state, reward, done = self.env.test_step(action)
             msg = "[INFO]: state: {}, action: {}, next_state: {}, reward: {}, done: {}".format(
                 state, action, next_state, reward, done
@@ -233,16 +237,16 @@ class DQN(object):
             self.env.configs["logger"].info(msg)
             for i in range(self.env.configs["batch"]):
                 self.replay_buffer.push(
-                    state[i].clone(),
-                    action[i].clone(),
-                    next_state[i].clone(),
-                    reward[i].clone()
+                    state[i],
+                    action[i],
+                    next_state[i],
+                    reward[i]
                 )
             # save the checkpoint
             self.save_buffer()
             self.save()
             self.optimize()
-            state = next_state.clone()
+            state = self.env.get_next_state(reward)
             episode += 1
             if done:
                 msg = "[INFO]: round: %d, episode: %d" % (rl_round, episode)
