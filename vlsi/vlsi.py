@@ -336,6 +336,7 @@ class %s extends Config(
         os.chdir(MACROS["rl-explorer-root"])
 
     def query_status(self):
+        # when `query_status` is executed, all compilations is done and simulation shall be running
         self.configs["logger"].info("[INFO]: query status...")
         def _validate(x):
             if x == 0 or x == -2:
@@ -345,6 +346,27 @@ class %s extends Config(
                 return False
 
         def _query_status(status):
+            def unexpected_behavior(f):
+                # Notice: handle these unexpected behavior to make auto-vlsi more robust
+                # when one of these unexpected behavior occurs, we need to re-compile and simulate
+                # case #1
+                if os.path.exists(f) and execute("test -s %s" % f) != 0:
+                    # this may occur when simv is successfully generated but run failed without
+                    # generating any output
+                    self.configs["logger"].info("[WARN]: empty simulation result.")
+                    return True
+                soc_name = os.path.basename(os.path.dirname(f))
+                # case #2
+                if not os.path.isdir(os.path.join(MACROS["chipyard-sims-output-root"], soc_name)):
+                    self.configs["logger"].info("[WARN]: output directory is not created.")
+                    return True
+                # case #3
+                if not os.path.isdir(os.path.join(MACROS["chipyard-sims-root"], soc_name)):
+                    # this may occur when simv is not generated successfully
+                    self.configs["logger"].info("[WARN]: simv is not generated.")
+                    return True
+                return False
+                
             for idx in range(self.batch):
                 if status[idx] == 0 or status[idx] == -2:
                     continue
@@ -360,14 +382,27 @@ class %s extends Config(
                         s[i] = 0
                     elif os.path.exists(f) and execute("grep -rn \"hung\" %s" % f) == 0:
                         s[i] = -2
-                    elif os.path.exists(f) and execute("test -s %s" % f) == 0:
-                        # Notice: fix a potential simulation bug
+                    elif unexpected_behavior(f):
                         # this is an occasional case!
                         os.chdir(MACROS["chipyard-sims-root"])
                         execute("make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=%s" %
                             self.soc_name[idx]
                         )
-                        execute("mv -f simv-chipyard-%s* %s; cd %s; bash sim.sh; cd -;" % (self.soc_name[idx], self.soc_name[idx], self.soc_name[idx]))
+                        execute("mkdir -p %s; mkdir -p %s; chmod +x simv-chipyard-%s;" % (
+                                self.soc_name[idx],
+                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx])
+                                self.soc_name[idx]
+                            )
+                        )
+                        execute("mv -f simv-chipyard-%s* %s;" % (self.soc_name[idx], self.soc_name[idx]))
+                        execute("cp -f %s %s; sed -i \"s/PATTERN/%s/g\" %s/sim.sh" % (
+                                MACROS["sim-script"],
+                                self.soc_name[idx],
+                                self.soc_name[idx],
+                                self.soc_name[idx]
+                            )
+                        )
+                        execute("cd %s; bash sim.sh; cd -" % self.soc_name[idx])
                         os.chdir(MACROS["rl-explorer-root"])
                         s[i] = -1
                     else:
