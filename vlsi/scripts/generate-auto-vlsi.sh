@@ -45,9 +45,9 @@ do
             mkdir -p \${soc_name}
             mkdir -p output/\${soc_name}
             chmod +x simv-chipyard-\${soc_name}
-            mv simv-chipyard-\${soc_name}* \${soc_name}
+            mv -f simv-chipyard-\${soc_name}* \${soc_name}
             # sim. script
-            cp ${sim_script} \${soc_name}
+            cp -f ${sim_script} \${soc_name}
             sed -i "s/PATTERN/\${soc_name}/g" \${soc_name}/sim.sh
             c=\`expr \${c} + 1\`
 			success_idx[\${#success_idx[*]}]=\${soc_name}
