@@ -360,9 +360,16 @@ class %s extends Config(
                         s[i] = 0
                     elif os.path.exists(f) and execute("grep -rn \"hung\" %s" % f) == 0:
                         s[i] = -2
-                    elif os.path.exists(f):
-                        # Notice: time out
-                        pass
+                    elif os.path.exists(f) and execute("test -s %s" % f) == 0:
+                        # Notice: fix a potential simulation bug
+                        # this is an occasional case!
+                        os.chdir(MACROS["chipyard-sims-root"])
+                        execute("make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=%s" %
+                            self.soc_name[idx]
+                        )
+                        execute("mv -f simv-chipyard-%s* %s; cd %s; bash sim.sh; cd -;" % (self.soc_name[idx], self.soc_name[idx], self.soc_name[idx]))
+                        os.chdir(MACROS["rl-explorer-root"])
+                        s[i] = -1
                     else:
                         s[i] = -1
                 if -2 in s:
