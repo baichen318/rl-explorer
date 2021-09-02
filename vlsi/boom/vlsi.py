@@ -423,7 +423,7 @@ class %s extends Config(
                         )
                         execute("cd %s; bash sim.sh; cd -" % self.soc_name[idx])
                         # sleep 15s
-                        sleep(15)
+                        time.sleep(15)
                         os.chdir(MACROS["rl-explorer-root"])
                         s[i] = -1
                     else:
