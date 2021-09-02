@@ -353,15 +353,16 @@ class %s extends Config(
             def unexpected_behavior(f):
                 # Notice: handle these unexpected behavior to make auto-vlsi more robust
                 # when one of these unexpected behavior occurs, we need to re-compile and simulate
+                soc_name = os.path.basename(os.path.dirname(f))
                 # case #1
                 if os.path.exists(f) and \
                     (execute("test -s %s" % f) != 0 or \
-                     execute("test -s %s" % f.strip(".out") + ".log") != 0):
+                     execute("test -s %s" % f.strip(".out") + ".log") != 0) and \
+                    execute("ps aux | grep cbai | grep simv-chipyard-%s | grep -v grep") != 0:
                     # this may occur when simv is successfully generated but run failed without
                     # generating any output
                     self.configs["logger"].info("[WARN]: empty simulation result.")
                     return True
-                soc_name = os.path.basename(os.path.dirname(f))
                 # case #2
                 if not os.path.isdir(os.path.join(MACROS["chipyard-sims-output-root"], soc_name)):
                     self.configs["logger"].info("[WARN]: output directory is not created.")
@@ -421,6 +422,8 @@ class %s extends Config(
                             )
                         )
                         execute("cd %s; bash sim.sh; cd -" % self.soc_name[idx])
+                        # sleep 15s
+                        sleep(15)
                         os.chdir(MACROS["rl-explorer-root"])
                         s[i] = -1
                     else:
