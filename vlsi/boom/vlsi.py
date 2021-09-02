@@ -396,6 +396,13 @@ class %s extends Config(
                     elif unexpected_behavior(f):
                         # this is an occasional case!
                         os.chdir(MACROS["chipyard-sims-root"])
+                        # clean all residual files
+                        execute("rm -rf simv-chipyard-%s* %s %s" % (
+                                self.soc_name[idx],
+                                self.soc_name[idx],
+                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx])
+                            )
+                        )
                         execute("make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=%s" %
                             self.soc_name[idx]
                         )
