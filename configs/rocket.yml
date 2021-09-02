@@ -1,116 +1,78 @@
 # Author: baichen318@gmail.com
 
 # Constraint
-# 1. fetchWidth >= decodeWidth
-# 2. numIntPhysRegisters >= (32 + decodeWidth)
-# 3. numFPPhysRegisters >= (32 + decodeWidth)
-# 4. numRobEntries % decodeWidth == 0
-# 5. numFetchBufferEntries % decodeWidth = 0
-# 6. fetchWidth * 2 = icache.fetchBytes
-# 7. decodeWidth == int_dispatchWidth
-# 8. decodeWidth == int_issueWidth
-# 9. decodeWidth == mem_dispatchWidth
-# 10. decodeWidth == fp_dispatchWidth
-# 11. numLdqEntries == numStqEntries
-# 12. numFetchBufferEntries > fetchWidth
+# None
 
 basic-component:
-  registers: [
-      # numIntPhysRegisters numFpPhysRegisters
-      [52, 48],
-      [80, 64],
-      [100, 96],
-      [128, 128],
-      [96, 64],
-      [40, 40],
-      [64, 60]
+  btb: [
+    # nRAS BTBParams.nEntries BHTParams.nEntries
+    # denote no btb
+    [0, 0, 0],
+    [6, 28, 512],
+    [3, 14, 256],
+    [12, 56, 512],
+    [8, 32, 512]
   ]
-  issue-unit: [
-      # IQT_MEM IQT_INT IQT_FP
-      [8, 8, 8],
-      [12, 20, 16],
-      [16, 32, 24],
-      [24, 40, 32],
-      [10, 14, 12],
-      [14, 26, 20],
-      [20, 36, 28]
+  icache: [
+    # nWays nTLBWays
+    [4, 32],
+    [1, 4],
+    [2, 4],
+    [2, 16],
+    [2, 32],
+    [1, 16]
+  ]
+  mulDiv: [
+    # mulUnroll numEarlyOut divEarlyOut
+    [8, 1, 1]
+    [1, 0, 0]
+    [8, 0, 0]
   ]
   dcache: [
-      # nMSHRs, nTLBWays
-      [2, 8],
-      [4, 16],
-      [8, 32],
-      [16, 48],
-      [4, 8]
-  ]
-  lsu: [
-      # numLdqEntries numStqEntries
-      [8, 8],
-      [16, 16],
-      [24, 24],
-      [32, 32],
-      [40, 40],
-      [20, 20]
-  ]
-  ifu-buffers: [
-    # numFetchBufferEntries ftq.nEntries
-    [8, 16],
-    [16, 32],
-    [24, 32],
-    [32, 40],
-    [40, 32],
-    [30, 30]
+    # nWays nTLBWays
+    [4, 32],
+    [1, 4],
+    [2, 4],
+    [2, 16],
+    [2, 32],
+    [1, 16]
   ]
 
 # Design space
 design-space:
-  bpd:
-    start: 0
-    end: 3
-    stride: 1
-  fetchWidth:
-    candidates: [4, 8]
-  ifu-buffers:
-    start: 0
-    end: 5
-    stride: 1
-  maxBrCount:
-    candidates: [8, 12, 16, 20]
-  decodeWidth:
-    start: 1
-    end: 5
-    stride: 1
-  numRobEntries:
-    candidates: [32, 64, 96, 128, 130]
-  registers:
-    start: 0
-    end: 6
-    stride: 1
-  issueEntries:
-    start: 0
-    end: 6
-    stride: 1
-  lsuEntries:
-    start: 0
-    end: 5
-    stride: 1
-  dcache:
+  btb:
     start: 0
     end: 4
+    stride: 1
+  icache:
+    start: 0
+    end: 5
+    stride: 1
+  fpu:
+    candidates: [0, 1]
+  mulDiv:
+    start: 0
+    end: 2
+    stride: 1
+  useVM:
+    candidates: [0, 1]
+  dcache:
+    start: 0
+    end: 5
     stride: 1
 
 # benchmarks
 benchmarks:
   - median
+  - towers
+  - mt-vvadd
+  - mt-matmul
   # - qsort
   # - rsort
-  - towers
   # - vvadd
   # - multiply
   # - dhrystone
   # - spmv
-  - mt-vvadd
-  - mt-matmul
 
 # mode: generate-design | sim | generate-data | rl
 mode: rl
