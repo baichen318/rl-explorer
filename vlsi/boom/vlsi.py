@@ -358,7 +358,8 @@ class %s extends Config(
                 if os.path.exists(f) and \
                     (execute("test -s %s" % f) != 0 or \
                      execute("test -s %s" % f.strip(".out") + ".log") != 0) and \
-                    execute("ps aux | grep cbai | grep simv-chipyard-%s | grep -v grep") != 0:
+                    execute("ps aux | grep cbai | grep simv-chipyard-%s | grep -v grep" % soc_name) \
+                        != 0:
                     # this may occur when simv is successfully generated but run failed without
                     # generating any output
                     self.configs["logger"].info("[WARN]: empty simulation result.")
@@ -422,8 +423,8 @@ class %s extends Config(
                             )
                         )
                         execute("cd %s; bash sim.sh; cd -" % self.soc_name[idx])
-                        # sleep 15s
-                        time.sleep(15)
+                        # sleep 45s
+                        time.sleep(45)
                         os.chdir(MACROS["rl-explorer-root"])
                         s[i] = -1
                     else:
