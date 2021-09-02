@@ -374,9 +374,9 @@ class %s extends Config(
                     self.configs["logger"].info("[WARN]: simv is not generated.")
                     return True
                 # case #4
-                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f):
+                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f) == 0:
                     # this case may be covered by case # 1
-                    self.configs["logger"].info("[WARN]: text file busy.")
+                    self.configs["logger"].info("[WARN]: Text file busy.")
                     return True
                 return False
                 
@@ -398,6 +398,9 @@ class %s extends Config(
                     elif unexpected_behavior(f):
                         # this is an occasional case!
                         os.chdir(MACROS["chipyard-sims-root"])
+                        # kill all related jobs
+                        execute("ps -ef | grep \"simv-chipyard-%s +permissive\" | grep -v grep | awk \'{print $4}\' | xargs kill -9" % self.soc_name[idx])
+                        execute("ps -ef | grep \"vcs\" | grep \"simv-chipyard-%s\" | grep -v grep | awk \'{print $5}\' | xargs kill -9" % self.soc_name[idx])
                         # clean all residual files
                         execute("rm -rf simv-chipyard-%s* %s %s" % (
                                 self.soc_name[idx],
