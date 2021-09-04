@@ -14,11 +14,11 @@ class BasicEnv(object):
         super(BasicEnv, self).__init__()
         self.configs = configs
 
-class BoomDesignEnv(BasicEnv):
-    """ BoomDesignEnv """
+class RocketDesignEnv(BasicEnv):
+    """ RocketDesignEnv """
     # def __init__(self, configs, seed=int(time.time())):
     def __init__(self, configs, seed=2021):
-        super(BoomDesignEnv, self).__init__(configs)
+        super(RocketDesignEnv, self).__init__(configs)
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],
@@ -253,8 +253,7 @@ class BoomDesignEnv(BasicEnv):
                 k += 1
 
     def reset(self):
-        # Notice: `self.configs["batch"] // 5` is required
-        self.state = self.design_space.sample_v1(self.configs["batch"])
+        self.state = self.design_space.sample(self.configs["batch"])
         self.ipc = torch.Tensor(online_vlsi(self.configs, self.state.numpy()))
         self.best_ipc = torch.max(self.ipc)
         # If some configs. cannot simulate, we need to re-initialize it
@@ -265,8 +264,7 @@ class BoomDesignEnv(BasicEnv):
         return self.state.clone()
 
     def test_reset(self):
-        # Notice: `self.configs["batch"] // 5` is required
-        self.state = self.design_space.sample_v1(self.configs["batch"])
+        self.state = self.design_space.sample(self.configs["batch"])
         self.ipc = torch.Tensor(test_online_vlsi(self.configs, self.state.numpy()))
         self.best_ipc = torch.max(self.ipc)
         # If some configs. cannot simulate, we need to re-initialize it

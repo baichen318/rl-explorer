@@ -1,11 +1,12 @@
 # Author: baichen318@gmail.com
+
 import os
 import sys
 import re
 import time
 import numpy as np
 from util import load_txt, execute, if_exist, write_txt
-from vlsi.cva6.macros import MACROS
+from vlsi.boom.macros import MACROS
 
 class VLSI(object):
     """ VLSI Flow """
@@ -54,7 +55,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
     counter = 0
     def __init__(self, configs, **kwargs):
         super(PreSynthesizeSimulation, self).__init__(configs)
-        # a 17-dim vector: <torch.Tensor>
+        # a 10-dim vector: <torch.Tensor>
         self.boom_configs = kwargs["boom_configs"]
         self.soc_name = kwargs["soc_name"]
         self.core_name = kwargs["core_name"]
@@ -138,6 +139,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             )
 
     def __generate_mulDiv(self, idx):
+        """ deprecated """
         choice = self.boom_configs[idx][13]
         if choice == 0:
             return "1"
@@ -147,6 +149,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
 
     def __generate_dcache(self, idx):
         def __generate_replacement_policy():
+            """ deprecated """
             choice = self.boom_configs[idx][16]
             if choice == 0:
                 return "random"
@@ -171,6 +174,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             )
 
     def __generate_icache(self, idx):
+        """ deprecated """
         return """Some(
                 ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, fetchBytes=%d)
             )""" % (
@@ -277,7 +281,7 @@ class %s extends Config(
     def generate_scripts(self, batch, start):
         servers = [
             "hpc1", "hpc2", "hpc3", "hpc4", "hpc5",
-            "hpc6", "hpc7", "hpc8", "hpc15", # "hpc16"
+            "hpc6", "hpc7", "hpc8", "hpc15", "hpc16"
         ]
         stride = batch // len(servers)
         remainder = batch % len(servers)
@@ -349,15 +353,17 @@ class %s extends Config(
             def unexpected_behavior(f):
                 # Notice: handle these unexpected behavior to make auto-vlsi more robust
                 # when one of these unexpected behavior occurs, we need to re-compile and simulate
+                soc_name = os.path.basename(os.path.dirname(f))
                 # case #1
                 if os.path.exists(f) and \
                     (execute("test -s %s" % f) != 0 or \
-                     execute("test -s %s" % f.strip(".out") + ".log") != 0):
+                     execute("test -s %s" % f.strip(".out") + ".log") != 0) and \
+                    execute("ps aux | grep cbai | grep simv-chipyard-%s | grep -v grep" % soc_name) \
+                        != 0:
                     # this may occur when simv is successfully generated but run failed without
                     # generating any output
                     self.configs["logger"].info("[WARN]: empty simulation result.")
                     return True
-                soc_name = os.path.basename(os.path.dirname(f))
                 # case #2
                 if not os.path.isdir(os.path.join(MACROS["chipyard-sims-output-root"], soc_name)):
                     self.configs["logger"].info("[WARN]: output directory is not created.")
@@ -368,9 +374,9 @@ class %s extends Config(
                     self.configs["logger"].info("[WARN]: simv is not generated.")
                     return True
                 # case #4
-                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f):
+                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f) == 0:
                     # this case may be covered by case # 1
-                    self.configs["logger"].info("[WARN]: text file busy.")
+                    self.configs["logger"].info("[WARN]: Text file busy.")
                     return True
                 return False
                 
@@ -389,9 +395,21 @@ class %s extends Config(
                         s[i] = 0
                     elif os.path.exists(f) and execute("grep -rn \"hung\" %s" % f) == 0:
                         s[i] = -2
+                        execute("ps -ef | grep \"simv-chipyard-%s +permissive\" | grep -v grep | awk \'{print $4}\' | xargs kill -9" % self.soc_name[idx])
+                        execute("ps -ef | grep \"vcs\" | grep \"simv-chipyard-%s\" | grep -v grep | awk \'{print $5}\' | xargs kill -9" % self.soc_name[idx])
                     elif unexpected_behavior(f):
                         # this is an occasional case!
                         os.chdir(MACROS["chipyard-sims-root"])
+                        # kill all related jobs
+                        execute("ps -ef | grep \"simv-chipyard-%s +permissive\" | grep -v grep | awk \'{print $4}\' | xargs kill -9" % self.soc_name[idx])
+                        execute("ps -ef | grep \"vcs\" | grep \"simv-chipyard-%s\" | grep -v grep | awk \'{print $5}\' | xargs kill -9" % self.soc_name[idx])
+                        # clean all residual files
+                        execute("rm -rf simv-chipyard-%s* %s %s" % (
+                                self.soc_name[idx],
+                                self.soc_name[idx],
+                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx])
+                            )
+                        )
                         execute("make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=%s" %
                             self.soc_name[idx]
                         )
@@ -410,6 +428,8 @@ class %s extends Config(
                             )
                         )
                         execute("cd %s; bash sim.sh; cd -" % self.soc_name[idx])
+                        # sleep 45s
+                        time.sleep(45)
                         os.chdir(MACROS["rl-explorer-root"])
                         s[i] = -1
                     else:
@@ -469,58 +489,6 @@ class %s extends Config(
         return ipc
 
 
-def test_offline_vlsi(configs):
-    """
-        configs: <dict>
-    """
-    design_set = load_txt(configs["design-output-path"])
-    execute(
-        "mkdir -p test"
-    )
-    MACROS["config-mixins"] = os.path.join(
-        "test",
-        "config-mixins.scala"
-    )
-    MACROS["boom-configs"] = os.path.join(
-        "test",
-        "BoomConfigs.scala"
-    )
-    MACROS["chipyard-sims-root"] = "test"
-
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
-
-def offline_vlsi(configs):
-    """
-        configs: <dict>
-    """
-    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
-    design_set = load_txt(configs["design-output-path"])
-
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
 def test_online_vlsi(configs, state):
     """
@@ -587,6 +555,59 @@ def online_vlsi(configs, state):
     ]
     vlsi_manager.run()
     return vlsi_manager.get_results()
+
+def test_offline_vlsi(configs):
+    """
+        configs: <dict>
+    """
+    design_set = load_txt(configs["design-output-path"])
+    execute(
+        "mkdir -p test"
+    )
+    MACROS["config-mixins"] = os.path.join(
+        "test",
+        "config-mixins.scala"
+    )
+    MACROS["boom-configs"] = os.path.join(
+        "test",
+        "BoomConfigs.scala"
+    )
+    MACROS["chipyard-sims-root"] = "test"
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+
+def offline_vlsi(configs):
+    """
+        configs: <dict>
+    """
+    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
+    design_set = load_txt(configs["design-output-path"])
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            boom_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

@@ -1,4 +1,5 @@
 # Author: baichen318@gmail.com
+
 import os
 import sys
 import re
@@ -26,26 +27,22 @@ class BasicComponent(object):
     def __init__(self, configs):
         super(BasicComponent, self).__init__()
         self.configs = configs
-        self.registers = self.init_registers()
-        self.issue_unit = self.init_issue_unit()
+        self.btb = self.init_btb()
+        self.icache = self.init_icache()
+        self.mulDiv = self.init_mulDiv()
         self.dcache = self.init_dcache()
-        self.lsu = self.init_lsu()
-        self.ifu_buffers = self.init_ifu_buffers()
 
-    def init_registers(self):
-        return self.configs["basic-component"]["registers"]
+    def init_btb(self):
+        return self.configs["basic-component"]["btb"]
 
-    def init_issue_unit(self):
-        return self.configs["basic-component"]["issue-unit"]
+    def init_icache(self):
+        return self.configs["basic-component"]["icache"]
+
+    def init_mulDiv(self):
+        return self.configs["basic-component"]["mulDiv"]
 
     def init_dcache(self):
         return self.configs["basic-component"]["dcache"]
-
-    def init_lsu(self):
-        return self.configs["basic-component"]["lsu"]
-
-    def init_ifu_buffers(self):
-        return self.configs["basic-component"]["ifu-buffers"]
 
 
 class PreSynthesizeSimulation(BasicComponent, VLSI):
@@ -54,8 +51,8 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
     counter = 0
     def __init__(self, configs, **kwargs):
         super(PreSynthesizeSimulation, self).__init__(configs)
-        # a 17-dim vector: <torch.Tensor>
-        self.boom_configs = kwargs["boom_configs"]
+        # a 10-dim vector: <torch.Tensor>
+        self.rocket_configs = kwargs["rocket_configs"]
         self.soc_name = kwargs["soc_name"]
         self.core_name = kwargs["core_name"]
         self.batch = len(self.soc_name)
@@ -84,70 +81,28 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         PreSynthesizeSimulation.counter += 1
         return PreSynthesizeSimulation.counter
 
-    def __generate_bpd(self, idx):
-        choice = self.boom_configs[idx][0]
-        if choice == 0:
-            return "new WithTAGELBPD ++"
-        elif choice == 1:
-            return "new WithBoom2BPD ++"
-        elif choice == 2:
-            return "new WithAlpha21264BPD ++"
-        else:
-            assert choice == 3
-            return "new WithSWBPD ++"
-
-    def __generate_issue_unit(self, idx):
-        return """Seq(
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d),
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d),
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue, dispatchWidth=%d)
-              )""" % (
-                # IQT_MEM
-                1 if self.boom_configs[idx][4] <= 3 else 2,
-                self.issue_unit[self.boom_configs[idx][7]][0],
-                self.boom_configs[idx][4],
-                # IQT_INT
-                self.boom_configs[idx][4],
-                self.issue_unit[self.boom_configs[idx][7]][1],
-                self.boom_configs[idx][4],
-                # IQT_FP
-                1 if self.boom_configs[idx][4] <= 3 else 2,
-                self.issue_unit[self.boom_configs[idx][7]][2],
-                self.boom_configs[idx][4]
-            )
-
-    def __generate_registers(self, idx):
-        return """numIntPhysRegisters = %d,
-              numFpPhysRegisters = %d""" % (
-                self.registers[self.boom_configs[idx][6]][0],
-                self.registers[self.boom_configs[idx][6]][1]
-            )
-
-    def __generate_lsu(self, idx):
-        return """numLdqEntries = %d,
-              numStqEntries = %d""" % (
-                self.lsu[self.boom_configs[idx][8]][0],
-                self.lsu[self.boom_configs[idx][8]][1]
-            )
-
-    def __generate_ifu_buffers(self, idx):
-        return """numFetchBufferEntries = %d,
-              ftq = FtqParameters(nEntries=%d)""" % (
-                self.ifu_buffers[self.boom_configs[idx][2]][0],
-                self.ifu_buffers[self.boom_configs[idx][2]][1]
-            )
-
     def __generate_mulDiv(self, idx):
-        choice = self.boom_configs[idx][13]
-        if choice == 0:
-            return "1"
-        else:
-            assert choice == 1
-            return "8"
+        return """Some(MulDivParams(
+          mulUnroll = %d,
+          mulEarlyOut = %s,
+          divEarlyOut = %s
+        ))""" % (
+            self.rocket_configs[idx][3][0],
+            "true" if self.rocket_configs[idx][3][1] else "false",
+            "true" if self.rocket_configs[idx][3][2] else "false"
+        )
+
+    def __generate_fpu(self, idx):
+        return "None" if self.rocket_configs[idx][2] == 0 else \
+            "Some(FPUParams())"
+
+    def __generate_btb(self, idx):
+        pass
 
     def __generate_dcache(self, idx):
         def __generate_replacement_policy():
-            choice = self.boom_configs[idx][16]
+            """ deprecated """
+            choice = self.rocket_configs[idx][16]
             if choice == 0:
                 return "random"
             elif choice == 1:
@@ -165,88 +120,60 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
                   nMSHRs=%d
                 )
             )""" % (
-                self.boom_configs[idx][1],
-                self.dcache[self.boom_configs[idx][9]][1],
-                self.dcache[self.boom_configs[idx][9]][0],
+                self.rocket_configs[idx][1],
+                self.dcache[self.rocket_configs[idx][9]][1],
+                self.dcache[self.rocket_configs[idx][9]][0],
             )
 
     def __generate_icache(self, idx):
+        """ deprecated """
         return """Some(
                 ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, fetchBytes=%d)
             )""" % (
-                self.icache[self.boom_configs[idx][0]][0],
-                self.icache[self.boom_configs[idx][0]][1],
-                self.icache[self.boom_configs[idx][0]][2],
-                self.icache[self.boom_configs[idx][0]][3],
-                self.icache[self.boom_configs[idx][0]][4],
+                self.icache[self.rocket_configs[idx][0]][0],
+                self.icache[self.rocket_configs[idx][0]][1],
+                self.icache[self.rocket_configs[idx][0]][2],
+                self.icache[self.rocket_configs[idx][0]][3],
+                self.icache[self.rocket_configs[idx][0]][4],
             )
-
-    def __generate_system_bus_key(self, idx):
-        # fetchBytes
-        choice = self.boom_configs[idx][1]
-        if choice == 4:
-            return 8
-        else:
-            assert choice == 8, "[ERROR] choice is %d" % choice
-            return 16
 
     def _generate_config_mixins(self):
         codes = []
 
         for idx in range(self.batch):
             codes.append('''
-class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
-  %s
-  new Config((site, here, up) => {
-    case TilesLocated(InSubsystem) => {
-      val prev = up(TilesLocated(InSubsystem), site)
-      val idOffset = overrideIdOffset.getOrElse(prev.size)
-      (0 until n).map { i =>
-        BoomTileAttachParams(
-          tileParams = BoomTileParams(
-            core = BoomCoreParams(
-              fetchWidth = %d,
-              decodeWidth = %d,
-              numRobEntries = %d,
-              issueParams = %s,
-              %s,
-              %s,
-              maxBrCount = %d,
-              %s,
-              fpu = Some(
-                freechips.rocketchip.tile.FPUParams(
-                  sfmaLatency=4, dfmaLatency=4, divSqrt=true
-                )
-              )
-            ),
-            dcache = %s,
-            icache = Some(
-              ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=64, nWays=%d, fetchBytes=%d*4)
-            ),
-            hartId = i + idOffset
-          ),
-          crossingParams = RocketCrossingParams()
-        )
-      } ++ prev
-    }
-    case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = %d)
-    case XLen => 64
-  })
-)
+class %s(n: Int, overrideIdOffset: Option[Int] = None) extends Config((site, here, up) =>
+{
+  case RocketTilesKey => {
+    val prev = up(RocketTilesKey, site)
+    val idOffset = overrideIdOffset.getOrElse(prev.size)
+    val rocket_core = RocketTileParams(
+      core = RocketCoreParams(
+        mulDiv = %s,
+        fpu = %s,
+        useVM = %d,
+      ),
+      btb = %s,
+      dcache = %s,
+      icache = %s)
+    List.tabulate(n)(i => rocket_core.copy(hartId = i + idOffset)) ++ prev
+  }
+})
 ''' % (
         self.core_name[idx],
-        self.__generate_bpd(idx),
-        self.boom_configs[idx][1],
-        self.boom_configs[idx][4],
-        self.boom_configs[idx][5],
+        self.__generate_mulDiv(idx),
+        self.__generate_fpu(idx),
+        "false" if self.rocket_configs[idx][4] == 0 else "true",
+        self.__generate_btb(idx),
+        self.rocket_configs[idx][5],
         self.__generate_issue_unit(idx),
         self.__generate_registers(idx),
         self.__generate_lsu(idx),
-        self.boom_configs[idx][3],
+        self.rocket_configs[idx][3],
         self.__generate_ifu_buffers(idx),
         self.__generate_dcache(idx),
-        self.boom_configs[idx][1],
-        self.boom_configs[idx][1] // 2,
+        self.rocket_configs[idx][1],
+        self.rocket_configs[idx][1] // 2,
         self.__generate_system_bus_key(idx)
     )
 )
@@ -258,7 +185,7 @@ class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
         for idx in range(self.batch):
             codes.append('''
 class %s extends Config(
-  new boom.common.%s(1) ++
+  new rocket.common.%s(1) ++
   new chipyard.config.AbstractConfig)
 ''' % (self.soc_name[idx], self.core_name[idx])
             )
@@ -271,13 +198,13 @@ class %s extends Config(
         with open(MACROS["config-mixins"], 'a') as f:
             f.writelines(codes)
         codes = self._generate_boom_configs()
-        with open(MACROS["boom-configs"], 'a') as f:
+        with open(MACROS["rocket-configs"], 'a') as f:
             f.writelines(codes)
 
     def generate_scripts(self, batch, start):
         servers = [
             "hpc1", "hpc2", "hpc3", "hpc4", "hpc5",
-            "hpc6", "hpc7", "hpc8", "hpc15", # "hpc16"
+            "hpc6", "hpc7", "hpc8", "hpc15", "hpc16"
         ]
         stride = batch // len(servers)
         remainder = batch % len(servers)
@@ -349,15 +276,17 @@ class %s extends Config(
             def unexpected_behavior(f):
                 # Notice: handle these unexpected behavior to make auto-vlsi more robust
                 # when one of these unexpected behavior occurs, we need to re-compile and simulate
+                soc_name = os.path.basename(os.path.dirname(f))
                 # case #1
                 if os.path.exists(f) and \
                     (execute("test -s %s" % f) != 0 or \
-                     execute("test -s %s" % f.strip(".out") + ".log") != 0):
+                     execute("test -s %s" % f.strip(".out") + ".log") != 0) and \
+                    execute("ps aux | grep cbai | grep simv-chipyard-%s | grep -v grep" % soc_name) \
+                        != 0:
                     # this may occur when simv is successfully generated but run failed without
                     # generating any output
                     self.configs["logger"].info("[WARN]: empty simulation result.")
                     return True
-                soc_name = os.path.basename(os.path.dirname(f))
                 # case #2
                 if not os.path.isdir(os.path.join(MACROS["chipyard-sims-output-root"], soc_name)):
                     self.configs["logger"].info("[WARN]: output directory is not created.")
@@ -368,9 +297,9 @@ class %s extends Config(
                     self.configs["logger"].info("[WARN]: simv is not generated.")
                     return True
                 # case #4
-                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f):
+                if os.path.exists(f) and execute("grep -rn \"Text file busy\" %s" % f) == 0:
                     # this case may be covered by case # 1
-                    self.configs["logger"].info("[WARN]: text file busy.")
+                    self.configs["logger"].info("[WARN]: Text file busy.")
                     return True
                 return False
                 
@@ -389,15 +318,27 @@ class %s extends Config(
                         s[i] = 0
                     elif os.path.exists(f) and execute("grep -rn \"hung\" %s" % f) == 0:
                         s[i] = -2
+                        execute("ps -ef | grep \"simv-chipyard-%s +permissive\" | grep -v grep | awk \'{print $4}\' | xargs kill -9" % self.soc_name[idx])
+                        execute("ps -ef | grep \"vcs\" | grep \"simv-chipyard-%s\" | grep -v grep | awk \'{print $5}\' | xargs kill -9" % self.soc_name[idx])
                     elif unexpected_behavior(f):
                         # this is an occasional case!
                         os.chdir(MACROS["chipyard-sims-root"])
+                        # kill all related jobs
+                        execute("ps -ef | grep \"simv-chipyard-%s +permissive\" | grep -v grep | awk \'{print $4}\' | xargs kill -9" % self.soc_name[idx])
+                        execute("ps -ef | grep \"vcs\" | grep \"simv-chipyard-%s\" | grep -v grep | awk \'{print $5}\' | xargs kill -9" % self.soc_name[idx])
+                        # clean all residual files
+                        execute("rm -rf simv-chipyard-%s* %s %s" % (
+                                self.soc_name[idx],
+                                self.soc_name[idx],
+                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx])
+                            )
+                        )
                         execute("make MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=%s" %
                             self.soc_name[idx]
                         )
                         execute("mkdir -p %s; mkdir -p %s; chmod +x simv-chipyard-%s;" % (
                                 self.soc_name[idx],
-                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx])
+                                os.path.join(MACROS["chipyard-sims-output-root"], self.soc_name[idx]),
                                 self.soc_name[idx]
                             )
                         )
@@ -410,6 +351,8 @@ class %s extends Config(
                             )
                         )
                         execute("cd %s; bash sim.sh; cd -" % self.soc_name[idx])
+                        # sleep 45s
+                        time.sleep(45)
                         os.chdir(MACROS["rl-explorer-root"])
                         s[i] = -1
                     else:
@@ -469,58 +412,6 @@ class %s extends Config(
         return ipc
 
 
-def test_offline_vlsi(configs):
-    """
-        configs: <dict>
-    """
-    design_set = load_txt(configs["design-output-path"])
-    execute(
-        "mkdir -p test"
-    )
-    MACROS["config-mixins"] = os.path.join(
-        "test",
-        "config-mixins.scala"
-    )
-    MACROS["boom-configs"] = os.path.join(
-        "test",
-        "BoomConfigs.scala"
-    )
-    MACROS["chipyard-sims-root"] = "test"
-
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
-
-def offline_vlsi(configs):
-    """
-        configs: <dict>
-    """
-    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
-    design_set = load_txt(configs["design-output-path"])
-
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
 def test_online_vlsi(configs, state):
     """
@@ -534,7 +425,7 @@ def test_online_vlsi(configs, state):
         "test",
         "config-mixins.scala"
     )
-    MACROS["boom-configs"] = os.path.join(
+    MACROS["rocket-configs"] = os.path.join(
         "test",
         "BoomConfigs.scala"
     )
@@ -544,7 +435,7 @@ def test_online_vlsi(configs, state):
 
     vlsi_manager = PreSynthesizeSimulation(
         configs,
-        boom_configs=state,
+        rocket_configs=state,
         soc_name=[
             "Boom%dConfig" % i for i in idx
         ],
@@ -572,12 +463,12 @@ def online_vlsi(configs, state):
 
     vlsi_manager = PreSynthesizeSimulation(
         configs,
-        boom_configs=state,
+        rocket_configs=state,
         soc_name=[
-            "Boom%dConfig" % i for i in idx
+            "Rocket%dConfig" % i for i in idx
         ],
         core_name=[
-            "WithN%dBooms" % i for i in idx
+            "WithN%dCores" % i for i in idx
         ]
     )
     vlsi_manager.steps = lambda x=None: [
@@ -587,6 +478,59 @@ def online_vlsi(configs, state):
     ]
     vlsi_manager.run()
     return vlsi_manager.get_results()
+
+def test_offline_vlsi(configs):
+    """
+        configs: <dict>
+    """
+    design_set = load_txt(configs["design-output-path"])
+    execute(
+        "mkdir -p test"
+    )
+    MACROS["config-mixins"] = os.path.join(
+        "test",
+        "config-mixins.scala"
+    )
+    MACROS["rocket-configs"] = os.path.join(
+        "test",
+        "BoomConfigs.scala"
+    )
+    MACROS["chipyard-sims-root"] = "test"
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            rocket_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+
+def offline_vlsi(configs):
+    """
+        configs: <dict>
+    """
+    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
+    design_set = load_txt(configs["design-output-path"])
+
+    idx = configs["idx"]
+    for design in design_set:
+        vlsi_manager = PreSynthesizeSimulation(
+            configs,
+            rocket_configs=design,
+            soc_name="Boom%dConfig" % idx,
+            core_name="WithN%dBooms" % idx
+        )
+        vlsi_manager.steps = lambda x=None: ["generate_design"]
+        vlsi_manager.run()
+        idx = idx + 1
+
+    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

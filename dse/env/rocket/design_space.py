@@ -17,7 +17,8 @@ from util import if_exist, load_txt
 class Space(object):
     def __init__(self, dims):
         self.dims = dims
-        self.size = np.prod(self.dims)
+        # calculated manually
+        self.size = 3528000
         self.n_dim = len(self.dims)
 
     def point2knob(self, p, dims):
@@ -67,8 +68,9 @@ class RocketDesignSpace(Space):
             self.dims
         )
 
-    def _sample(self, decodeWidth):
+    def _sample(self):
         def __filter(design, k, v):
+            # Notice: Google sheet
             return random.sample(v, 1)[0]
 
         design = []
@@ -76,17 +78,17 @@ class RocketDesignSpace(Space):
             design.append(__filter(design, k, v))
         return design
 
-    def sample(self, batch):
+    def sample(self, batch, f=None):
         samples = []
         cnt = 0
         while cnt < batch:
-            design = self._sample(decodeWidth)
-            point = self.knob2point(design)
-            while point in self.visited:
-                design = self._sample(decodeWidth)
+                design = self._sample()
                 point = self.knob2point(design)
-            self.visited.add(point)
-            samples.append(design)
+                while point in self.visited:
+                    design = self._sample()
+                    point = self.knob2point(design)
+                self.visited.add(point)
+                samples.append(design)
             cnt += 1
         return torch.Tensor(samples).long()
 
@@ -105,12 +107,15 @@ class RocketDesignSpace(Space):
         if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
             return False
         # `fetchWidth` = 4 when `decodeWidth` <= 2
-        if not (configs[1] == 4 and configs[4] <= 2):
-            return False
+        if configs[4] <= 2:
+            if not (configs[1] == 4):
+                return False
         # `fetchWidth` = 8 when `decodeWidth` > 2
-        if not (configs[1] == 8 and configs[4] > 2):
-            return False
+        if configs[4] > 2:
+            if not (configs[1] == 8):
+                return False
         return True
+
 
 def parse_design_space(design_space, **kwargs):
     bounds = OrderedDict()
@@ -119,12 +124,12 @@ def parse_design_space(design_space, **kwargs):
     for k, v in design_space.items():
         # add `features`
         features.append(k)
-        if 'candidates' in v.keys():
-            temp = v['candidates']
+        if "candidates" in v.keys():
+            temp = v["candidates"]
         else:
-            assert 'start' in v.keys() and 'end' in v.keys() and \
-                'stride' in v.keys(), "[ERROR]: assert failed. YAML includes errors."
-            temp = np.arange(v['start'], v['end'] + 1, v['stride'])
+            assert "start" in v.keys() and "end" in v.keys() and \
+                "stride" in v.keys(), "[ERROR]: assert failed. YAML includes errors."
+            temp = np.arange(v["start"], v["end"] + 1, v["stride"])
         # generate bounds
         bounds[k] = list(temp)
         # generate dims

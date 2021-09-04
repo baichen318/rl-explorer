@@ -17,7 +17,8 @@ from util import if_exist, load_txt
 class Space(object):
     def __init__(self, dims):
         self.dims = dims
-        self.size = np.prod(self.dims)
+        # calculated manually
+        self.size = 3528000
         self.n_dim = len(self.dims)
 
     def point2knob(self, p, dims):
@@ -37,7 +38,7 @@ class Space(object):
 
         return p
 
-class CVA6DesignSpace(Space):
+class BOOMDesignSpace(Space):
     def __init__(self, features, bounds, dims, **kwargs):
         """
             features: <list>
@@ -69,15 +70,97 @@ class CVA6DesignSpace(Space):
 
     def _sample(self, decodeWidth):
         def __filter(design, k, v):
-            return random.sample(v, 1)[0]
+            # Notice: Google sheet
+            # validate w.r.t. `decodeWidth`
+            if k == "fetchWidth":
+                if decodeWidth <= 2:
+                    return self.bounds["fetchWidth"][0]
+                else:
+                    return self.bounds["fetchWidth"][1]
+            elif k == "ifu-buffers":
+                def f(x):
+                    return (self.basic_component["ifu-buffers"][x][0] % decodeWidth == 0 \
+                        and self.basic_component["ifu-buffers"][x][0] > design[1])
+                return random.sample(list(filter(f, self.bounds["ifu-buffers"])), 1)[0]
+            elif k == "decodeWidth":
+                return decodeWidth
+            elif k == "numRobEntries":
+                def f(x):
+                    return x % decodeWidth == 0
+                return random.sample(list(filter(f, self.bounds["numRobEntries"])), 1)[0]
+            else:
+                return random.sample(v, 1)[0]
 
         design = []
         for k, v in self.bounds.items():
             design.append(__filter(design, k, v))
         return design
 
-    def sample(self, batch):
+    def sample_v1(self, batch, f=None):
+        """
+            V1: uniformly sample configs. w.r.t. `decodeWidth`
+        """
         samples = []
+
+        # add already sampled dataset
+        def _insert(visited):
+            if isinstance(f, str) and if_exist(f):
+                design_set = load_txt(f)
+                for design in design_set:
+                    visited.add(self.knob2point(list(design)))
+
+        _insert(self.visited)
+
+        cnt = 0
+        while cnt < batch:
+            # randomly sample designs w.r.t. decodeWidth
+            for decodeWidth in self.bounds[self.features[4]][::-1]:
+                design = self._sample(decodeWidth)
+                point = self.knob2point(design)
+                while point in self.visited:
+                    design = self._sample(decodeWidth)
+                    point = self.knob2point(design)
+                self.visited.add(point)
+                samples.append(design)
+            cnt += 1
+        return torch.Tensor(samples).long()
+
+    def sample_v2(self, batch, f=None):
+        """
+            V2: sample configs. w.r.t. random `decodeWidth`,
+            but not UNIFORMLY!
+        """
+        samples = []
+
+        # add already sampled dataset
+        def _insert(visited):
+            if isinstance(f, str) and if_exist(f):
+                design_set = load_txt(f)
+                for design in design_set:
+                    visited.add(self.knob2point(list(design)))
+
+        _insert(self.visited)
+
+        cnt = 0
+        while cnt < batch:
+            # randomly sample designs w.r.t. decodeWidth
+            decodeWidth = random.sample(self.bounds["decodeWidth"], 1)[0]
+            design =self._sample(decodeWidth)
+            point = self.knob2point(design)
+            while point in self.visited:
+                design = self._sample(decodeWidth)
+                point = self.knob2point(design)
+            self.visited.add(point)
+            samples.append(design)
+            cnt += 1
+        return torch.Tensor(samples).long()
+
+    def sample_v3(self, batch, decodeWidth):
+        """
+            V3: sample configs. w.r.t. pre-defined `decodeWidth`
+        """
+        samples = []
+
         cnt = 0
         while cnt < batch:
             design = self._sample(decodeWidth)
@@ -105,12 +188,15 @@ class CVA6DesignSpace(Space):
         if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
             return False
         # `fetchWidth` = 4 when `decodeWidth` <= 2
-        if not (configs[1] == 4 and configs[4] <= 2):
-            return False
+        if configs[4] <= 2:
+            if not (configs[1] == 4):
+                return False
         # `fetchWidth` = 8 when `decodeWidth` > 2
-        if not (configs[1] == 8 and configs[4] > 2):
-            return False
+        if configs[4] > 2:
+            if not (configs[1] == 8):
+                return False
         return True
+
 
 def parse_design_space(design_space, **kwargs):
     bounds = OrderedDict()
@@ -119,16 +205,16 @@ def parse_design_space(design_space, **kwargs):
     for k, v in design_space.items():
         # add `features`
         features.append(k)
-        if 'candidates' in v.keys():
-            temp = v['candidates']
+        if "candidates" in v.keys():
+            temp = v["candidates"]
         else:
-            assert 'start' in v.keys() and 'end' in v.keys() and \
-                'stride' in v.keys(), "[ERROR]: assert failed. YAML includes errors."
-            temp = np.arange(v['start'], v['end'] + 1, v['stride'])
+            assert "start" in v.keys() and "end" in v.keys() and \
+                "stride" in v.keys(), "[ERROR]: assert failed. YAML includes errors."
+            temp = np.arange(v["start"], v["end"] + 1, v["stride"])
         # generate bounds
         bounds[k] = list(temp)
         # generate dims
         dims.append(len(temp))
 
-    return CVA6DesignSpace(features, bounds, dims, **kwargs)
+    return BOOMDesignSpace(features, bounds, dims, **kwargs)
 
