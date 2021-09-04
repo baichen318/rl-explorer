@@ -196,13 +196,14 @@ class %s extends Config(
         with open(MACROS["rocket-configs"], 'a') as f:
             f.writelines(codes)
 
-    def generate_scripts(self, batch, start):
+    def generate_scripts(self, idx):
         servers = [
             "hpc1", "hpc2", "hpc3", "hpc4", "hpc5",
             "hpc6", "hpc7", "hpc8", "hpc15", "hpc16"
         ]
-        stride = batch // len(servers)
-        remainder = batch % len(servers)
+        start = idx
+        stride = self.batch // len(servers)
+        remainder = self.batch % len(servers)
 
         for i in range(len(servers)):
             s = start
@@ -211,7 +212,8 @@ class %s extends Config(
                 continue
             else:
                 execute(
-                    "bash vlsi/scripts/compile.sh -s %d -e %d -x %s -f %s" % (
+                    "bash %s -s %d -e %d -x %s -f %s" % (
+                        MACROS["generate-auto-vlsi-v2"],
                         s,
                         e,
                         MACROS["sim-script"],
@@ -225,7 +227,8 @@ class %s extends Config(
         if remainder > 0:
             # all in hpc16
             execute(
-                "bash vlsi/scripts/compile.sh -s %d -e %d -x %s -f %s" % (
+                "bash %s -s %d -e %d -x %s -f %s" % (
+                    MACROS["generate-auto-vlsi-v2"],
                     start,
                     start + remainder - 1,
                     MACROS["sim-script"],
@@ -492,19 +495,20 @@ def test_offline_vlsi(configs):
     )
     MACROS["chipyard-sims-root"] = "test"
 
-    idx = [PreSynthesizeSimulation.tick() for i in range(state.shape[0])]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            rocket_configs=design,
-            soc_name="Rocket%dConfig" % idx,
-            core_name="WithN%dCores" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+    idx = [PreSynthesizeSimulation.tick() for i in range(design_set.shape[0])]
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        rocket_configs=design_set,
+        soc_name=[
+            "Rocket%dConfig" % i for i in idx
+        ],
+        core_name=[
+            "WithN%dCores" % i for i in idx
+        ]
+    )
+    vlsi_manager.steps = lambda x=None: ["generate_design"]
+    vlsi_manager.run()
+    vlsi_manager.generate_scripts(idx[0])
 
 def offline_vlsi(configs):
     """
@@ -513,19 +517,20 @@ def offline_vlsi(configs):
     # affect Configs.scala, RocketConfigs.scala and compile.sh
     design_set = load_txt(configs["design-output-path"])
 
-    idx = [PreSynthesizeSimulation.tick() for i in range(state.shape[0])]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            rocket_configs=design,
-            soc_name="Rocket%dConfig" % idx,
-            core_name="WithN%dCores" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+    idx = [PreSynthesizeSimulation.tick() for i in range(design_set.shape[0])]
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        rocket_configs=design_set,
+        soc_name=[
+            "Rocket%dConfig" % i for i in idx
+        ],
+        core_name=[
+            "WithN%dCores" % i for i in idx
+        ]
+    )
+    vlsi_manager.steps = lambda x=None: ["generate_design"]
+    vlsi_manager.run()
+    vlsi_manager.generate_scripts(idx[0])
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

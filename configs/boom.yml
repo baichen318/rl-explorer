@@ -125,7 +125,7 @@ design: boom
 batch: 32
 
 # generate-design: design-output-path
-design-output-path: data/test/design.txt
+design-output-path: data/test/boom-design.txt
 
 # sim: idx
 idx: 1

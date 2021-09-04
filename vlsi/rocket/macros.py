@@ -51,6 +51,7 @@ def handle_macros():
     MACROS["generate-auto-vlsi-v1"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
+        "rocket",
         "scripts",
         "generate-auto-vlsi-v1.sh"
     )
@@ -58,6 +59,7 @@ def handle_macros():
     MACROS["generate-auto-vlsi-v2"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
+        "rocket",
         "scripts",
         "generate-auto-vlsi-v2.sh"
     )
@@ -65,6 +67,7 @@ def handle_macros():
     MACROS["sim-script"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
+        "rocket",
         "scripts",
         "sim.sh"
     )

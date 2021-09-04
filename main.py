@@ -36,7 +36,17 @@ def generate_design():
         write_txt(configs["design-output-path"], design.numpy())
         test_offline_vlsi(configs)
     elif configs["design"] == "rocket":
-        pass
+        from dse.env.rocket.design_space import parse_design_space
+        from vlsi.rocket.vlsi import offline_vlsi, test_offline_vlsi
+
+        design_space = parse_design_space(
+            configs["design-space"],
+            random_state=round(time()),
+            basic_component=configs["basic-component"]
+        )
+        design = design_space.sample(batch=configs["batch"])
+        write_txt(configs["design-output-path"], design.numpy())
+        test_offline_vlsi(configs)
     else:
         assert configs["design"] == "cva6", \
             "[ERROR]: deisng: %s not support." % configs["design"]
