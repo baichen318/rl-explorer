@@ -48,11 +48,18 @@ def handle_macros():
         "RocketConfigs.scala"
     )
 
-    MACROS["generate-auto-vlsi"] = os.path.join(
+    MACROS["generate-auto-vlsi-v1"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
         "scripts",
-        "generate-auto-vlsi.sh"
+        "generate-auto-vlsi-v1.sh"
+    )
+
+    MACROS["generate-auto-vlsi-v2"] = os.path.join(
+        MACROS["rl-explorer-root"],
+        "vlsi",
+        "scripts",
+        "generate-auto-vlsi-v2.sh"
     )
 
     MACROS["sim-script"] = os.path.join(

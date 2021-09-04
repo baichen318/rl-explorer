@@ -18,7 +18,7 @@ class Space(object):
     def __init__(self, dims):
         self.dims = dims
         # calculated manually
-        self.size = 3528000
+        self.size = 3600
         self.n_dim = len(self.dims)
 
     def point2knob(self, p, dims):
@@ -82,38 +82,17 @@ class RocketDesignSpace(Space):
         samples = []
         cnt = 0
         while cnt < batch:
+            design = self._sample()
+            point = self.knob2point(design)
+            while point in self.visited:
                 design = self._sample()
                 point = self.knob2point(design)
-                while point in self.visited:
-                    design = self._sample()
-                    point = self.knob2point(design)
-                self.visited.add(point)
-                samples.append(design)
+            self.visited.add(point)
+            samples.append(design)
             cnt += 1
         return torch.Tensor(samples).long()
 
     def validate(self, configs):
-        # validate w.r.t. `configs`
-        # `fetchWidth` >= `decodeWidth`
-        if not (configs[1] >= configs[4]):
-            return False
-        # `numRobEntries` % `decodeWidth` = 0
-        if not (configs[5] % configs[4] == 0):
-            return False
-        # `numFetchBufferEntries` % `decodeWidth` = 0
-        if not (self.basic_component["ifu-buffers"][configs[2]][0] % configs[4] == 0):
-            return False
-        # `numFetchBufferEntries` > `fetchWidth`
-        if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
-            return False
-        # `fetchWidth` = 4 when `decodeWidth` <= 2
-        if configs[4] <= 2:
-            if not (configs[1] == 4):
-                return False
-        # `fetchWidth` = 8 when `decodeWidth` > 2
-        if configs[4] > 2:
-            if not (configs[1] == 8):
-                return False
         return True
 
 

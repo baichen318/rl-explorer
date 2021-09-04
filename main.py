@@ -18,15 +18,24 @@ from util import parse_args, get_configs, write_txt, if_exist, \
     mkdir, create_logger, execute
 
 def generate_design():
-    from dse.env.design_space import parse_design_space
+    if configs["design"] == "boom":
+        from dse.env.boom.design_space import parse_design_space
+        from vlsi.boom.vlsi import offline_vlsi
 
-    design_space = parse_design_space(
-        configs["design-space"],
-        random_state=round(time()),
-        basic_component=configs["basic-component"]
-    )
-    design = design_space.sample_v1(batch=configs["batch"], f=configs["design-output-path"])
-    write_txt(configs["design-output-path"], design.numpy())
+        design_space = parse_design_space(
+            configs["design-space"],
+            random_state=round(time()),
+            basic_component=configs["basic-component"]
+        )
+        design = design_space.sample_v1(batch=configs["batch"])
+        write_txt(configs["design-output-path"], design.numpy())
+        offline_vlsi(configs)
+    elif configs["design"] == "rocket":
+        pass
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: deisng: %s not support." % configs["design"]
+        pass
 
 def sim():
     from vlsi.vlsi import offline_vlsi
@@ -119,10 +128,6 @@ if __name__ == "__main__":
     mode = configs["mode"]
     if mode == "generate-design":
         generate_design()
-    elif mode == "sim":
-        sim()
-    elif mode == "generate-data":
-        generate_dataset()
     elif mode == "rl":
         if configs["debug"]:
             test_rl_explorer()

@@ -201,10 +201,7 @@ class RocketDesignEnv(BasicEnv):
         for i in range(reward.shape[0]):
             if reward[i] == 0:
                 f = True
-                self.state[i] = self.design_space.sample_v3(
-                    1,
-                    self.design_space.bounds["decodeWidth"][::-1][i]
-                )
+                self.state[i] = self.design_space.sample(1)
         if f:
             msg = "[INFO]: invalid state has been re-generated: %s" % self.state
             self.configs["logger"].info(msg)
@@ -216,10 +213,7 @@ class RocketDesignEnv(BasicEnv):
         for i in range(len(self.ipc)):
             if self.ipc[i] == 0:
                 state = torch.cat(
-                    (
-                        state,
-                        self.design_space.sample_v3(1, int(self.state[i][4]))
-                    )
+                    (state, self.design_space.sample(1))
                 ).long()
         ipc = torch.Tensor(online_vlsi(self.configs, state.numpy()))
 
@@ -237,10 +231,7 @@ class RocketDesignEnv(BasicEnv):
         for i in range(len(self.ipc)):
             if self.ipc[i] == 0:
                 state = torch.cat(
-                    (
-                        state,
-                        self.design_space.sample_v3(1, int(self.state[i][4]))
-                    )
+                    (state, self.design_space.sample(1))
                 ).long()
         ipc = torch.Tensor(test_online_vlsi(self.configs, state.numpy()))
 

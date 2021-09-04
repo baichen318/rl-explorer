@@ -293,13 +293,14 @@ class %s extends Config(
                 continue
             else:
                 execute(
-                    "bash vlsi/scripts/compile.sh -s %d -e %d -x %s -f %s" % (
+                    "bash %s -s %d -e %d -x %s -f %s" % (
+                        MACROS["generate-auto-vlsi-v2"],
                         s,
                         e,
                         MACROS["sim-script"],
                         os.path.join(
                             MACROS["chipyard-sims-root"],
-                            "compile-%s.sh" % servers[i]
+                            "boom-auto-vlsi-%s.sh" % servers[i]
                         )
                     )
                 )
@@ -307,13 +308,14 @@ class %s extends Config(
         if remainder > 0:
             # all in hpc16
             execute(
-                "bash vlsi/scripts/compile.sh -s %d -e %d -x %s -f %s" % (
+                "bash %s -s %d -e %d -x %s -f %s" % (
+                    MACROS["generate-auto-vlsi-v2"],
                     start,
                     start + remainder - 1,
                     MACROS["sim-script"],
                     os.path.join(
                         MACROS["chipyard-sims-root"],
-                        "compile-hpc16.sh"
+                        "boom-auto-vlsi-hpc16.sh"
                     )
                 )
             )
@@ -323,20 +325,20 @@ class %s extends Config(
         self.configs["logger"].info("[INFO]: generate auto-vlsi script...")
         execute(
             "bash %s -s %d -e %d -x %s -f %s" % (
-                MACROS["generate-auto-vlsi"],
+                MACROS["generate-auto-vlsi-v1"],
                 PreSynthesizeSimulation.counter - self.batch + 1,
                 PreSynthesizeSimulation.counter,
                 MACROS["sim-script"],
                 os.path.join(
                     MACROS["chipyard-sims-root"],
-                    "auto-vlsi.sh"
+                    "boom-auto-vlsi.sh"
                 )
             ),
             logger=self.configs["logger"]
         )
         os.chdir(MACROS["chipyard-sims-root"])
         # compile and simulate
-        execute("bash auto-vlsi.sh", logger=self.configs["logger"])
+        execute("bash boom-auto-vlsi.sh", logger=self.configs["logger"])
         os.chdir(MACROS["rl-explorer-root"])
 
     def query_status(self):
@@ -594,19 +596,19 @@ def offline_vlsi(configs):
     """
     # affect config-mixins.scala, BoomConfigs.scala and compile.sh
     design_set = load_txt(configs["design-output-path"])
+    idx = [PreSynthesizeSimulation.tick() for i in range(design_set.shape[0])]
 
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        boom_configs=[
+            "Boom%dConfig" % i for i in idx
+        ],
+        core_name=[
+            "WithN%dBooms" % i for i in idx
+        ]
+    )
+    vlsi_manager.steps = lambda x=None: ["generate_design"]
+    vlsi_manager.run()
     vlsi_manager.generate_scripts(len(design_set), configs["idx"])
 
 def _generate_dataset(configs, design_set, dataset, dir_n):

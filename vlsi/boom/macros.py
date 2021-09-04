@@ -48,16 +48,26 @@ def handle_macros():
         "BoomConfigs.scala"
     )
 
-    MACROS["generate-auto-vlsi"] = os.path.join(
+    MACROS["generate-auto-vlsi-v1"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
+        "boom",
         "scripts",
-        "generate-auto-vlsi.sh"
+        "generate-auto-vlsi_v1.sh"
+    )
+
+    MACROS["generate-auto-vlsi-v2"] = os.path.join(
+        MACROS["rl-explorer-root"],
+        "vlsi",
+        "boom",
+        "scripts",
+        "generate-auto-vlsi_v2.sh"
     )
 
     MACROS["sim-script"] = os.path.join(
         MACROS["rl-explorer-root"],
         "vlsi",
+        "boom",
         "scripts",
         "sim.sh"
     )
