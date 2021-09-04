@@ -300,7 +300,7 @@ class %s extends Config(
                         e,
                         MACROS["sim-script"],
                         os.path.join(
-                            MACROS["chipyard-sims-root"],
+                            MACROS["chipyard-vlsi-root"],
                             "boom-auto-vlsi-%s.sh" % servers[i]
                         )
                     )
@@ -315,7 +315,7 @@ class %s extends Config(
                     start + remainder - 1,
                     MACROS["sim-script"],
                     os.path.join(
-                        MACROS["chipyard-sims-root"],
+                        MACROS["chipyard-vlsi-root"],
                         "boom-auto-vlsi-hpc16.sh"
                     )
                 )
@@ -575,6 +575,7 @@ def test_offline_vlsi(configs):
         "BoomConfigs.scala"
     )
     MACROS["chipyard-sims-root"] = "test"
+    MACROS["chipyard-vlsi-root"] = "test"
 
     design_set = load_txt(configs["design-output-path"])
     if len(design_set.shape) == 1:

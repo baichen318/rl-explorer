@@ -19,6 +19,11 @@ def handle_macros():
         "vcs"
     )
 
+    MACROS["chipyard-vlsi-root"] = os.path.join(
+        MACROS["chipyard-root"],
+        "vlsi",
+    )
+
     MACROS["chipyard-sims-output-root"] = os.path.join(
         MACROS["chipyard-root"],
         "sims",
