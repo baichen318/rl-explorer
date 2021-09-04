@@ -56,7 +56,7 @@ function sims2power() {
             if [[ \${ret} == 0 ]] && [[ ! \${success_bmark[@]} =~ \${bmark} ]]
             then
                 power_name=\${power}/\${soc_name}-power
-                mkdir \${power_name}
+                mkdir -p \${power_name}
                 cd \${power}
                 make build_pt_dir=\${power_name}/"build-pt-"\${bmark} \\
                     cur_build_pt_dir=\${power_name}/"current-pt-"\${bmark} \\
@@ -72,6 +72,7 @@ function sims2power() {
         for bmark in \${benchmarks[@]}
         do
             if [[ ! \${success_bmark[@]} =~ \${bmark} ]]
+            then
                 all_done=0
                 break
             fi

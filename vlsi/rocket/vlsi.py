@@ -219,7 +219,7 @@ class %s extends Config(
                         MACROS["sim-script"],
                         os.path.join(
                             MACROS["chipyard-vlsi-root"],
-                            "compile-%s.sh" % servers[i]
+                            "rocket-compile-%s.sh" % servers[i]
                         )
                     )
                 )
@@ -234,7 +234,7 @@ class %s extends Config(
                     MACROS["sim-script"],
                     os.path.join(
                         MACROS["chipyard-vlsi-root"],
-                        "compile-hpc16.sh"
+                        "rocket-compile-hpc16.sh"
                     )
                 )
             )
