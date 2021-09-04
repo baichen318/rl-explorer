@@ -278,13 +278,14 @@ class %s extends Config(
         with open(MACROS["boom-configs"], 'a') as f:
             f.writelines(codes)
 
-    def generate_scripts(self, batch, start):
+    def generate_scripts(self, idx):
         servers = [
             "hpc1", "hpc2", "hpc3", "hpc4", "hpc5",
             "hpc6", "hpc7", "hpc8", "hpc15", "hpc16"
         ]
-        stride = batch // len(servers)
-        remainder = batch % len(servers)
+        start = idx
+        stride = self.batch // len(servers)
+        remainder = self.batch % len(servers)
 
         for i in range(len(servers)):
             s = start
@@ -562,7 +563,6 @@ def test_offline_vlsi(configs):
     """
         configs: <dict>
     """
-    design_set = load_txt(configs["design-output-path"])
     execute(
         "mkdir -p test"
     )
@@ -576,19 +576,22 @@ def test_offline_vlsi(configs):
     )
     MACROS["chipyard-sims-root"] = "test"
 
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
+    design_set = load_txt(configs["design-output-path"])
+    idx = [PreSynthesizeSimulation.tick() for i in range(design_set.shape[0])]
 
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        boom_configs=design_set,
+        soc_name=[
+            "Boom%dConfig" % i for i in idx
+        ],
+        core_name=[
+            "WithN%dBooms" % i for i in idx
+        ]
+    )
+    vlsi_manager.steps = lambda x=None: ["generate_design"]
+    vlsi_manager.run()
+    vlsi_manager.generate_scripts(idx[0])
 
 def offline_vlsi(configs):
     """
@@ -600,7 +603,8 @@ def offline_vlsi(configs):
 
     vlsi_manager = PreSynthesizeSimulation(
         configs,
-        boom_configs=[
+        boom_configs=design_set,
+        soc_name=[
             "Boom%dConfig" % i for i in idx
         ],
         core_name=[
@@ -609,7 +613,7 @@ def offline_vlsi(configs):
     )
     vlsi_manager.steps = lambda x=None: ["generate_design"]
     vlsi_manager.run()
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+    vlsi_manager.generate_scripts(idx[0])
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

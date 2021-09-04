@@ -53,7 +53,7 @@ def handle_macros():
         "vlsi",
         "boom",
         "scripts",
-        "generate-auto-vlsi_v1.sh"
+        "generate-auto-vlsi-v1.sh"
     )
 
     MACROS["generate-auto-vlsi-v2"] = os.path.join(
@@ -61,7 +61,7 @@ def handle_macros():
         "vlsi",
         "boom",
         "scripts",
-        "generate-auto-vlsi_v2.sh"
+        "generate-auto-vlsi-v2.sh"
     )
 
     MACROS["sim-script"] = os.path.join(

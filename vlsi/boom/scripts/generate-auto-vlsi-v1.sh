@@ -14,7 +14,7 @@ function set_env() {
 }
 
 function generate_auto_vlsi() {
-    echo "generating compilation script: " ${file}
+    echo "[INFO]: generating compilation script: " ${file}
 cat > ${file} << EOF
 #!/bin/bash
 # Author: baichen318@gmail.com

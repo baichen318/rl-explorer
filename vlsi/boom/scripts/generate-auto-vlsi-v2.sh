@@ -14,7 +14,7 @@ function set_env() {
 }
 
 function generate_auto_vlsi_v2() {
-    echo "generating compilation script: " ${file}
+    echo "[INFO]: generating compilation script: " ${file}
 cat > ${file} << EOF
 #!/bin/bash
 # Author: baichen318@gmail.com
@@ -29,20 +29,20 @@ function sims2power() {
     for bmark in \${benchmarks[@]}
     do
         echo benchmark: \${bmark}
-        (set -o pipefail &&  \
-            /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/simv
-                +permissive \
-                +dramsim \
-                +dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \
-                +max-cycles=635000  \
-                -ucli -do /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl \
-                +ntb_random_seed_automatic \
-                +verbose \
-                +saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/vcdplus.saif \
-                +permissive-off \
-                /research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \
-                >(spike-dasm > /research/dept8/gds/cbai/research/chipyard/sims/vcs/output/PATTERN/\${bmark}.out) | \
-                tee /research/dept8/gds/cbai/research/chipyard/sims/vcs/output/PATTERN/\${bmark}.log &)
+        (set -o pipefail && \\
+            /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/simv \\
+                +permissive \\
+                +dramsim \\
+                +dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \\
+                +max-cycles=635000  \\
+                -ucli -do /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl \\
+                +ntb_random_seed_automatic \\
+                +verbose \\
+                +saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/vcdplus.saif \\
+                +permissive-off \\
+                /research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \\
+                >(spike-dasm > /research/dept8/gds/cbai/research/chipyard/vlsi/buid/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out) | \\
+                tee /research/dept8/gds/cbai/research/chipyard/vlsi/buid/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.log &)
     done
 
     success_bmark=()
@@ -56,15 +56,16 @@ function sims2power() {
             if [[ \${ret} == 0 ]] && [[ ! \${success_bmark[@]} =~ \${bmark} ]]
             then
                 power_name=\${power}/\${soc_name}-power
-                pushd \${power}
-                make build_pt_dir=\${power}/"build-pt-"\${bmark} \
-                    cur_build_pt_dir=\${power}/"current-pt-"\${bmark} \
-                    vcs_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark} \
+                mkdir \${power_name}
+                cd \${power}
+                make build_pt_dir=\${power_name}/"build-pt-"\${bmark} \\
+                    cur_build_pt_dir=\${power_name}/"current-pt-"\${bmark} \\
+                    vcs_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark} \\
                     icc_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/syn-rundir/
-                mv -f build-pt-\${bmark} \${bmark}
-                rm -rf current-pt-\${bmark}
-                rm -f /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/*.saif
-                pushd +1
+                mv -f \${power_name}/build-pt-\${bmark} \${power_name}/\${bmark}
+                rm -rf \${power_name}/current-pt-\${bmark}
+                rm -f /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/*.saif
+                cd -
                 success_bmark[\${#success_bmark[*]}]=\${bmark}
             fi
         done
@@ -85,7 +86,10 @@ for idx in \${arr[@]}
 do
     echo compiling \${idx}-th Config.
     soc_name=Boom\${idx}Config
-    make sim-syn MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+    make sim-syn \\
+        MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
+        CONFIG=\${soc_name} \\
+        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
     # 75 sec. would be suitable
     sleep 75
 done
@@ -113,7 +117,9 @@ do
                 then
                     # no process
                     echo re-compiling \${soc_name}
-                    make sim-syn MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' CONFIG=\${soc_name} BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+                    make sim-syn \\
+                    MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
+                    CONFIG=\${soc_name} BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
                     sleep 60
                 fi
             fi
