@@ -481,7 +481,6 @@ def test_offline_vlsi(configs):
     """
         configs: <dict>
     """
-    design_set = load_txt(configs["design-output-path"])
     execute(
         "mkdir -p test"
     )
@@ -495,6 +494,9 @@ def test_offline_vlsi(configs):
     )
     MACROS["chipyard-sims-root"] = "test"
 
+    design_set = load_txt(configs["design-output-path"])
+    if len(design_set.shape) == 1:
+        design_set = np.expand_dims(design_set, axis=0)
     idx = [PreSynthesizeSimulation.tick() for i in range(design_set.shape[0])]
     vlsi_manager = PreSynthesizeSimulation(
         configs,
@@ -516,7 +518,8 @@ def offline_vlsi(configs):
     """
     # affect Configs.scala, RocketConfigs.scala and compile.sh
     design_set = load_txt(configs["design-output-path"])
-
+    if len(design_set.shape) == 1:
+        design_set = np.expand_dims(design_set, axis=0)
     idx = [PreSynthesizeSimulation.tick() for i in range(design_set.shape[0])]
     vlsi_manager = PreSynthesizeSimulation(
         configs,
