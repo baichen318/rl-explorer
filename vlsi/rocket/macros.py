@@ -77,4 +77,12 @@ def handle_macros():
         "sim.sh"
     )
 
+    MACROS["run-script"] = os.path.join(
+        MACROS["rl-explorer-root"],
+        "vlsi",
+        "rocket",
+        "scripts",
+        "run.tcl"
+    )
+
 handle_macros()

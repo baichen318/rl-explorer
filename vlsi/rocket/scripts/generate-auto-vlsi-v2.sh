@@ -3,7 +3,7 @@
 
 start=${start:-"1"}
 end=${end:-"32"}
-sim_script=${sim_script:-""}
+run_script=${run_script:-""}
 file=${file:-""}
 
 function set_env() {
@@ -29,20 +29,24 @@ function sims2power() {
     for bmark in \${benchmarks[@]}
     do
         echo benchmark: \${bmark}
+		# create run.tcl
+		cp -f ${run_script} /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/
+		sed -i "s/PATTERN/\${soc_name}/g" /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl
+		mkdir -p /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv
         (set -o pipefail && \\
-            /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/simv \\
-                +permissive \\
-                +dramsim \\
-                +dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \\
-                +max-cycles=635000  \\
-                -ucli -do /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl \\
-                +ntb_random_seed_automatic \\
-                +verbose \\
-                +saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/vcdplus.saif \\
-                +permissive-off \\
-                /research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \\
-                >(spike-dasm > /research/dept8/gds/cbai/research/chipyard/vlsi/buid/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out) | \\
-                tee /research/dept8/gds/cbai/research/chipyard/vlsi/buid/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.log &)
+			/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/simv \\
+			+permissive \\
+			+dramsim \\
+			+dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \\
+			+max-cycles=635000  \\
+			-ucli -do /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl \\
+			+ntb_random_seed_automatic \\
+			+verbose \\
+			+saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/vcdplus.saif \\
+			+permissive-off \\
+			/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \\
+			>(spike-dasm > /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out) | \\
+			tee /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.log &)
     done
 
     success_bmark=()
@@ -72,6 +76,7 @@ function sims2power() {
         for bmark in \${benchmarks[@]}
         do
             if [[ ! \${success_bmark[@]} =~ \${bmark} ]]
+			then
                 all_done=0
                 break
             fi
@@ -108,21 +113,21 @@ do
         then
             # simulate
             sims2power \${soc_name} \${project_name}
-        else
-            if [[ ! \${success_idx[@]} =~ \${soc_name} ]]
-            then
-                ps aux | grep cbai | grep \${soc_name} | grep -v grep > /dev/null
-                ret=\$?
-                if [[ \${ret} != 0 ]]
-                then
-                    # no process
-                    echo re-compiling \${soc_name}
-                    make sim-syn \\
-                    MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
-                    CONFIG=\${soc_name} BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
-                    sleep 60
-                fi
-            fi
+        # else
+        #     if [[ ! \${success_idx[@]} =~ \${soc_name} ]]
+        #     then
+        #         ps aux | grep cbai | grep \${soc_name} | grep -v grep > /dev/null
+        #         ret=\$?
+        #         if [[ \${ret} != 0 ]]
+        #         then
+        #             # no process
+        #             echo re-compiling \${soc_name}
+        #             make sim-syn \\
+        #             MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
+        #             CONFIG=\${soc_name} BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+        #             sleep 60
+        #         fi
+        #     fi
         fi
     done
     # 10 sec. would be suitable
@@ -142,7 +147,7 @@ do
             end=${OPTARG}
             ;;
         x)
-            sim_script=${OPTARG}
+            run_script=${OPTARG}
             ;;
         f)
             file=${OPTARG}
