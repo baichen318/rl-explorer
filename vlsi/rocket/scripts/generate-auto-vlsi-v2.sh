@@ -27,27 +27,27 @@ success_idx=()
 function sims2power() {
     soc_name=\${1}
     project_name=\${2}
-    # for bmark in \${benchmarks[@]}
-    # do
-    #     echo benchmark: \${bmark}
-	# 	# create run.tcl
-	# 	cp -f ${run_script} /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/
-	# 	sed -i "s/PATTERN/\${soc_name}/g" /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl
-	# 	mkdir -p /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv
-    #     (set -o pipefail && /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/simv \\
-	# 		+permissive \\
-	# 		+dramsim \\
-	# 		+dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \\
-	# 		+max-cycles=635000  \\
-	# 		-ucli -do /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl \\
-	# 		+ntb_random_seed_automatic \\
-	# 		+verbose \\
-	# 		+saif=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/vcdplus.saif \\
-	# 		+permissive-off \\
-	# 		/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \\
-	# 		>(spike-dasm > /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out) | tee /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.log &)
-	# 	sleep 15
-    # done
+    for bmark in \${benchmarks[@]}
+    do
+        echo benchmark: \${bmark}
+		# create run.tcl
+		cp -f ${run_script} /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/
+		sed -i "s/PATTERN/\${soc_name}/g" /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl
+		mkdir -p /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv
+        (set -o pipefail && /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/simv \\
+			+permissive \\
+			+dramsim \\
+			+dramsim_ini_dir=/research/dept8/gds/cbai/research/chipyard/generators/testchipip/src/main/resources/dramsim2_ini \\
+			+max-cycles=635000  \\
+			-ucli -do /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/run.tcl \\
+			+ntb_random_seed_automatic \\
+			+verbose \\
+			+saif=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}/vcdplus.saif \\
+			+permissive-off \\
+			/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \\
+			>(spike-dasm > /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out) | tee /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.log &)
+		sleep 35
+    done
 
     success_bmark=()
     all_done=0
@@ -55,10 +55,11 @@ function sims2power() {
     do
         for bmark in \${benchmarks[@]}
         do
-            cat /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out | grep "PASSED"
-            ret=\$?
-            if [[ \${ret} == 0 ]] && [[ ! \${success_bmark[@]} =~ \${bmark} ]]
+            ret=\`grep "PASSED" /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out\`
+            if [[ ! -z \${ret} ]] && [[ ! \${success_bmark[@]} =~ \${bmark} ]]
             then
+				# 10s to generate saif
+				sleep 10
 				mv -f vcdplus.saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/
                 power_name=\${power}/\${soc_name}-power
                 mkdir -p \${power_name}
@@ -81,7 +82,7 @@ function sims2power() {
 			then
                 all_done=0
 			else
-				c=\`expr ${c} + 1\`
+				c=\`expr \${c} + 1\`
             fi
 			if [[ \${c} == \${#benchmarks[*]} ]]
 			then
@@ -90,6 +91,27 @@ function sims2power() {
 			fi
         done
     done
+}
+
+function check_power_report() {
+	# 1 means success, 0 means failure
+	soc_name=\${1}-power
+	success_bmark=()
+	for bmark in \${benchmarks[@]}
+	do
+		path=\${power}/\${soc_name}
+		if [[ -e \${path}/\${bmark}/reports/vcdplus.power.avg.max.report ]] && \\
+			[[ ! \${success_bmark[@]} =~ \${bmark} ]]
+		then
+			success_bmark[\${#success_bmark[*]}]=\${bmark}
+		fi
+	done
+	if [[ \${#success_bmark[*]} == \${#benchmarks[*]} ]]
+	then
+		return 1
+	else
+		return 0
+	fi
 }
 
 # compile
@@ -109,7 +131,7 @@ arr=\`seq ${start} ${end}\`
 # verify all simv have been generated
 count=\`expr ${end} - ${start} + 1\`
 running_idx=()
-while [[ \${#success_idx[*]} -lt \${count} ]]
+while :
 do
     for idx in \`seq ${start} ${end}\`
     do
@@ -141,6 +163,25 @@ do
     done
     # 10 sec. would be suitable
     sleep 10
+	success=()
+	sum=0
+	for idx in \`seq ${start} ${end}\`
+	do
+		soc_name=Rocket\${idx}Config
+		check_power_report \${soc_name}
+		success[\${#success[*]}]=\$?
+	done
+	for ((i=0; i < \${#success[*]}; i++))
+	do
+		sum=\`expr \${sum} + \${success[\$i]}\`
+	done
+	if [[ \${sum} == \${count} ]]
+	then
+		echo "[INFO]: Offline Auto-VLSI flow done."
+		break
+	else
+		echo "[INFO]: Offline Auto-VLSI flow continue..."
+	fi
 done
 
 EOF
