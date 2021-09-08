@@ -65,7 +65,8 @@ function sims2power() {
 			+permissive-off \\
 			/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/\${bmark}.riscv </dev/null 2> \\
 			>(spike-dasm > /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out) | tee /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.log &)
-		sleep 35
+		# 70s: make sure that vcdplus.saif is generated sequentially!
+		sleep 70
     done
 
     success_bmark=()
