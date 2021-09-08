@@ -24,7 +24,7 @@ basic-component:
   ]
   mulDiv: [
     # mulUnroll numEarlyOut divEarlyOut
-    [8, 1, 1]
+    [8, 1, 1],
     [1, 0, 0],
     [8, 0, 0],
   ]
@@ -79,15 +79,15 @@ benchmarks:
   # - spmv
 
 # mode: generate-design | sim | generate-data | rl
-mode: rl
+mode: generate-design
 
 # design: boom | rocket | cva6
 design: rocket
 
-batch: 5
+batch: 500
 
 # generate-design: design-output-path
-design-output-path: data/test/rocket-design.txt
+design-output-path: data/rocket/rocket-design.txt
 
 # sim: idx
 idx: 1
@@ -109,4 +109,4 @@ gamma: 0.8
 learning-rate: 0.001
 log: logs/dqn-rocket
 search-round: 500
-debug: True
+debug: False
