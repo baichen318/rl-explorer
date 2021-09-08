@@ -128,17 +128,17 @@ function check_power_report() {
 
 # compile
 arr=\`seq ${start} ${end}\`
-# for idx in \${arr[@]}
-# do
-#     echo compiling \${idx}-th Config.
-#     soc_name=Rocket\${idx}Config
-#     make sim-syn \\
-#         MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
-#         CONFIG=\${soc_name} \\
-#         BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
-#     # 75 sec. would be suitable
-#     sleep 75
-# done
+for idx in \${arr[@]}
+do
+    echo compiling \${idx}-th Config.
+    soc_name=Rocket\${idx}Config
+    make sim-syn \\
+        MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
+        CONFIG=\${soc_name} \\
+        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+    # 75 sec. would be suitable
+    sleep 75
+done
 
 # verify all simv have been generated
 count=\`expr ${end} - ${start} + 1\`
