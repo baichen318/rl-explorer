@@ -24,6 +24,25 @@ cat > ${file} << EOF
 power="/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr"
 benchmarks=(median towers mt-vvadd mt-matmul)
 success_idx=()
+
+function ptpx_impl() {
+	soc_name=\${1}
+	project_name=\${2}
+	bmark=\${3}
+	mv -f vcdplus.saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/
+	power_name=\${power}/\${soc_name}-power
+	mkdir -p \${power_name}
+	cd \${power}
+	make build_pt_dir=\${power_name}/"build-pt-"\${bmark} \\
+        cur_build_pt_dir=\${power_name}/"current-pt-"\${bmark} \\
+        vcs_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv \\
+        icc_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/syn-rundir/
+	mv -f \${power_name}/build-pt-\${bmark} \${power_name}/\${bmark}
+	rm -rf \${power_name}/current-pt-\${bmark}
+	rm -f /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/*.saif
+	cd -
+}
+
 function sims2power() {
     soc_name=\${1}
     project_name=\${2}
@@ -58,21 +77,13 @@ function sims2power() {
             ret=\`grep "PASSED" /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/\${bmark}.out\`
             if [[ ! -z \${ret} ]] && [[ ! \${success_bmark[@]} =~ \${bmark} ]]
             then
-				# 10s to generate saif
-				sleep 10
-				mv -f vcdplus.saif /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/
-                power_name=\${power}/\${soc_name}-power
-                mkdir -p \${power_name}
-                cd \${power}
-                make build_pt_dir=\${power_name}/"build-pt-"\${bmark} \\
-                    cur_build_pt_dir=\${power_name}/"current-pt-"\${bmark} \\
-                    vcs_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv \\
-                    icc_dir=/research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/syn-rundir/
-                mv -f \${power_name}/build-pt-\${bmark} \${power_name}/\${bmark}
-                rm -rf \${power_name}/current-pt-\${bmark}
-                rm -f /research/dept8/gds/cbai/research/chipyard/vlsi/build/\${project_name}/sim-syn-rundir/\${bmark}.riscv/*.saif
-                cd -
-                success_bmark[\${#success_bmark[*]}]=\${bmark}
+				# waiting to generate saif
+				while [[ -e vcdplus.saif ]]
+				do
+					success_bmark[\${#success_bmark[*]}]=\${bmark}
+					ptpx_impl \${soc_name} \${project_name} \${bmark} &
+					break
+				done
             fi
         done
 		c=0
