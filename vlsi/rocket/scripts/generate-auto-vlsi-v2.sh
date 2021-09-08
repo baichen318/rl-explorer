@@ -135,9 +135,9 @@ do
     make sim-syn \\
         MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
         CONFIG=\${soc_name} \\
-        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv
     # 75 sec. would be suitable
-    sleep 75
+    # sleep 75
 done
 
 # verify all simv have been generated
@@ -157,7 +157,7 @@ do
 			running_idx[\${running_idx[*]}]=\${soc_name}
             sims2power \${soc_name} \${project_name} &
         # else
-        #     if [[ ! \${success_idx[@]} =~ \${soc_name} ]]
+        #     if [[ ! \${running_idx[@]} =~ \${soc_name} ]]
         #     then
         #         ps aux | grep cbai | grep \${soc_name} | grep -v grep > /dev/null
         #         ret=\$?
@@ -166,9 +166,10 @@ do
         #             # no process
         #             echo re-compiling \${soc_name}
         #             make sim-syn \\
-        #             MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
-        #             CONFIG=\${soc_name} BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
-        #             sleep 60
+        #                  MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
+        #                  CONFIG=\${soc_name} \\
+        #                  BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+        #             sleep 75
         #         fi
         #     fi
         fi
