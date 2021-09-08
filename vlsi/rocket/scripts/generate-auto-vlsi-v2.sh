@@ -32,7 +32,7 @@ function compile() {
         CONFIG=\${soc_name} \\
         BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
     # 180 sec. would be suitable
-    # sleep 180
+    sleep 180
 }
 
 function syn2sim() {
@@ -43,7 +43,7 @@ function syn2sim() {
         CONFIG=\${soc_name} \\
         BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
     # 600 sec. would be suitable
-    # sleep 600
+    sleep 600
 }
 
 function sim() {
@@ -58,7 +58,7 @@ function sim() {
         CONFIG=\${soc_name} \\
         BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
     # 180 sec. would be suitable
-    # sleep 180
+    sleep 180
 }
 
 function ptpx_impl() {
