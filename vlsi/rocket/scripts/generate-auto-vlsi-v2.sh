@@ -31,8 +31,8 @@ function compile() {
         MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
         CONFIG=\${soc_name} \\
         BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
-    # 180 sec. would be suitable
-    sleep 180
+    # 300 sec. would be suitable
+    sleep 300
 }
 
 function syn2sim() {
@@ -177,6 +177,7 @@ pass_config=()
 while [[ \${c} -lt \${count} ]]
 do
     for idx in \${arr[@]}
+	do
         soc_name=Rocket\${idx}Config
         project_name=chipyard.TestHarness.\${soc_name}
         if [[ -e generated-src/\${project_name}/\${project_name}.top.v ]] && \\
@@ -211,6 +212,7 @@ pass_config=()
 while [[ \${c} -lt \${count} ]]
 do
     for idx in \${arr[@]}
+	do
         soc_name=Rocket\${idx}Config
         project_name=chipyard.TestHarness.\${soc_name}
         if [[ -e build/\${project_name}-ChipTop/sim-syn-rundir/simv ]]
@@ -245,6 +247,7 @@ pass_config=()
 while [[ \${c} -lt \${count} ]]
 do
     for idx in \${arr[@]}
+	do
         soc_name=Rocket\${idx}Config
         project_name=chipyard.TestHarness.\${soc_name}
         if [[ -e build/\${project_name}-ChipTop/sim-syn-rundir/simv ]]
