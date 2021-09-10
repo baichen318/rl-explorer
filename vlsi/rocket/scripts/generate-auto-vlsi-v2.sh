@@ -271,7 +271,7 @@ done
 for idx in \${arr[@]}
 do
     soc_name=Rocket\${idx}Config
-    project_name=chipyard.TestHarness.\${soc_name}
+    project_name=chipyard.TestHarness.\${soc_name}-ChipTop
     sim2power \${soc_name} \${project_name}
 done
 echo "[INFO]: Offline Auto-VLSI done."

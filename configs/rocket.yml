@@ -32,14 +32,14 @@ basic-component:
     # nSets nWays nTLBWays nMSHRs
     [64, 4, 32, 1],
     [64, 1, 4, 0],
-    [256, 1, 4, 0],
+    [32, 1, 4, 0],
     [64, 2, 4, 0],
     [64, 2, 16, 0],
     [64, 2, 32, 1],
     [64, 1, 16, 0],
     [64, 4, 32, 2],
     [64, 1, 4, 2],
-    [256, 4, 32, 2]
+    [32, 4, 32, 2]
   ]
 
 # Design space
@@ -84,7 +84,7 @@ mode: generate-design
 # design: boom | rocket | cva6
 design: rocket
 
-batch: 500
+batch: 1000
 
 # generate-design: design-output-path
 design-output-path: data/rocket/rocket-design.txt
