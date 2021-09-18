@@ -4,6 +4,7 @@ import os
 
 MACROS = {
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
+    "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr"
 }
 
 def handle_macros():

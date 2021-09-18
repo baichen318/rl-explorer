@@ -78,8 +78,8 @@ benchmarks:
   # - dhrystone
   # - spmv
 
-# mode: generate-design | sim | generate-data | rl
-mode: generate-design
+# mode: generate-design | generate-dataset | rl
+mode: generate-dataset
 
 # design: boom | rocket | cva6
 design: rocket
@@ -93,7 +93,7 @@ design-output-path: data/rocket/rocket-design.txt
 idx: 1
 
 # generate-data: data-output-path
-data-output-path: data/test/dataset.txt
+dataset-output-path: data/rocket/dataset.txt
 
 # RL related
 rl-round: 100

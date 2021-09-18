@@ -55,7 +55,7 @@ def generate_design():
             offline_vlsi(configs)
     else:
         assert configs["design"] == "cva6", \
-            "[ERROR]: deisng: %s not support." % configs["design"]
+            "[ERROR]: deisgn: %s not support." % configs["design"]
         pass
 
 def sim():
@@ -65,9 +65,19 @@ def sim():
     offline_vlsi(configs)
 
 def generate_dataset():
-    from vlsi.vlsi import generate_dataset
-
-    generate_dataset(configs)
+    if configs["design"] == "boom":
+        from vlsi.boom.vlsi import generate_dataset
+        generate_dataset(configs)
+    elif configs["design"] == "rocket":
+        from vlsi.rocket.vlsi import generate_dataset
+        generate_dataset(configs)
+    elif configs["design"] == "cva6":
+        from vlsi.cva6.vlsi import generate_dataset
+        generate_dataset(configs)
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: design: %s not support." % configs["design"]
+        pass
 
 def rl_explorer():
     from dse.algo.dqn import DQN
@@ -149,6 +159,8 @@ if __name__ == "__main__":
     mode = configs["mode"]
     if mode == "generate-design":
         generate_design()
+    elif mode == "generate-data":
+        generate_dataset()
     elif mode == "rl":
         if configs["debug"]:
             test_rl_explorer()
