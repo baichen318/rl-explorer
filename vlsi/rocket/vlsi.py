@@ -539,7 +539,7 @@ def offline_vlsi(configs):
 
 def generate_ipc(configs, root):
     ipc = 0
-    cnt = 0
+    count = 0
     for bmark in configs["benchmarks"]:
         f = os.path.join(
             root,
@@ -557,15 +557,15 @@ def generate_ipc(configs, root):
                         instructions = re.search(r'\d+\ instructions', line).group()
                         instructions = int(instructions.split("instructions")[0])
                         ipc += (instructions / cycles)
-                        cnt += 1
+                        count += 1
                     except AttributeError:
                         continue
     # average on all successful benchmarks
-    if cnt == 0:
+    if count == 0:
         print("[WARN]: %s is failed in simulation!" % root)
         return 0
     else:
-        return ipc / cnt
+        return ipc / count
 
 
 def generate_power(configs, root):
@@ -588,6 +588,7 @@ def generate_power(configs, root):
     # average on all successful benchmarks
     if cnt == 0:
         print("[WARN]: %s is failed in power measurement!" % root)
+        return 0
     else:
         return power / cnt
 
@@ -601,9 +602,9 @@ def generate_area(configs, root):
     )
     if if_exist(f):
         with open(f, 'r') as f:
-        for line in f.readlines():
-            if "RocketTile" in line:
-                area = float(line.split()[-1])
+            for line in f.readlines():
+                if "RocketTile" in line:
+                    area = float(line.split()[-1])
     return area
 
 
@@ -624,10 +625,10 @@ def generate_dataset(configs):
 
     dataset = []
     design_set = load_txt(configs["design-output-path"])
-    for i in range(configs["batch"]):
+    for i in range(1, configs["batch"] + 1):
         _dataset = np.array([])
         # add arch. feature
-        _dataset = np.concatenate((_dataset, design_set[i]))
+        _dataset = np.concatenate((_dataset, design_set[i - 1]))
         soc_name = "Rocket%dConfig" % i
         project_name = "chipyard.TestHarness.Rocket%dConfig-ChipTop" % i
         vlsi_root = os.path.join(
@@ -648,11 +649,11 @@ def generate_dataset(configs):
             "syn-rundir"
         )
         # generate ipc
-        _dataset = np.concatenate((_dataset, generate_ipc(configs, vlsi_sim_root)))
+        _dataset = np.concatenate((_dataset, [generate_ipc(configs, vlsi_sim_root)]))
         # generate power
-        _dataset = np.concatenate((_dataset, generate_power(configs, power_root)))
+        _dataset = np.concatenate((_dataset, [generate_power(configs, power_root)]))
         # generate area
-        _dataset = np.concatenate((_dataset, generate_area(configs, vlsi_syn_root)))
+        _dataset = np.concatenate((_dataset, [generate_area(configs, vlsi_syn_root)]))
         dataset.append(_dataset)
     dataset = np.array(dataset)
     write_txt(configs["dataset-output-path"], dataset, fmt="%f")

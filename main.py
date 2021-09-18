@@ -159,7 +159,7 @@ if __name__ == "__main__":
     mode = configs["mode"]
     if mode == "generate-design":
         generate_design()
-    elif mode == "generate-data":
+    elif mode == "generate-dataset":
         generate_dataset()
     elif mode == "rl":
         if configs["debug"]:
