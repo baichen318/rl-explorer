@@ -91,11 +91,9 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
             return "new WithTAGELBPD ++"
         elif choice == 1:
             return "new WithBoom2BPD ++"
-        elif choice == 2:
-            return "new WithAlpha21264BPD ++"
         else:
-            assert choice == 3
-            return "new WithSWBPD ++"
+            assert choice == 2, "[ERROR]: unsupported BP: %d." % idx
+            return "new WithAlpha21264BPD ++"
 
     def __generate_issue_unit(self, idx):
         return """Seq(

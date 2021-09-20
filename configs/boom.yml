@@ -69,7 +69,7 @@ basic-component:
 design-space:
   bpd:
     start: 0
-    end: 3
+    end: 2
     stride: 1
   fetchWidth:
     candidates: [4, 8]
@@ -116,16 +116,16 @@ benchmarks:
   # - spmv
 
 # mode: generate-design | rl
-mode: rl
+mode: generate-design
 
 # design: boom | rocket | cva6
 design: boom
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 32
+batch: 200
 
 # generate-design: design-output-path
-design-output-path: data/test/boom-design.txt
+design-output-path: data/boom/boom-design.txt
 
 # sim: idx
 idx: 1
