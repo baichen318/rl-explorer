@@ -134,17 +134,35 @@ idx: 1
 data-output-path: data/test/dataset.txt
 
 # RL related
-rl-round: 100
-epsilon-start: 1
-epsilon-end: 0.1
-epsilon-decay: 0.05
-capacity: 5000
-update-target-policy: 5
+seed: 2021
+# no. of A3C agents
+num-process: 5
+# discount factor for rewards
+gamma: 0.99
+# no. of TD steps
+n-step-td: 5
+# no. of environment steps to train
+num-env-step: 100000
+# value loss coefficient
+value-loss-weight: 0.5
+# entropy term coefficient
+entropy-weight: 0.01
+# learning rate
+lr: 7e-4
+# RMSprop optimizer epsilon
+eps: 1e-5
+# RMSprop optimizer apha
+alpha: 0.99
+# max. norm of gradients
+max-grad-norm: 0.5
+# save interval, one save per n updates
+save-interval: 100
+# eval interval, one eval per n updates
+eval-interval: 500
+# TODO: these flags need to be verified
 total-step: 150
 early-stopping: 100
 batch-size: 16
-gamma: 0.8
 learning-rate: 0.001
 log: logs/dqn-boom
-search-round: 500
 debug: False

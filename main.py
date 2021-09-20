@@ -13,6 +13,8 @@ sys.path.insert(
     0,
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
+import torch
+from dse.algo.a3c.a3c import a3c
 from time import time
 from util import parse_args, get_configs, write_txt, if_exist, \
     mkdir, create_logger, execute
@@ -79,8 +81,17 @@ def generate_dataset():
             "[ERROR]: design: %s not support." % configs["design"]
         pass
 
+def set_torch():
+    torch.manual_seed(configs["seed"])
+    torch.cuda.manual_seed_all(configs["seed"])
+
+    if torch.cuda.is_available():
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+    torch.set_num_threads(1)
+
+
 def rl_explorer():
-    from dse.algo.dqn import DQN
     logger, time_str = create_logger(
         os.path.dirname(configs["log"]),
         os.path.basename(configs["log"])
@@ -97,7 +108,7 @@ def rl_explorer():
         from vlsi.boom.vlsi import PreSynthesizeSimulation
         # Notice: we should modify `self.configs["batch"]`
         configs["batch"] = configs["batch"] * 5
-        env = BoomDesignEnv(configs)
+        a3c(BoomDesignEnv, configs)
     elif configs["design"] == "rocket":
         from dse.env.rocket.design_env import RocketDesignEnv
         from vlsi.rocket.vlsi import PreSynthesizeSimulation

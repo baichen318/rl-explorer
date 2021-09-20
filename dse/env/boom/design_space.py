@@ -197,6 +197,9 @@ class BOOMDesignSpace(Space):
                 return False
         return True
 
+    def evaluate_microarchitecture(self, state):
+        pass
+
 
 def parse_design_space(design_space, **kwargs):
     bounds = OrderedDict()
