@@ -1,6 +1,9 @@
 # Author: baichen318@gmail.com
 
 import time
+import os
+import torch
+import torch.nn as nn
 import numpy as np
 from collections import deque
 from dse.algo.a3c.util import make_vec_envs
@@ -10,6 +13,7 @@ from dse.algo.a3c.model import Policy
 class A3CAgent():
     def __init__(
         self,
+        configs,
         actor_critic,
         value_loss_coef,
         entropy_coef,
@@ -18,6 +22,7 @@ class A3CAgent():
         alpha,
         max_grad_norm,
     ):
+        self.configs = configs
         self.actor_critic = actor_critic
 
         self.value_loss_coef = value_loss_coef
@@ -25,8 +30,9 @@ class A3CAgent():
 
         self.max_grad_norm = max_grad_norm
 
-        self.optimizer = optim.RMSprop(
-            actor_critic.parameters(), lr, eps=eps, alpha=alpha)
+        self.optimizer = torch.optim.RMSprop(
+            actor_critic.parameters(), lr, eps=eps, alpha=alpha
+        )
 
     def update(self, buffer):
         obs_shape = buffer.obs.size()[2:]
@@ -57,19 +63,28 @@ class A3CAgent():
 
         return value_loss.item(), action_loss.item(), dist_entropy.item()
 
+    def save(self, path):
+        torch.save(self.actor_critic.state_dict(), path)
+        self.configs["logger"].info("[INFO]: saving agent to %s" % path)
+
+    def load(self, path):
+        self.actor_critic.load_state_dict(torch.load(path))
+        self.configs["logger"].info("[INFO]: loading agent from %s" % path)
+
 
 def a3c(env, configs):
-    device = torch.device("cuda:0" if args.cuda else "cpu")
+    device = torch.device("cuda:0" if configs["cuda"] else "cpu")
     envs = make_vec_envs(env, configs, device)
 
     actor_critic = Policy(
         envs.observation_space.shape,
         envs.action_space,
-        kwargs={"hidden_size": 128}
+        configs["hidden-size"]
     )
     actor_critic.to(device)
 
     agent = A3CAgent(
+        configs,
         actor_critic,
         value_loss_coef=configs["value-loss-weight"],
         entropy_coef=configs["entropy-weight"],
@@ -83,11 +98,11 @@ def a3c(env, configs):
         configs["n-step-td"],
         configs["num-process"],
         envs.observation_space.shape,
-        envs.action_space
     )
 
     # reset
     obs = envs.reset()
+    configs["logger"].info("[INFO]: initialized status: {}".format(obs))
     buffer.obs[0].copy_(obs)
     buffer.to(device)
     episode_rewards = deque(maxlen=10)
@@ -100,16 +115,24 @@ def a3c(env, configs):
                     buffer.obs[step],
                     buffer.masks[step]
                 )
-            obs, reward, done, info = envs.step(actoin)
-            # TODO: append rewards
+            obs, reward, done, info = envs.step(action)
+            msg = "[INFO]: action: {}, obs: {}, reward: {}, done: {}, info: {}".format(
+                action, obs, reward, done, info
+            )
+            configs["logger"].info(msg)
+
+            for _info in info:
+                if "reward" in _info.keys():
+                    episode_rewards.append(_info["reward"])
+
             masks = torch.FloatTensor(
                 [[0.0] if _done else [1.0] for _done in done]
             )
             bad_masks = torch.FloatTensor(
-                [[0.0] if 'bad_transition' in _info.keys() else [1.0]
+                [[0.0] if "bad_transition" in _info.keys() else [1.0]
                  for _info in info]
             )
-            buffer.insert(obs, action, action_log_prob, value, rewards, masks, bad_masks)
+            buffer.insert(obs, action, action_log_prob, value, reward, masks, bad_masks)
 
         with torch.no_grad():
             next_value = actor_critic.get_value(
@@ -122,7 +145,7 @@ def a3c(env, configs):
         if i % configs["save-interval"] == 0 and len(episode_rewards) > 1:
             total_num_steps = (i + 1) * configs["num-process"] * configs["n-step-td"]
             end = time.time()
-            msg = "[INFO]: updates {}, num timesteps {}, FPS {:.4f}. Last {} training episodes. ".format(
+            msg = "[INFO]: updates {}, num timesteps {}, FPS {:.4f}. Last {} training episode. ".format(
                 i,
                 total_num_steps,
                 total_num_steps / (end - start),
@@ -138,4 +161,11 @@ def a3c(env, configs):
                 value_loss,
                 action_loss,
                 dist_entropy
+            )
+            configs["logger"].info(msg)
+            agent.save(
+                os.path.join(
+                    configs["model-path"],
+                    "a3c.pt"
+                )
             )

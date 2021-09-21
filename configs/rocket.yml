@@ -79,7 +79,7 @@ benchmarks:
   # - spmv
 
 # mode: generate-design | generate-dataset | rl
-mode: generate-dataset
+mode: rl
 
 # design: boom | rocket | cva6
 design: rocket
@@ -96,17 +96,42 @@ idx: 1
 dataset-output-path: data/rocket/dataset.txt
 
 # RL related
-rl-round: 100
-epsilon-start: 1
-epsilon-end: 0.1
-epsilon-decay: 0.05
-capacity: 5000
-update-target-policy: 5
-total-step: 150
-early-stopping: 100
+# cuda enable
+cuda: False
+# random seed
+seed: 2021
+# no. of A3C agents
+num-process: 5
+# discount factor for rewards
+gamma: 0.99
+# hidden size
+hidden-size:
+  - 1000
+  - 500
+  - 50
+# no. of TD steps
+n-step-td: 5
+# no. of environment steps to train
+num-env-step: 10000
+# value loss coefficient
+value-loss-weight: 0.5
+# entropy term coefficient
+entropy-weight: 0.01
+# learning rate
+lr: 0.0007
+# RMSprop optimizer epsilon
+eps: 0.00001
+# RMSprop optimizer apha
+alpha: 0.99
+# max. norm of gradients
+max-grad-norm: 0.5
+# save interval, one save per n updates
+save-interval: 100
+# eval interval, one eval per n updates
+eval-interval: 500
+# early stopping criterion
+early-stopping: 200
+# TODO: these flags need to be verified
 batch-size: 16
-gamma: 0.8
-learning-rate: 0.001
-log: logs/dqn-rocket
-search-round: 500
+log: logs/a3c-rocket
 debug: False

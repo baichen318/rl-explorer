@@ -139,6 +139,11 @@ seed: 2021
 num-process: 5
 # discount factor for rewards
 gamma: 0.99
+# hidden size
+hidden-size:
+  - 1000
+  - 500
+  - 50
 # no. of TD steps
 n-step-td: 5
 # no. of environment steps to train
@@ -148,9 +153,9 @@ value-loss-weight: 0.5
 # entropy term coefficient
 entropy-weight: 0.01
 # learning rate
-lr: 7e-4
+lr: 0.0007
 # RMSprop optimizer epsilon
-eps: 1e-5
+eps: 0.00001
 # RMSprop optimizer apha
 alpha: 0.99
 # max. norm of gradients
@@ -163,6 +168,5 @@ eval-interval: 500
 total-step: 150
 early-stopping: 100
 batch-size: 16
-learning-rate: 0.001
-log: logs/dqn-boom
+log: logs/a3c-boom
 debug: False

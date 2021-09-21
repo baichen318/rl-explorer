@@ -90,11 +90,14 @@ class RocketDesignSpace(Space):
             self.visited.add(point)
             samples.append(design)
             cnt += 1
-        return torch.Tensor(samples).long()
+        return torch.Tensor(samples).long().squeeze(0)
 
     def validate(self, configs):
         return True
 
+    def evaluate_microarchitecture(self, state):
+        # NOTICE: we use light-weight white-box model
+        return torch.Tensor([random.random()]).squeeze(0)
 
 def parse_design_space(design_space, **kwargs):
     bounds = OrderedDict()

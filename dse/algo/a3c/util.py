@@ -1,7 +1,15 @@
 # Author: baichen318@gmail.com
 
+import torch
 from stable_baselines3.common.vec_env import VecEnvWrapper, SubprocVecEnv
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
+
+
+def make_env(env, configs):
+    def _init():
+        return env(configs)
+
+    return _init
 
 class A3CVecEnvWrapper(VecEnvWrapper):
     def __init__(self, venv, device):
@@ -31,14 +39,11 @@ class A3CVecEnvWrapper(VecEnvWrapper):
 def make_vec_envs(env, configs, device):
     num_process = configs["num-process"]
     envs = [
-        env(configs) for i in range(num_process)
+        make_env(env, configs) for i in range(num_process)
     ]
 
     envs = A3CVecEnvWrapper(
-        VecNormalize(
-            SubprocVecEnv(envs),
-            gamma=configs["gamma"]
-        ),
+        SubprocVecEnv(envs),
         device
     )
 

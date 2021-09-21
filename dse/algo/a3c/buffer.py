@@ -8,7 +8,6 @@ class Buffer(object):
         num_steps,
         num_processes,
         obs_shape,
-        action_space,
     ):
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.rewards = torch.zeros(num_steps, num_processes, 1)

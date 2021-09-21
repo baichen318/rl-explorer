@@ -40,14 +40,14 @@ class BasicEnv(gym.Env):
 
 class BoomDesignEnv(BasicEnv):
     """ BoomDesignEnv """
-    # def __init__(self, configs, seed=int(time.time())):
     def __init__(self, configs):
         super(BoomDesignEnv, self).__init__(configs)
         self.action_space = spaces.Discrete(len(self.action_list))
-        self.observation_space = MultiDiscrete(self.design_space.dims)
+        self.observation_space = spaces.MultiDiscrete(self.design_space.dims)
         self.state = None
         self.n_step = 0
         self.last_update = 0
+        self.best_reward = 0
 
     def step(self, action):
         assert self.action_space.contains(action), "[ERROR]: action %d is unsupported" % action
@@ -61,7 +61,7 @@ class BoomDesignEnv(BasicEnv):
         self.state[idx] = self.action_list[action]
 
         reward = torch.Tensor(self.design_space.evaluate_microarchitecture(self.state))
-        msg = "[INFO]: state: %s, reward: %s, current best ipc: %s" % (self.state.numpy(), reward)
+        msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)
         self.configs["logger"].info(msg)
         if reward > self.best_reward:
             self.best_reward = reward
@@ -85,7 +85,7 @@ class BoomDesignEnv(BasicEnv):
         return self.state.clone()
 
     def render(self):
-        return None
+        return NotImplementedError
 
     def close(self):
-        return None
+        return NotImplementedError
