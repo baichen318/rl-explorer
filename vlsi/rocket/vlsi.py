@@ -4,8 +4,9 @@ import os
 import sys
 import re
 import time
+import multiprocessing
 import numpy as np
-from util import load_txt, execute, if_exist, write_txt
+from util import load_txt, execute, if_exist, write_txt, remove
 from vlsi.rocket.macros import MACROS
 
 class VLSI(object):
@@ -409,6 +410,131 @@ class %s extends Config(
             self.configs["logger"].info(msg)
         return ipc
 
+
+class Gem5Wrapper(BasicComponent):
+    """Gem5Wrapper"""
+    def __init__(self, configs, state, idx):
+        super(Gem5Wrapper, self).__init__(configs)
+        self.state = state
+        self.idx = idx
+        # NOTICE: a fixed structure
+        self.root = os.path.join(
+            MACROS["gem5-root"],
+            self.idx,
+            "gem5-research"
+        )
+        self.construct_link()
+
+    def construct_link(self):
+        self.root_btb = os.path.join(
+            self.root,
+            "src",
+            "cpu",
+            "pred",
+            "BranchPredictor.py"
+        )
+        self.root_tlb = os.path.join(
+            self.root,
+            "src",
+            "arch",
+            "riscv",
+            "RiscvTLB.py"
+        )
+        self.root_cache = os.path.join(
+            self.root,
+            "configs",
+            "common",
+            "Caches.py"
+        )
+        self.root_m5out = os.path.join(
+            self.root,
+            "m5out"
+        )
+
+    def _modify_gem5(self, src, pattern, target, count=0):
+        with open(src, "r+") as f1:
+            with open(src, 'w') as f2:
+                f2.write(re.sub(r"%s" % pattern, target, f1.read(), count))
+
+    def modify_gem5(self):
+        # RAS@btb
+        self._modify_gem5(
+            self.root_btb,
+            "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
+            "RASSize = Param.Unsigned(%d, \"RAS size\")" % self.btb[self.state[0]][0]
+        )
+        # BTB@btb
+        self._modify_gem5(
+            self.root_btb,
+            "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
+            "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % self.btb[self.state[0]][1]
+        )
+        # TLB@D-Cache
+        self._modify_gem5(
+            self.root_tlb,
+            "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)"
+            "size = Param.Int(%d, \"TLB size\")" % self.dcache[self.state[5]][2],
+        )
+        # MSHR@D-Cache
+        self._modify_gem5(
+            self.root_cache,
+            "mshrs\ =\ \d+",
+            "mshrs = %d" % self.dcache[self.state[5]][3],
+            count=1
+        )
+
+    def generate_gem5(self):
+        execute("cd %s; scons build/RISCV/gem5.opt -j; cd -" % (
+                self.root,
+                multiprocessing.cpu_count()
+            )
+        )
+
+    def simulate(self):
+        remove(self.root_m5out)
+        for bmark in self.configs["benchmarks"]
+            cmd = "build/RISCV/gem5.opt configs/example/se.py "
+            cmd += "--cmd=%s " % os.path.join(
+                MACROS["gem5-benchmark-root"],
+                "riscv-tests",
+                bmark + ".riscv"
+            )
+            cmd += "--cpu-nums=1 "
+            cmd += "--cpu-type=TimingSimpleCPU "
+            cmd += "--caches --l1d_size=%dkB --l1i_size=%dkB " % (
+                round(int(self.dcache[self.state[5]][0] * self.dcache[self.state[5]][1] * 64 / 1024)),
+                round(int(self.dcache[self.state[1]][0] * 64 * 64 / 1024))
+            )
+            cmd += "--sys-clock=2000000000Hz "
+            cmd += "--cpu-clock=2000000000Hz "
+            cmd += "--sys-voltage=6.3V "
+            cmd += "--mem-size=4096MB "
+            cmd += "--mem-type=LPDDR3_1600_1x32 "
+            cmd += "--mem-channels=1 "
+            cmd += "--enable-dram-powerdown "
+            cmd += "--bp-type=BiModeBP "
+            cmd += "--l1i-hwp-type=TaggedPrefetcher "
+            cmd += "--l1d-hwp-type=TaggedPrefetcher "
+            cmd += "--l2-hwp-type=TaggedPrefetcher"
+        execute(cmd, logger=self.configs["logger"])
+
+    def get_results(self):
+        instructions, cycles = 0, 0
+        with open(os.path.join(self.root_m5out, "stats.txt"), 'r') as f:
+            cnt = f.readlines()
+        for line in cnt:
+            if line.startswith("simInsts"):
+                instructions = int(line.split()[1])
+            if line.startswitht("system.cpu.numCycles"):
+                cycles = int(line.split()[1])
+        return instructions, cycles
+
+    def evaluate_perf(self):
+        self.modify_gem5()
+        self.generate_gem5()
+        self.simualte()
+        instructions, cycles = self.get_results()
+        return instructions, cycles
 
 
 def test_online_vlsi(configs, state):

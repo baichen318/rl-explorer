@@ -13,6 +13,8 @@ import numpy as np
 from time import time
 from collections import OrderedDict
 from util import if_exist, load_txt
+from vlsi.rocket.vlsi import Gem5Wrapper
+
 
 class Space(object):
     def __init__(self, dims):
@@ -50,6 +52,7 @@ class RocketDesignSpace(Space):
         self.set_random_state(kwargs["random_state"])
         self.basic_component = kwargs["basic_component"]
         self.visited = set()
+        self.load_ppa_model()
 
     def set_random_state(self, random_state):
         random.seed(random_state)
@@ -95,9 +98,16 @@ class RocketDesignSpace(Space):
     def validate(self, configs):
         return True
 
-    def evaluate_microarchitecture(self, state):
+    def load_ppa_model(self):
+        pass
+
+    def evaluate_microarchitecture(self, configs, state, idx, test=True):
         # NOTICE: we use light-weight white-box model
-        return torch.Tensor([random.random()]).squeeze(0)
+        if test:
+            return torch.Tensor([random.random()]).squeeze(0)
+        manager = Gem5Wrapper(configs, state, idx)
+        instructions, cycles = manager.evaluate_perf()
+
 
 def parse_design_space(design_space, **kwargs):
     bounds = OrderedDict()

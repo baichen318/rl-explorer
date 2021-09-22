@@ -5,9 +5,9 @@ from stable_baselines3.common.vec_env import VecEnvWrapper, SubprocVecEnv
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 
 
-def make_env(env, configs):
+def make_env(env, configs, idx):
     def _init():
-        return env(configs)
+        return env(configs, idx)
 
     return _init
 
@@ -39,7 +39,7 @@ class A3CVecEnvWrapper(VecEnvWrapper):
 def make_vec_envs(env, configs, device):
     num_process = configs["num-process"]
     envs = [
-        make_env(env, configs) for i in range(num_process)
+        make_env(env, configs, i + 1) for i in range(num_process)
     ]
 
     envs = A3CVecEnvWrapper(

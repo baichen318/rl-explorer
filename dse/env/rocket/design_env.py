@@ -13,9 +13,10 @@ from vlsi.rocket.vlsi import online_vlsi, test_online_vlsi
 
 class BasicEnv(gym.Env):
     """ BasicEnv """
-    def __init__(self, configs):
+    def __init__(self, configs, idx):
         super(BasicEnv, self).__init__()
         self.configs = configs
+        self.idx = idx
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],
@@ -47,8 +48,8 @@ class BasicEnv(gym.Env):
 
 class RocketDesignEnv(BasicEnv):
     """ RocketDesignEnv """
-    def __init__(self, configs):
-        super(RocketDesignEnv, self).__init__(configs)
+    def __init__(self, configs, idx):
+        super(RocketDesignEnv, self).__init__(configs, idx)
         self.action_space = spaces.Discrete(len(self.action_list))
         self.observation_space = spaces.MultiDiscrete(self.design_space.dims)
         self.state = None
@@ -67,7 +68,11 @@ class RocketDesignEnv(BasicEnv):
                 idx += 1
         self.state[idx] = self.action_list[action]
 
-        reward = self.design_space.evaluate_microarchitecture(self.state.numpy())
+        reward = self.design_space.evaluate_microarchitecture(
+            self.configs,
+            self.state.numpy(),
+            self.idx
+        )
         msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)
         self.info(msg)
         if reward > self.best_reward:
