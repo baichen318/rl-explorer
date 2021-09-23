@@ -16,6 +16,8 @@ class BasicEnv(gym.Env):
     def __init__(self, configs, idx):
         super(BasicEnv, self).__init__()
         self.configs = configs
+        # NOTICE: `self.idx`, a key to distinguish different
+        # gem5 repo.
         self.idx = idx
         self.design_space = parse_design_space(
             self.configs["design-space"],

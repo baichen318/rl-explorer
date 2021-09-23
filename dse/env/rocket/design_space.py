@@ -106,7 +106,10 @@ class RocketDesignSpace(Space):
         if test:
             return torch.Tensor([random.random()]).squeeze(0)
         manager = Gem5Wrapper(configs, state, idx)
-        instructions, cycles = manager.evaluate_perf()
+        ipc = manager.evaluate_perf()
+        power, area = manager.evaluate_power_and_area()
+        # TODO: PV as the reward
+        return ipc + power + area
 
 
 def parse_design_space(design_space, **kwargs):

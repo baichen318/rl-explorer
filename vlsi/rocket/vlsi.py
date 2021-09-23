@@ -6,7 +6,7 @@ import re
 import time
 import multiprocessing
 import numpy as np
-from util import load_txt, execute, if_exist, write_txt, remove
+from util import load_txt, execute, if_exist, write_txt, remove, mkdir
 from vlsi.rocket.macros import MACROS
 
 class VLSI(object):
@@ -424,6 +424,7 @@ class Gem5Wrapper(BasicComponent):
             "gem5-research"
         )
         self.construct_link()
+        mkdir(MACROS["temp-root"])
 
     def construct_link(self):
         self.root_btb = os.path.join(
@@ -451,32 +452,32 @@ class Gem5Wrapper(BasicComponent):
             "m5out"
         )
 
-    def _modify_gem5(self, src, pattern, target, count=0):
-        with open(src, "r+") as f1:
-            with open(src, 'w') as f2:
-                f2.write(re.sub(r"%s" % pattern, target, f1.read(), count))
 
     def modify_gem5(self):
+        def _modify_gem5(self, src, pattern, target, count=0):
+            with open(src, "r+") as f1:
+                with open(src, 'w') as f2:
+                    f2.write(re.sub(r"%s" % pattern, target, f1.read(), count))
         # RAS@btb
-        self._modify_gem5(
+        _modify_gem5(
             self.root_btb,
             "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
             "RASSize = Param.Unsigned(%d, \"RAS size\")" % self.btb[self.state[0]][0]
         )
         # BTB@btb
-        self._modify_gem5(
+        _modify_gem5(
             self.root_btb,
             "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
             "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % self.btb[self.state[0]][1]
         )
         # TLB@D-Cache
-        self._modify_gem5(
+        _modify_gem5(
             self.root_tlb,
             "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)"
             "size = Param.Int(%d, \"TLB size\")" % self.dcache[self.state[5]][2],
         )
         # MSHR@D-Cache
-        self._modify_gem5(
+        _modify_gem5(
             self.root_cache,
             "mshrs\ =\ \d+",
             "mshrs = %d" % self.dcache[self.state[5]][3],
@@ -490,8 +491,21 @@ class Gem5Wrapper(BasicComponent):
             )
         )
 
+    def get_results(self):
+        instructions, cycles = 0, 0
+        with open(os.path.join(self.root_m5out, "stats.txt"), 'r') as f:
+            cnt = f.readlines()
+        for line in cnt:
+            if line.startswith("simInsts"):
+                instructions = int(line.split()[1])
+            if line.startswitht("system.cpu.numCycles"):
+                cycles = int(line.split()[1])
+        return instructions, cycles
+
     def simulate(self):
-        remove(self.root_m5out)
+        for bmark in self.configs["benchmarks"]:
+            remove(os.path.join(MACROS["temp-root"], "m5out-%s" % bmark))
+        ipc = 0
         for bmark in self.configs["benchmarks"]
             cmd = "build/RISCV/gem5.opt configs/example/se.py "
             cmd += "--cmd=%s " % os.path.join(
@@ -516,25 +530,84 @@ class Gem5Wrapper(BasicComponent):
             cmd += "--l1i-hwp-type=TaggedPrefetcher "
             cmd += "--l1d-hwp-type=TaggedPrefetcher "
             cmd += "--l2-hwp-type=TaggedPrefetcher"
-        execute(cmd, logger=self.configs["logger"])
+            execute(cmd, logger=self.configs["logger"])
+            instructions, cycles = self.get_results()
+            ipc += (instructions / cycles)
+            # for McPAT usage
+            execute(
+                "mv -f %s %s" % (
+                    self.root_m5out,
+                    os.path.join(MACROS["temp-root"], "m5out-%s" % bmark)
+                )
+            )
+        ipc /= len(self.configs["benchmarks"])
+        return ipc
 
-    def get_results(self):
-        instructions, cycles = 0, 0
-        with open(os.path.join(self.root_m5out, "stats.txt"), 'r') as f:
-            cnt = f.readlines()
-        for line in cnt:
-            if line.startswith("simInsts"):
-                instructions = int(line.split()[1])
-            if line.startswitht("system.cpu.numCycles"):
-                cycles = int(line.split()[1])
-        return instructions, cycles
 
     def evaluate_perf(self):
         self.modify_gem5()
         self.generate_gem5()
-        self.simualte()
-        instructions, cycles = self.get_results()
-        return instructions, cycles
+        ipc = self.simulate()
+        return ipc
+
+    def evaluate_power_and_area(self):
+        def extract_power(mcpat_report):
+            p_subthreshold = re.compile(r"Subthreshold\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            p_gate = re.compile(r"Gate\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            p_dynamic = re.compile(r"Runtime\ Dynamic\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            subthreshold, gate, dynamic = 0, 0, 0
+            with open(mcpat_report, 'r') as rpt:
+                try:
+                    subthreshold = float(p_subthreshold.findall(rpt)[1][0])
+                    gate = float(p_gate.findall(rpt)[1][0])
+                    dynamic = float(p_dynamic.findall(rpt)[1][0])
+                except Exception as e:
+                    self.configs["logger"].error(e)
+                    exit(1)
+            return subthreshold + gate + dynamic
+
+        def extract_area(mcpat_report):
+            p_area = re.compile(r"Area\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ mm\^2")
+            area = 0
+            with open(mcpat_report, 'r') as rpt:
+                try:
+                    area = float(p_area.findall(rpt)[1][0])
+                except Exception as e:
+                    self.configs["logger"].error(e)
+                    exit(1)
+            return area
+
+        mcpat_xml = os.path.join(
+            MACROS["temp-root"],
+            "m5out-" % bmark,
+            "%s-%s.xml" % ("Rocket", self.idx)
+        )
+        mcpat_report = os.path.join(
+            MACROS["temp-root"],
+            "m5out-" % bmark,
+            "%s-%s.rpt" % ("Rocket", self.idx)
+        )
+        remove(mcpat_xml)
+        remove(mcpat_report)
+        for bmark in self.configs["benchmarks"]:
+            execute(
+                "%s -c %s -s %s -t %s -o %s" % (
+                    os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),
+                    os.path.join(MACROS["temp-root"], "m5out-" % bmark, "config.json"),
+                    os.path.join(MACROS["temp-root"], "m5out-" % bmark, "stats.txt"),
+                    os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
+                    mcpat_xml
+                )
+                logger=self.configs["logger"]
+            )
+        execute(
+            "%s -infile %s -print_level 5 > %s" % (
+                os.path.join(MACROS["mcpat-root"], "mcpat"),
+                mcpat_xml,
+                mcpat_report
+            )
+        )
+        return extract_power(mcpat_report), extract_area(mcpat_report)
 
 
 def test_online_vlsi(configs, state):

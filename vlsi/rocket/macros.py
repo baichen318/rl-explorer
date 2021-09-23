@@ -3,10 +3,16 @@
 import os
 
 MACROS = {
+    "root": os.path.join(
+        os.path.abspath(os.path.dirname(__file__)),
+        os.path.pardir,
+        os.path.pardir
+    )
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
     "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr",
     "gem5-root": "/home/baichen/cbai/research/gem5-repo/",
-    "gem5-benchmark-root": "/research/dept8/gds/cbai/data/gem5-riscv-tests"
+    "gem5-benchmark-root": "/research/dept8/gds/cbai/data/gem5-riscv-tests",
+    "mcpat-root": "/home/baichen/cbai/research/mcpat",
 }
 
 def handle_macros():
@@ -86,6 +92,16 @@ def handle_macros():
         "rocket",
         "scripts",
         "run.tcl"
+    )
+
+    MACROS["tools-root"] = os.path.join(
+        MACROS["root"],
+        "tools"
+    )
+
+    MACROS["temp-root"] = os.path.join(
+        MACROS["root"],
+        "temp"
     )
 
 handle_macros()
