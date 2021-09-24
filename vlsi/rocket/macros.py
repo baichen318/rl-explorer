@@ -12,7 +12,6 @@ MACROS = {
     "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr",
     "gem5-root": "/home/baichen/cbai/research/gem5-repo/",
     "gem5-benchmark-root": "/research/dept8/gds/cbai/data/gem5-riscv-tests",
-    "mcpat-root": "/home/baichen/cbai/research/mcpat",
 }
 
 def handle_macros():
@@ -102,6 +101,11 @@ def handle_macros():
     MACROS["temp-root"] = os.path.join(
         MACROS["root"],
         "temp"
+    )
+
+    MACROS["mcpat-root"] = os.path.join(
+        MACROS["tools-root"],
+        "mcpat-riscv-7"
     )
 
 handle_macros()
