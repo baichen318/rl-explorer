@@ -4,7 +4,7 @@ SHELL = /bin/sh
 .SUFFIXES: .cc .o
 
 ifndef NTHREADS
-  NTHREADS = 4
+  NTHREADS = 8
 endif
 
 
