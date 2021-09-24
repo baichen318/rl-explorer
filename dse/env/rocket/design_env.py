@@ -72,7 +72,7 @@ class RocketDesignEnv(BasicEnv):
 
         reward = self.design_space.evaluate_microarchitecture(
             self.configs,
-            self.state.numpy(),
+            self.state.numpy().astype(int),
             self.idx
         )
         msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)

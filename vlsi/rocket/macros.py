@@ -7,7 +7,7 @@ MACROS = {
         os.path.abspath(os.path.dirname(__file__)),
         os.path.pardir,
         os.path.pardir
-    )
+    ),
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
     "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr",
     "gem5-root": "/home/baichen/cbai/research/gem5-repo/",

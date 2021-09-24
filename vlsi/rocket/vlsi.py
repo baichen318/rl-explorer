@@ -420,7 +420,7 @@ class Gem5Wrapper(BasicComponent):
         # NOTICE: a fixed structure
         self.root = os.path.join(
             MACROS["gem5-root"],
-            self.idx,
+            str(self.idx),
             "gem5-research"
         )
         self.construct_link()
@@ -454,10 +454,11 @@ class Gem5Wrapper(BasicComponent):
 
 
     def modify_gem5(self):
-        def _modify_gem5(self, src, pattern, target, count=0):
-            with open(src, "r+") as f1:
-                with open(src, 'w') as f2:
-                    f2.write(re.sub(r"%s" % pattern, target, f1.read(), count))
+        def _modify_gem5(src, pattern, target, count=0):
+            cnt = open(src, "r+").read()
+            with open(src, 'w') as f:
+                f.write(re.sub(r"%s" % pattern, target, cnt, count))
+
         # RAS@btb
         _modify_gem5(
             self.root_btb,
@@ -473,7 +474,7 @@ class Gem5Wrapper(BasicComponent):
         # TLB@D-Cache
         _modify_gem5(
             self.root_tlb,
-            "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)"
+            "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
             "size = Param.Int(%d, \"TLB size\")" % self.dcache[self.state[5]][2],
         )
         # MSHR@D-Cache
@@ -485,7 +486,7 @@ class Gem5Wrapper(BasicComponent):
         )
 
     def generate_gem5(self):
-        execute("cd %s; scons build/RISCV/gem5.opt -j; cd -" % (
+        execute("cd %s; scons build/RISCV/gem5.opt -j%d; cd -" % (
                 self.root,
                 multiprocessing.cpu_count()
             )
@@ -506,8 +507,8 @@ class Gem5Wrapper(BasicComponent):
         for bmark in self.configs["benchmarks"]:
             remove(os.path.join(MACROS["temp-root"], "m5out-%s" % bmark))
         ipc = 0
-        for bmark in self.configs["benchmarks"]
-            cmd = "build/RISCV/gem5.opt configs/example/se.py "
+        for bmark in self.configs["benchmarks"]:
+            cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % self.root
             cmd += "--cmd=%s " % os.path.join(
                 MACROS["gem5-benchmark-root"],
                 "riscv-tests",
@@ -529,7 +530,7 @@ class Gem5Wrapper(BasicComponent):
             cmd += "--bp-type=BiModeBP "
             cmd += "--l1i-hwp-type=TaggedPrefetcher "
             cmd += "--l1d-hwp-type=TaggedPrefetcher "
-            cmd += "--l2-hwp-type=TaggedPrefetcher"
+            cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
             execute(cmd, logger=self.configs["logger"])
             instructions, cycles = self.get_results()
             ipc += (instructions / cycles)
@@ -597,7 +598,7 @@ class Gem5Wrapper(BasicComponent):
                     os.path.join(MACROS["temp-root"], "m5out-" % bmark, "stats.txt"),
                     os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
                     mcpat_xml
-                )
+                ),
                 logger=self.configs["logger"]
             )
         execute(
