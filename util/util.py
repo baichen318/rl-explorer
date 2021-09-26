@@ -11,6 +11,7 @@ import logging
 from typing import Union
 from datetime import datetime
 from sklearn import metrics
+from math import ceil, log
 from exception import NotFoundException
 
 def parse_args():
@@ -182,6 +183,7 @@ def remove(path):
                     os.remove(os.path.join(root, name))
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
+            os.rmdir(path)
 
 def mse(gt, predict):
     # gt: `np.array`
@@ -278,3 +280,7 @@ def get_pareto_points(data_array):
     pareto_set = np.delete(data_array, delpoints, axis=0)
 
     return pareto_set
+
+def round_power_of_two(x: int):
+    return pow(2, ceil(log(x)/log(2)))
+

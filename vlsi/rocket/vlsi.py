@@ -6,7 +6,7 @@ import re
 import time
 import multiprocessing
 import numpy as np
-from util import load_txt, execute, if_exist, write_txt, remove, mkdir
+from util import load_txt, execute, if_exist, write_txt, remove, mkdir, round_power_of_two
 from vlsi.rocket.macros import MACROS
 
 class VLSI(object):
@@ -463,34 +463,45 @@ class Gem5Wrapper(BasicComponent):
         _modify_gem5(
             self.root_btb,
             "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
-            "RASSize = Param.Unsigned(%d, \"RAS size\")" % self.btb[self.state[0]][0]
+            "RASSize = Param.Unsigned(%d, \"RAS size\")" % (1 if self.btb[self.state[0]][0] == 0 else \
+                round_power_of_two(self.btb[self.state[0]][0])
+            )
         )
         # BTB@btb
         _modify_gem5(
             self.root_btb,
             "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
-            "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % self.btb[self.state[0]][1]
+            "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % (2 if self.btb[self.state[0]][1] == 0 \
+                else round_power_of_two(self.btb[self.state[0]][0])
+            )
         )
         # TLB@D-Cache
         _modify_gem5(
             self.root_tlb,
             "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
-            "size = Param.Int(%d, \"TLB size\")" % self.dcache[self.state[5]][2],
+            "size = Param.Int(%d, \"TLB size\")" % (2 if self.dcache[self.state[5]][2] == 0 else \
+                round_power_of_two(self.dcache[self.state[5]][2])
+            )
         )
         # MSHR@D-Cache
         _modify_gem5(
             self.root_cache,
             "mshrs\ =\ \d+",
-            "mshrs = %d" % self.dcache[self.state[5]][3],
+            "mshrs = %d" % (1 if self.dcache[self.state[5]][3] == 0 else \
+                round_power_of_two(self.dcache[self.state[5]][3])
+            ),
             count=1
         )
 
     def generate_gem5(self):
-        execute("cd %s; scons build/RISCV/gem5.opt -j%d; cd -" % (
-                self.root,
-                multiprocessing.cpu_count()
-            )
-        )
+        # NOTICE: commands are manually designed
+        cmd = "cd %s; " % self.root
+        cmd += "scons build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
+        cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
+        cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+        cmd += "-j%d; " % multiprocessing.cpu_count()
+        cmd += "cd -"
+        execute(cmd)
 
     def get_results(self):
         instructions, cycles = 0, 0
@@ -499,7 +510,7 @@ class Gem5Wrapper(BasicComponent):
         for line in cnt:
             if line.startswith("simInsts"):
                 instructions = int(line.split()[1])
-            if line.startswitht("system.cpu.numCycles"):
+            if line.startswith("system.cpu.numCycles"):
                 cycles = int(line.split()[1])
         return instructions, cycles
 
@@ -514,7 +525,7 @@ class Gem5Wrapper(BasicComponent):
                 "riscv-tests",
                 bmark + ".riscv"
             )
-            cmd += "--cpu-nums=1 "
+            cmd += "--num-cpus=1 "
             cmd += "--cpu-type=TimingSimpleCPU "
             cmd += "--caches --l1d_size=%dkB --l1i_size=%dkB " % (
                 round(int(self.dcache[self.state[5]][0] * self.dcache[self.state[5]][1] * 64 / 1024)),
@@ -547,7 +558,7 @@ class Gem5Wrapper(BasicComponent):
 
     def evaluate_perf(self):
         self.modify_gem5()
-        self.generate_gem5()
+        # self.generate_gem5()
         ipc = self.simulate()
         return ipc
 
@@ -563,7 +574,6 @@ class Gem5Wrapper(BasicComponent):
                     gate = float(p_gate.findall(rpt)[1][0])
                     dynamic = float(p_dynamic.findall(rpt)[1][0])
                 except Exception as e:
-                    self.configs["logger"].error(e)
                     exit(1)
             return subthreshold + gate + dynamic
 
@@ -578,24 +588,25 @@ class Gem5Wrapper(BasicComponent):
                     exit(1)
             return area
 
-        mcpat_xml = os.path.join(
-            MACROS["temp-root"],
-            "m5out-" % bmark,
-            "%s-%s.xml" % ("Rocket", self.idx)
-        )
-        mcpat_report = os.path.join(
-            MACROS["temp-root"],
-            "m5out-" % bmark,
-            "%s-%s.rpt" % ("Rocket", self.idx)
-        )
-        remove(mcpat_xml)
-        remove(mcpat_report)
+        for bmark in self.configs["benchmarks"]:
+            mcpat_xml = os.path.join(
+                MACROS["temp-root"],
+                "m5out-%s" % bmark,
+                "%s-%s.xml" % ("Rocket", self.idx)
+            )
+            mcpat_report = os.path.join(
+                MACROS["temp-root"],
+                "m5out-%s" % bmark,
+                "%s-%s.rpt" % ("Rocket", self.idx)
+            )
+            remove(mcpat_xml)
+            remove(mcpat_report)
         for bmark in self.configs["benchmarks"]:
             execute(
-                "%s -c %s -s %s -t %s -o %s" % (
+                "python %s -c %s -s %s -t %s -o %s" % (
                     os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),
-                    os.path.join(MACROS["temp-root"], "m5out-" % bmark, "config.json"),
-                    os.path.join(MACROS["temp-root"], "m5out-" % bmark, "stats.txt"),
+                    os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "config.json"),
+                    os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "stats.txt"),
                     os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
                     mcpat_xml
                 ),
