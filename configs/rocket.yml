@@ -69,8 +69,8 @@ design-space:
 benchmarks:
   - median
   - towers
-  - mt-vvadd
-  - mt-matmul
+  # - mt-vvadd
+  # - mt-matmul
   # - qsort
   # - rsort
   # - vvadd
