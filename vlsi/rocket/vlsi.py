@@ -496,7 +496,8 @@ class Gem5Wrapper(BasicComponent):
     def generate_gem5(self):
         # NOTICE: commands are manually designed
         cmd = "cd %s; " % self.root
-        cmd += "scons build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
+        cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+        cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
         cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
         cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
         cmd += "-j%d; " % multiprocessing.cpu_count()
@@ -604,26 +605,25 @@ class Gem5Wrapper(BasicComponent):
             )
             remove(mcpat_xml)
             remove(mcpat_report)
-        for bmark in self.configs["benchmarks"]:
             execute(
-                "python %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
+                "python2 %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
                     os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),
                     self.configs["design"],
                     os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "config.json"),
                     os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "stats.txt"),
-                    os.path.join(MACROS["tools-root"], "template", "mcpat-template.xml"),
-                    [int(s) for s in self.state],
+                    os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
+                    ' '.join([str(s) for s in self.state]),
                     mcpat_xml
                 ),
                 logger=self.configs["logger"]
             )
-        execute(
-            "%s -infile %s -print_level 5 > %s" % (
-                os.path.join(MACROS["mcpat-root"], "mcpat"),
-                mcpat_xml,
-                mcpat_report
+            execute(
+                "%s -infile %s -print_level 5 > %s" % (
+                    os.path.join(MACROS["mcpat-root"], "mcpat"),
+                    mcpat_xml,
+                    mcpat_report
+                )
             )
-        )
         return extract_power(mcpat_report), extract_area(mcpat_report)
 
 
