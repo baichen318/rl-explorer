@@ -150,4 +150,5 @@ img/
 test.py
 *.pdf
 test/
+temp/
 

@@ -534,6 +534,9 @@ class Gem5Wrapper(BasicComponent):
             cmd += "--sys-clock=2000000000Hz "
             cmd += "--cpu-clock=2000000000Hz "
             cmd += "--sys-voltage=6.3V "
+            cmd += "--l2cache "
+            cmd += "--l2_size=64MB "
+            cmd += "--l2_assoc=8 "
             cmd += "--mem-size=4096MB "
             cmd += "--mem-type=LPDDR3_1600_1x32 "
             cmd += "--mem-channels=1 "
@@ -603,11 +606,13 @@ class Gem5Wrapper(BasicComponent):
             remove(mcpat_report)
         for bmark in self.configs["benchmarks"]:
             execute(
-                "python %s -c %s -s %s -t %s -o %s" % (
+                "python %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
                     os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),
+                    self.configs["design"],
                     os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "config.json"),
                     os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "stats.txt"),
-                    os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
+                    os.path.join(MACROS["tools-root"], "template", "mcpat-template.xml"),
+                    [int(s) for s in self.state],
                     mcpat_xml
                 ),
                 logger=self.configs["logger"]
