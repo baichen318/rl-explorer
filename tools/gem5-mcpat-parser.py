@@ -258,7 +258,7 @@ def post_handle_rocket(root):
         value = param.attrib["value"]
         if name in [
             "fetch_width", "decode_width", "issue_width",
-            "peak_issue_width", "commit_width", "instruction_buffer_size",
+            "peak_issue_width", "commit_width",
             "decoded_stream_buffer_size", "instruction_window_size",
             "fp_instruction_window_size",
         ]:
@@ -306,7 +306,7 @@ def post_handle_rocket(root):
                     )
                 if name == "buffer_sizes":
                     param.attrib["value"] = "%s,%s,%s,%s" % (
-                        1, 1, 1, 1
+                        2, 2, 2, 2
                     )
         if name == "dtlb":
             for param in component.iter("param"):
@@ -349,8 +349,8 @@ def post_handle_rocket(root):
                 if name == "buffer_sizes":
                     mshr = [1, 0, 0, 0, 0, 1, 0, 2, 2, 2]
                     param.attrib["value"] = "%s,%s,%s,%s" % (
-                        mshr[args.state[5]],
-                        1, 1, 1
+                        2 if mshr[args.state[5]] == 0 else mshr[args.state[5]] << 1,
+                        2, 2, 2
                     )
             if name == "BTB":
                 for param in component.iter("param"):

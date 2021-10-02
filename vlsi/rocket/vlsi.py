@@ -573,11 +573,13 @@ class Gem5Wrapper(BasicComponent):
             p_dynamic = re.compile(r"Runtime\ Dynamic\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
             subthreshold, gate, dynamic = 0, 0, 0
             with open(mcpat_report, 'r') as rpt:
+                rpt = rpt.read()
                 try:
                     subthreshold = float(p_subthreshold.findall(rpt)[1][0])
                     gate = float(p_gate.findall(rpt)[1][0])
                     dynamic = float(p_dynamic.findall(rpt)[1][0])
                 except Exception as e:
+                    print("[ERROR]:", e)
                     exit(1)
             return subthreshold + gate + dynamic
 
@@ -585,10 +587,11 @@ class Gem5Wrapper(BasicComponent):
             p_area = re.compile(r"Area\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ mm\^2")
             area = 0
             with open(mcpat_report, 'r') as rpt:
+                rpt = rpt.read()
                 try:
                     area = float(p_area.findall(rpt)[1][0])
                 except Exception as e:
-                    self.configs["logger"].error(e)
+                    print("[ERROR]:", e)
                     exit(1)
             return area
 
