@@ -108,11 +108,12 @@ class RocketDesignSpace(Space):
         manager = Gem5Wrapper(configs, state, idx)
         ipc = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
+        print("[INFO]: state:", state, "IPC: %f, Power: %f, Area: %f" % (ipc, power, area))
         # TODO: PV as the reward
         if split:
-            return ipc + power + area
-        else:
             return ipc, power, area
+        else:
+            return ipc + 8 * power + area
 
 
 def parse_design_space(design_space, **kwargs):
