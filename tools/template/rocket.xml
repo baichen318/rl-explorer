@@ -96,7 +96,7 @@
       <param name="MUL_per_core" value="1"/>
       <param name="FPU_per_core" value="1"/>
       <!-- buffer between IF and ID stage -->
-      <param name="instruction_buffer_size" value="config.system.cpu.numIQEntries"/>
+      <param name="instruction_buffer_size" value="16"/>
       <!-- buffer between ID and sche/exe stage -->
       <param name="decoded_stream_buffer_size" value="16"/>
       <!-- 0 PHYREG based, 1 RSBASED-->
@@ -135,7 +135,7 @@
       <!-- max_allowed_in_flight_memo_instructions determines the # of ports of load and store buffer
       as well as the ports of Dcache which is connected to LSU -->
       <!-- dual-pumped Dcache can be used to save the extra read/write ports -->
-      <param name="RAS_size" value="config.system.cpu.branchPred.RASSize"/>
+      <param name="RAS_size" value="4 * config.system.cpu.branchPred.RASSize"/>
       <!-- general stats, defines simulation periods;require total, idle, and busy cycles for sanity check  -->
       <!-- please note: if target architecture is X86, then all the instructions refer to (fused) micro-ops -->
       <stat name="total_instructions" value="stats.simInsts"/>
@@ -164,9 +164,9 @@
       <!-- lookup in renaming logic -->
       <!-- update dest regs. renaming logic -->
       <stat name="rename_reads" value="stats.system.cpu.rename.int_rename_lookups"/>
-      <stat name="rename_writes" value="int(stats.system.cpu.rename.RenamedOperands * stats.system.cpu.rename.int_rename_lookups / stats.system.cpu.rename.RenameLookups)"/>
-      <stat name="fp_rename_reads" value="stats.system.cpu.rename.fp_rename_lookups"/>
-      <stat name="fp_rename_writes" value="int(stats.system.cpu.rename.RenamedOperands * stats.system.cpu.rename.fp_rename_lookups / stats.system.cpu.rename.RenameLookups)"/>
+      <stat name="rename_writes" value="0"/>
+      <stat name="fp_rename_reads" value="0"/>
+      <stat name="fp_rename_writes" value="0"/>
       <!-- decode and rename stage use this, should be total ic - nop -->
       <!-- Inst window stats -->
       <stat name="inst_window_reads" value="stats.system.cpu.iq.int_inst_queue_reads"/>
@@ -215,12 +215,12 @@
       <param name="number_of_BPT" value="1"/>
       <component id="system.core.predictor" name="PBT">
         <!-- branch predictor; tournament predictor see Alpha implementation -->
-        <param name="local_predictor_size" value="10,config.system.cpu.branchPred.localCtrBits"/>
-        <param name="local_predictor_entries" value="config.system.cpu.branchPred.localPredictorSize"/>
-        <param name="global_predictor_entries" value="config.system.cpu.branchPred.globalPredictorSize"/>
-        <param name="global_predictor_bits" value="config.system.cpu.branchPred.globalCtrBits"/>
-        <param name="chooser_predictor_entries" value="config.system.cpu.branchPred.choicePredictorSize"/>
-        <param name="chooser_predictor_bits" value="config.system.cpu.branchPred.choiceCtrBits"/>
+        <param name="local_predictor_size" value="10,3"/>
+        <param name="local_predictor_entries" value="1024"/>
+        <param name="global_predictor_entries" value="4096"/>
+        <param name="global_predictor_bits" value="2"/>
+        <param name="chooser_predictor_entries" value="4096"/>
+        <param name="chooser_predictor_bits" value="2"/>
         <!-- These parameters can be combined like below in next version
           <param name="load_predictor" value="10,3,1024"/>
           <param name="global_predictor" value="4096,2"/>
@@ -242,7 +242,7 @@
         <!-- cache_policy;//0 no write or write-though with non-write allocate;1 write-back with write-allocate -->
         <param name="icache_config" value="config.system.cpu.icache.size,config.system.cpu.icache.tags.block_size,config.system.cpu.icache.assoc,1,1,config.system.cpu.icache.response_latency,config.system.cpu.icache.tags.block_size,0"/>
         <!-- cache controller buffer sizes: miss_buffer_size(MSHR), fill_buffer_size, prefetch_buffer_size, wb_buffer_size -->
-        <param name="buffer_sizes" value="config.system.cpu.icache.mshrs,config.system.cpu.icache.mshrs,config.system.cpu.icache.mshrs,config.system.cpu.icache.write_buffers"/>
+        <param name="buffer_sizes" value="2,2,2,2"/>
         <stat name="read_accesses" value="stats.system.cpu.icache.ReadReq.accesses::total"/>
         <stat name="read_misses" value="stats.system.cpu.icache.ReadReq.misses::total"/>
         <stat name="conflicts" value="stats.system.cpu.icache.replacements"/>

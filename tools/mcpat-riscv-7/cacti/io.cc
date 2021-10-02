@@ -852,7 +852,7 @@ powerDef operator*(const powerDef & x, double const * const y)
 
 uca_org_t cacti_interface(const string & infile_name)
 {
-  cout << "[INFO]: cacti_interface" << endl;
+  cout << "[INFO]: cacti_interface " << infile_name << endl;
   uca_org_t fin_res;
   //uca_org_t result;
   fin_res.valid = false;
@@ -3282,6 +3282,7 @@ uca_org_t cacti_interface(InputParameter  * const local_interface)
 {
 //  g_ip = new InputParameter();
   //g_ip->add_ecc_b_ = true;
+  cout << "[INFO]: cache_sz: " << local_interface->cache_sz << " line_sz: " << local_interface->line_sz << " assoc: " << local_interface->assoc << " nbanks: " << local_interface->nbanks << endl;
 
   uca_org_t fin_res;
   fin_res.valid = false;
