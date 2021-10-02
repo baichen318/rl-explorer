@@ -242,7 +242,7 @@
         <!-- cache_policy;//0 no write or write-though with non-write allocate;1 write-back with write-allocate -->
         <param name="icache_config" value="config.system.cpu.icache.size,config.system.cpu.icache.tags.block_size,config.system.cpu.icache.assoc,1,1,config.system.cpu.icache.response_latency,config.system.cpu.icache.tags.block_size,0"/>
         <!-- cache controller buffer sizes: miss_buffer_size(MSHR), fill_buffer_size, prefetch_buffer_size, wb_buffer_size -->
-        <param name="buffer_sizes" value="2,2,2,2"/>
+        <param name="buffer_sizes" value="config.system.cpu.icache.mshrs,config.system.cpu.icache.mshrs,config.system.cpu.icache.mshrs,config.system.cpu.icache.write_buffers"/>
         <stat name="read_accesses" value="stats.system.cpu.icache.ReadReq.accesses::total"/>
         <stat name="read_misses" value="stats.system.cpu.icache.ReadReq.misses::total"/>
         <stat name="conflicts" value="stats.system.cpu.icache.replacements"/>
