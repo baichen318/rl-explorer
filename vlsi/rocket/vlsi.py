@@ -495,13 +495,20 @@ class Gem5Wrapper(BasicComponent):
 
     def generate_gem5(self):
         # NOTICE: commands are manually designed
-        cmd = "cd %s; " % self.root
-        cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
-        cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
-        cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
-        cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
-        cmd += "-j%d; " % multiprocessing.cpu_count()
-        cmd += "cd -"
+        if os.popen("hostname").readlines()[0].strip() == "cuhk":
+            cmd = "cd %s; " % self.root
+            cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
+            cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
+            cmd += "-j%d; " % multiprocessing.cpu_count()
+            cmd += "cd -; "
+        else:
+            cmd = "cd %s; " % self.root
+            cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+            cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
+            cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
+            cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+            cmd += "-j%d; " % multiprocessing.cpu_count()
+            cmd += "cd -"
         execute(cmd)
 
     def get_results(self):
@@ -562,7 +569,7 @@ class Gem5Wrapper(BasicComponent):
 
     def evaluate_perf(self):
         self.modify_gem5()
-        # self.generate_gem5()
+        self.generate_gem5()
         ipc = self.simulate()
         return ipc
 

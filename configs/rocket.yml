@@ -73,8 +73,8 @@ benchmarks:
   # - mt-matmul
   # - qsort
   # - rsort
-  # - vvadd
-  # - multiply
+  - vvadd
+  - multiply
   # - dhrystone
   # - spmv
 
@@ -93,7 +93,7 @@ design-output-path: data/rocket/rocket-design.txt
 idx: 1
 
 # generate-data: data-output-path
-dataset-output-path: data/rocket/dataset.txt
+dataset-output-path: data/rocket/dataset-v2.txt
 
 # RL related
 # cuda enable

@@ -74,7 +74,7 @@ def main():
             split=True
         )
         new_dataset.append(
-            np.insert(data[0], data[0].shape, values=np.array([ipc, power, area]), axis=0)
+            np.insert(data[0: design_space.n_dim], len(new_dataset), values=np.array([ipc, power, area * 1e6]), axis=0)
         )
     new_dataset = np.array(new_dataset)
     write_txt(
