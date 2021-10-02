@@ -10,9 +10,10 @@ MACROS = {
     ),
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
     "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr",
-    # "gem5-root": "/home/baichen/cbai/research/gem5-repo/",
-    "gem5-root": "/research/dept8/gds/cbai/research/gem5-repo/",
-    "gem5-benchmark-root": "/research/dept8/gds/cbai/data/gem5-riscv-tests",
+    "gem5-root": "/home/baichen/cbai/research/gem5-repo/",
+    # "gem5-root": "/research/dept8/gds/cbai/research/gem5-repo/",
+    # "gem5-benchmark-root": "/research/dept8/gds/cbai/data/gem5-riscv-tests",
+    "gem5-benchmark-root": "/home/baichen/cbai/research/data/gem5-riscv-tests"
 }
 
 def handle_macros():
