@@ -2184,7 +2184,7 @@ void InstFetchU::computeEnergy(bool is_tdp)
     	BTB->power_t.reset();
     }
 
-      cout << "icache.caches->local_result.power.readOp.dynamic: "<< icache.caches->local_result.power.readOp.dynamic <<endl;
+      cout << "[INFO]: icache.caches->local_result.power.readOp.dynamic: "<< icache.caches->local_result.power.readOp.dynamic <<endl;
       icache.power_t.readOp.dynamic	+= (
 		icache.caches->stats_t.readAc.hit*icache.caches->local_result.power.readOp.dynamic+
     		//icache.caches->stats_t.readAc.miss*icache.caches->local_result.tag_array2->power.readOp.dynamic+
@@ -2249,13 +2249,12 @@ void InstFetchU::computeEnergy(bool is_tdp)
 //    			icache.ifb->local_result.power +
 //    			icache.prefetchb->local_result.power)*pppm_Isub;
 
-cout << "ICache rt_power: " << icache.power_t.readOp.dynamic/executionTime << endl;
     	icache.rt_power = icache.power_t +
     	        (icache.caches->local_result.power +
     			icache.missb->local_result.power +
     			icache.ifb->local_result.power +
     			icache.prefetchb->local_result.power)*pppm_lkg;
-cout << "ICache rt_power: " << icache.rt_power.readOp.dynamic/executionTime << endl;
+cout << "[INFO]: ICache rt_power: " << icache.rt_power.readOp.dynamic/executionTime << endl;
 
     	IB->rt_power = IB->power_t + IB->local_result.power*pppm_lkg;
     	rt_power     = rt_power + icache.rt_power + IB->rt_power;
@@ -2272,7 +2271,7 @@ cout << "ICache rt_power: " << icache.rt_power.readOp.dynamic/executionTime << e
     	rt_power = rt_power + (ID_inst->rt_power +
 							ID_operand->rt_power +
 							ID_misc->rt_power);
-	cout << "IFU rt_power: " << rt_power.readOp.dynamic/executionTime << endl;
+	cout << "[INFO]: IFU rt_power: " << rt_power.readOp.dynamic/executionTime << endl;
     }
 }
 
@@ -3366,13 +3365,10 @@ void LoadStoreU::computeEnergy(bool is_tdp)
 //    			dcache.ifb->local_result.power +
 //    			dcache.prefetchb->local_result.power +
 //    			dcache.wbb->local_result.power)*pppm_lkg;
-
-cout<< "DCache rt_power: " << dcache.power_t.readOp.dynamic/executionTime << endl;
     	dcache.rt_power = dcache.power_t + (dcache.caches->local_result.power +
     			dcache.missb->local_result.power +
     			dcache.ifb->local_result.power +
     			dcache.prefetchb->local_result.power )*pppm_lkg;
-cout<< "DCache rt_power: " << dcache.rt_power.readOp.dynamic/executionTime << endl;
 
     	if (cache_p==Write_back)
     	{
@@ -3965,9 +3961,7 @@ void Core::computeEnergy(bool is_tdp)
         	set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
 			if (rnu->exist)
 			{
-cout << "[Before]rnu->rt_power: " << rnu->rt_power.readOp.dynamic/executionTime << endl; 
         	rnu->rt_power = rnu->rt_power + corepipe->power*pppm_t;
-cout << "[After ]rnu->rt_power: " << rnu->rt_power.readOp.dynamic/executionTime << endl; 
 			rt_power      = rt_power + rnu->rt_power;
 			}
 		}
@@ -3987,9 +3981,7 @@ cout << "[After ]rnu->rt_power: " << rnu->rt_power.readOp.dynamic/executionTime 
 				rtp_pipeline_coe = coredynp.pipeline_duty_cycle * coredynp.IFU_duty_cycle * coredynp.total_cycles;
 			}
 			set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
-cout << "[Before]ifu->rt_power: " << ifu->rt_power.readOp.dynamic/executionTime << endl; 
 			ifu->rt_power = ifu->rt_power + corepipe->power*pppm_t;
-cout << "[After ]ifu->rt_power: " << ifu->rt_power.readOp.dynamic/executionTime << endl; 
 			rt_power     = rt_power + ifu->rt_power ;
 		}
 		if (lsu->exist)
@@ -4003,9 +3995,7 @@ cout << "[After ]ifu->rt_power: " << ifu->rt_power.readOp.dynamic/executionTime 
 				rtp_pipeline_coe = coredynp.pipeline_duty_cycle * coredynp.LSU_duty_cycle * coredynp.total_cycles;
 			}
 			set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
-cout << "[Before]lsu->rt_power: " << lsu->rt_power.readOp.dynamic/executionTime << endl; 
 			lsu->rt_power = lsu->rt_power + corepipe->power*pppm_t;
-cout << "[Afetr ]lsu->rt_power: " << lsu->rt_power.readOp.dynamic/executionTime << endl; 
 			rt_power     = rt_power  + lsu->rt_power;
 		}
 		if (exu->exist)
@@ -4019,9 +4009,7 @@ cout << "[Afetr ]lsu->rt_power: " << lsu->rt_power.readOp.dynamic/executionTime 
 				rtp_pipeline_coe = coredynp.pipeline_duty_cycle * coredynp.ALU_duty_cycle * coredynp.total_cycles;
 			}
 			set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
-cout << "[Before]exu->rt_power: " << exu->rt_power.readOp.dynamic/executionTime << endl; 
 			exu->rt_power = exu->rt_power + corepipe->power*pppm_t;
-cout << "[After ]exu->rt_power: " << exu->rt_power.readOp.dynamic/executionTime << endl; 
 			rt_power     = rt_power  + exu->rt_power;
 		}
 		if (mmu->exist)
@@ -4035,9 +4023,7 @@ cout << "[After ]exu->rt_power: " << exu->rt_power.readOp.dynamic/executionTime 
 				rtp_pipeline_coe = coredynp.pipeline_duty_cycle * (0.5+0.5*coredynp.LSU_duty_cycle) * coredynp.total_cycles;
 			}
 			set_pppm(pppm_t, coredynp.num_pipelines*rtp_pipeline_coe/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units, coredynp.num_pipelines/num_units);
-cout << "[Before]mmu->rt_power: " << mmu->rt_power.readOp.dynamic/executionTime << endl; 
 			mmu->rt_power = mmu->rt_power + corepipe->power*pppm_t;
-cout << "[After ]mmu->rt_power: " << mmu->rt_power.readOp.dynamic/executionTime << endl; 
 			rt_power     = rt_power +  mmu->rt_power ;
 
 		}

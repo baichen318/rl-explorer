@@ -97,8 +97,6 @@ double Component::compute_gate_area(
   double h_tr_region  = h_gate - 2 * g_tp.HPOWERRAIL;
   double ratio_p_to_n = w_pmos / (w_pmos + w_nmos);
 
-
-
   if (ratio_p_to_n >= 1 || ratio_p_to_n <= 0)
   {
     return 0.0;

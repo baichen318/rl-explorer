@@ -54,9 +54,8 @@ ArrayST::ArrayST(const InputParameter *configure_interface,
  core_ty(core_ty_),
  is_default(_is_default)
     {
-	cout << name << endl;
+	cout << "[INFO]: " << name << " cache_sz: " << l_ip.cache_sz << endl;
 	if (l_ip.cache_sz<16) l_ip.cache_sz=16;
-	cout << "cache_sz: " << l_ip.cache_sz << endl;
 	if (l_ip.power_gating && (l_ip.assoc==0)) {l_ip.power_gating = false;}
 	l_ip.error_checking();//not only do the error checking but also fill some missing parameters
 	optimize_array();
@@ -67,8 +66,7 @@ ArrayST::ArrayST(const InputParameter *configure_interface,
 void ArrayST::compute_base_power()
     {
 	//l_ip.out_w               =l_ip.line_sz*8;
-      	local_result=cacti_interface(&l_ip);
-	// cout << "dynamic: " << local_result.power.readOp.dynamic << endl;
+    local_result = cacti_interface(&l_ip);
 	assert(local_result.cycle_time>0);
 	assert(local_result.access_time>0);
 //    if (name == "Int FrontRAT")

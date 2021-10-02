@@ -852,7 +852,7 @@ powerDef operator*(const powerDef & x, double const * const y)
 
 uca_org_t cacti_interface(const string & infile_name)
 {
-  cout << "cacti_interface" << endl;
+  cout << "[INFO]: cacti_interface" << endl;
   uca_org_t fin_res;
   //uca_org_t result;
   fin_res.valid = false;
@@ -1417,7 +1417,7 @@ bool InputParameter::error_checking()
   int C = cache_sz/nbanks;
   if (C < 16)
   {
-    cerr << "Cache size must >=16" << endl;
+    cerr << "[ERROR]: Cache size must >=16" << endl;
     return false;
   }
 
@@ -3404,7 +3404,7 @@ uca_org_t cacti_interface(InputParameter  * const local_interface)
   Wire winit; // Do not delete this line. It initializes wires.
 
   solve(&fin_res);
-  cout << "dynamic: " << fin_res.power.readOp.dynamic << endl;
+  cout << "[INFO]: dynamic: " << fin_res.power.readOp.dynamic << endl;
 
   if (!g_ip->dvs_voltage.empty())
   {
