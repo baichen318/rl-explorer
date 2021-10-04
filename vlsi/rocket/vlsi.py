@@ -463,7 +463,7 @@ class Gem5Wrapper(BasicComponent):
         _modify_gem5(
             self.root_btb,
             "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
-            "RASSize = Param.Unsigned(%d, \"RAS size\")" % (1 if self.btb[self.state[0]][0] == 0 else \
+            "RASSize = Param.Unsigned(%d, \"RAS size\")" % (4 if self.btb[self.state[0]][0] == 0 else \
                 round_power_of_two(self.btb[self.state[0]][0])
             )
         )
@@ -472,7 +472,7 @@ class Gem5Wrapper(BasicComponent):
             self.root_btb,
             "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
             "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % (2 if self.btb[self.state[0]][1] == 0 \
-                else round_power_of_two(self.btb[self.state[0]][0])
+                else round_power_of_two(self.btb[self.state[0]][1])
             )
         )
         # TLB@D-Cache
@@ -613,8 +613,6 @@ class Gem5Wrapper(BasicComponent):
                 "m5out-%s" % bmark,
                 "%s-%s.rpt" % ("Rocket", self.idx)
             )
-            remove(mcpat_xml)
-            remove(mcpat_report)
             execute(
                 "python2 %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
                     os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),

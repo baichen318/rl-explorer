@@ -177,6 +177,7 @@ def remove(path):
     if if_exist(path):
         if os.path.isfile(path):
             os.remove(path)
+            print("[INFO]: remove %s" % path)
         elif os.path.isdir(path):
             for root, dirs, files in os.walk(path, topdown=False):
                 for name in files:
@@ -184,6 +185,7 @@ def remove(path):
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
             os.rmdir(path)
+            print("[INFO]: remove %s" % path)
 
 def mse(gt, predict):
     # gt: `np.array`

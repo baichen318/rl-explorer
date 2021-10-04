@@ -66,6 +66,7 @@ def main():
     # construct pre-generated dataset
     new_dataset = []
     for data in dataset:
+        print("[INFO]: evaluate microarchitecture:", data[:-3])
         ipc, power, area = design_space.evaluate_microarchitecture(
             configs,
             # architectural feature
@@ -74,11 +75,12 @@ def main():
             split=True
         )
         new_dataset.append(
-            np.insert(data[0: design_space.n_dim], len(new_dataset), values=np.array([ipc, power, area * 1e6]), axis=0)
+            np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
         )
     new_dataset = np.array(new_dataset)
     write_txt(
         os.path.join(
+            os.path.pardir,
             os.path.dirname(configs["dataset-output-path"]),
             os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
         ),
