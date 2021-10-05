@@ -113,7 +113,7 @@ class RocketDesignSpace(Space):
         if split:
             return ipc, power, area
         else:
-            return ipc + 8 * power + area
+            return ipc + power + area
 
 
 def parse_design_space(design_space, **kwargs):

@@ -454,6 +454,7 @@ class Gem5Wrapper(BasicComponent):
 
 
     def modify_gem5(self):
+        # NOTICE: we modify gem5 w.r.t. state[0] & state[5]
         def _modify_gem5(src, pattern, target, count=0):
             cnt = open(src, "r+").read()
             with open(src, 'w') as f:
@@ -499,7 +500,7 @@ class Gem5Wrapper(BasicComponent):
             cmd = "cd %s; " % self.root
             cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
             cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
-            cmd += "-j%d; " % multiprocessing.cpu_count()
+            cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
             cmd += "cd -; "
         else:
             cmd = "cd %s; " % self.root
@@ -507,7 +508,7 @@ class Gem5Wrapper(BasicComponent):
             cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
             cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
             cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
-            cmd += "-j%d; " % multiprocessing.cpu_count()
+            cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
             cmd += "cd -"
         execute(cmd)
 
@@ -527,7 +528,7 @@ class Gem5Wrapper(BasicComponent):
             remove(os.path.join(MACROS["temp-root"], "m5out-%s" % bmark))
         ipc = 0
         for bmark in self.configs["benchmarks"]:
-            cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % self.root
+            cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % (self.root)
             cmd += "--cmd=%s " % os.path.join(
                 MACROS["gem5-benchmark-root"],
                 "riscv-tests",
@@ -555,6 +556,7 @@ class Gem5Wrapper(BasicComponent):
             cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
             execute(cmd, logger=self.configs["logger"])
             instructions, cycles = self.get_results()
+            print("[TEST]: instructions:", instructions, "cycles:", cycles)
             ipc += (instructions / cycles)
             # for McPAT usage
             execute(
@@ -575,19 +577,20 @@ class Gem5Wrapper(BasicComponent):
 
     def evaluate_power_and_area(self):
         def extract_power(mcpat_report):
-            p_subthreshold = re.compile(r"Subthreshold\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
-            p_gate = re.compile(r"Gate\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            # p_subthreshold = re.compile(r"Subthreshold\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            # p_gate = re.compile(r"Gate\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
             p_dynamic = re.compile(r"Runtime\ Dynamic\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
             subthreshold, gate, dynamic = 0, 0, 0
             with open(mcpat_report, 'r') as rpt:
                 rpt = rpt.read()
                 try:
-                    subthreshold = float(p_subthreshold.findall(rpt)[1][0])
-                    gate = float(p_gate.findall(rpt)[1][0])
+                    # subthreshold = float(p_subthreshold.findall(rpt)[1][0])
+                    # gate = float(p_gate.findall(rpt)[1][0])
                     dynamic = float(p_dynamic.findall(rpt)[1][0])
                 except Exception as e:
                     print("[ERROR]:", e)
                     exit(1)
+            print("[TEST]", mcpat_report, "dynamic power", dynamic)
             return subthreshold + gate + dynamic
 
         def extract_area(mcpat_report):
@@ -600,8 +603,10 @@ class Gem5Wrapper(BasicComponent):
                 except Exception as e:
                     print("[ERROR]:", e)
                     exit(1)
+            print("[TEST]", mcpat_report, "area", area)
             return area
 
+        power, area = 0, 0
         for bmark in self.configs["benchmarks"]:
             mcpat_xml = os.path.join(
                 MACROS["temp-root"],
@@ -632,7 +637,9 @@ class Gem5Wrapper(BasicComponent):
                     mcpat_report
                 )
             )
-        return extract_power(mcpat_report), extract_area(mcpat_report)
+            power += extract_power(mcpat_report)
+            area += extract_area(mcpat_report)
+        return power / len(self.configs["benchmarks"]), area / len(self.configs["benchmarks"])
 
 
 def test_online_vlsi(configs, state):

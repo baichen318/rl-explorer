@@ -77,16 +77,16 @@ def main():
         new_dataset.append(
             np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
         )
-    new_dataset = np.array(new_dataset)
-    write_txt(
-        os.path.join(
-            os.path.pardir,
-            os.path.dirname(configs["dataset-output-path"]),
-            os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
-        ),
-        new_dataset,
-        fmt="%f"
-    )
+        _new_dataset = np.array(new_dataset)
+        write_txt(
+            os.path.join(
+                os.path.pardir,
+                os.path.dirname(configs["dataset-output-path"]),
+                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+            ),
+            _new_dataset,
+            fmt="%f"
+        )
 
 
 if __name__ == '__main__':
