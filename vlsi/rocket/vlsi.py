@@ -504,10 +504,10 @@ class Gem5Wrapper(BasicComponent):
             cmd += "cd -; "
         elif os.popen("hostname").readlines()[0].strip() == "proj12":
             cmd = "cd %s; " % self.root
-            cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
-            cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
+            cmd += "scons "
+            cmd += "build/RISCV/gem5.opt "
             cmd += "-j%d; " % int(round(2 * multiprocessing.cpu_count()))
-            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt" % (self.state[0], self.state[5])
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
             cmd += "cd -; "
         else:
             cmd = "cd %s; " % self.root
@@ -581,7 +581,7 @@ class Gem5Wrapper(BasicComponent):
 
     def evaluate_perf(self):
         if if_exist(
-            os.path.join(self.root, "build", "RISCV", "gem5-%d-%d.out" % (self.state[0], self.state[5]))
+            os.path.join(self.root, "build", "RISCV", "gem5-%d-%d.opt" % (self.state[0], self.state[5]))
         ):
             ipc = self.simulate()
             return ipc
