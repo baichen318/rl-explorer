@@ -22,8 +22,9 @@ import torch.nn as nn
 import torch.utils.data as data
 from abc import ABC, abstractmethod
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
-from util import parse_args, get_configs, load_txt, write_txt
+from util import parse_args, get_configs, load_txt, write_txt, mkdir
 from dse.env.rocket.design_space import parse_design_space
 
 
@@ -58,24 +59,35 @@ def load_design_space():
 
 
 def split_dataset(dataset):
-    return KFold(n_splits=10, shuffle=True, random_state=configs["seed"])
+    # NOTICE: we omit the rest of groups
+    kfold = KFold(n_splits=10, shuffle=True, random_state=configs["seed"])
+    for train, test in kfold.split(dataset):
+        return train, test
 
 
 class MLP(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(MLP, self).__init__()
         self.mlp = nn.Sequential(
-            nn.Linear(input_dim, 1000),
+            nn.Linear(input_dim, 100),
             nn.ReLU(),
-            nn.Linear(1000, 500),
+            nn.Linear(100, 80),
             nn.ReLU(),
-            nn.Linear(500, 50),
+            nn.Linear(80, 60),
             nn.ReLU(),
-            nn.Linear(50, output_dim)
+            nn.Linear(60, output_dim)
         )
 
     def forward(self, x):
         return self.mlp(x)
+
+    def save(self, path):
+        torch.save(self.state_dict(), path)
+        print("[INFO]: save model to %s." % path)
+
+    def load(self, path):
+        self.load_state_dict(torch.load(path))
+        print("[INFO]: load model from %s." % path)
 
 
 class BaseDataset(data.Dataset, ABC):
@@ -92,7 +104,7 @@ class BaseDataset(data.Dataset, ABC):
 
 
 class PPADataset(BaseDataset):
-    def __init__(self, train, test, idx):
+    def __init__(self, train, test, idx, batch=16):
         """
             train: <torch.Tensor>
             test: <torch.Tensor>
@@ -110,6 +122,7 @@ class PPADataset(BaseDataset):
         self.test_power_gt = test[:, idx + 1]
         self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
         self.test_area_gt = test[:, idx + 2]
+        self.batch = batch
 
     def __getitem__(self, index):
         return {
@@ -143,27 +156,94 @@ class PPADataset(BaseDataset):
     def __len__(self):
         return len(self.train_ipc_feature)
 
-def calib_train(design_space, dataset, num_epochs=10):
+    def get_test_data_size(self):
+        return len(self.test_ipc_feature)
+
+
+def calib_mlp_train(design_space, dataset):
     criterion = nn.MSELoss()
-    for metric in ["ipc", "power", "area"]:
+    for metric in metrics:
+        print("[INFO]: train %s model." % metric)
         model = MLP(design_space.n_dim + 1, 1)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-        for epoch in range(num_epochs):
-            for i, (train, test) in enumerate(dataset):
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=configs[metric + "-model-lr"]
+        )
+        for epoch in range(configs["ppa-epoch"]):
+            total_loss = 0
+            for i, (train, _) in enumerate(dataset):
                 pred = model(train[metric][0])
                 loss = criterion(pred, train[metric][1])
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if (i + 1) % 50 == 0:
-                    print("[INFO]: Epoch[{}/{}], step[{}/{}]".format(
-                            epoch + 1,
-                            num_epochs + 1,
-                            i + 1,
-                            len(dataset),
-                            loss.item()
-                        )
+                total_loss += loss.item()
+            if (epoch + 1 ) % 100 == 0:
+                print("[INFO]: Epoch[{}/{}], Loss: {:.8f}".format(
+                        epoch + 1,
+                        configs["ppa-epoch"],
+                        loss.item()
                     )
+                )
+        mkdir(os.path.join(configs["ppa-model"]))
+        model.save(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt"))
+
+def calib_mlp_test(design_space, dataset):
+    markers = [
+        '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
+        '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
+        'X', 'D', 'd', '|', '_'
+    ]
+    colors = [
+        'c', 'b', 'g', 'r', 'm', 'y', 'k', # 'w'
+    ]
+    plt.rcParams['savefig.dpi'] = 600
+    plt.rcParams['figure.dpi'] = 600
+    L2 = nn.MSELoss()
+    L1 = nn.L1Loss()
+    lims = {
+        "ipc": [0.630, 0.850],
+    }
+    for metric in metrics:
+        print("[INFO]: test %s model." % metric)
+        model = MLP(design_space.n_dim + 1, 1)
+        model.load(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt"))
+        model.eval()
+        error, l1, l2 = 0, 0, 0
+        x, y = [], []
+        with torch.no_grad():
+            for i, (_, test) in enumerate(dataset):
+                pred = model(test[metric][0])
+                x.append(float(pred))
+                y.append(float(test[metric][1]))
+                error += abs(float(pred) - float(test[metric][1])) / float(test[metric][1])
+                _l1 = L1(pred, test[metric][1])
+                _l2 = L2(pred, test[metric][1])
+                l1 += _l1
+                l2 += _l2
+            print("[INFO]: {} model, error: {:.8f}, L1: {:.8f}, L2: {:.8f}".format(
+                metric,
+                error / dataset.get_test_data_size(),
+                l1,
+                l2)
+            )
+            plt.scatter(x, y, s=2, marker=markers[2], c=colors[1])
+            plt.plot(
+                np.linspace([lims[metric][0], lims[metric][1]], 1000),
+                np.linspace([lims[metric][0], lims[metric][1]], 1000),
+                c=colors[3],
+                linewidth=1,
+                ls='--'
+            )
+            plt.xlabel("Predicton")
+            plt.ylabel("GT")
+            plt.xlim(lims[metric])
+            plt.ylim(lims[metric])
+            plt.grid()
+            plt.title("%s-%s" % (configs["design"], metric))
+            plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
+            print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
+            plt.close()
 
 
 def main():
@@ -171,50 +251,51 @@ def main():
     design_space = load_design_space()
     # construct pre-generated dataset
     new_dataset = []
-    # for data in dataset:
-    #     print("[INFO]: evaluate microarchitecture:", data[:-3])
-    #     ipc, power, area = design_space.evaluate_microarchitecture(
-    #         configs,
-    #         # architectural feature
-    #         data[:-3].astype(int),
-    #         1,
-    #         split=True
-    #     )
-    #     new_dataset.append(
-    #         np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
-    #     )
-    #     _new_dataset = np.array(new_dataset)
-    #     write_txt(
-    #         os.path.join(
-    #             os.path.pardir,
-    #             os.path.dirname(configs["dataset-output-path"]),
-    #             os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
-    #         ),
-    #         _new_dataset,
-    #         fmt="%f"
-    #     )
+
+    for data in dataset:
+        print("[INFO]: evaluate microarchitecture:", data[:-3])
+        ipc, power, area = design_space.evaluate_microarchitecture(
+            configs,
+            # architectural feature
+            data[:-3].astype(int),
+            1,
+            split=True
+        )
+        new_dataset.append(
+            np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
+        )
+        _new_dataset = np.array(new_dataset)
+        write_txt(
+            os.path.join(
+                os.path.pardir,
+                os.path.dirname(configs["dataset-output-path"]),
+                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+            ),
+            _new_dataset,
+            fmt="%f"
+        )
     dataset = load_dataset(os.path.join(
             os.path.pardir,
             os.path.dirname(configs["dataset-output-path"]),
             os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
         )
     )
-    print("[TEST]:", dataset, dataset.shape)
-    kfold = split_dataset(dataset)
-    for train, test in kfold.split(dataset):
-        train_data = torch.Tensor(dataset[train])
-        test_data = torch.Tensor(dataset[test])
-        calib_train(
-            design_space,
-            PPADataset(train_data, test_data, idx=design_space.n_dim)
-        )
-
-
-
-
+    train, test = split_dataset(dataset)
+    train_data = torch.Tensor(dataset[train])
+    test_data = torch.Tensor(dataset[test])
+    calib_mlp_train(
+        design_space,
+        PPADataset(train_data, test_data, idx=design_space.n_dim)
+    )
+    calib_mlp_test(
+        design_space,
+        PPADataset(train_data, test_data, idx=design_space.n_dim)
+    )
 
 
 if __name__ == '__main__':
     configs = get_configs(parse_args().configs)
+    metrics = ["ipc", "power", "area"]
+    metrics = ["ipc"]
     configs["logger"] = None
     main()
