@@ -24,8 +24,25 @@ from abc import ABC, abstractmethod
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+try:
+    from sklearn.externals import joblib
+except ImportError:
+    import joblib
 from util import parse_args, get_configs, load_txt, write_txt, mkdir
+from xgboost import XGBRegressor
 from dse.env.rocket.design_space import parse_design_space
+
+
+markers = [
+    '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
+    '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
+    'X', 'D', 'd', '|', '_'
+]
+colors = [
+    'c', 'b', 'g', 'r', 'm', 'y', 'k', # 'w'
+]
 
 
 def load_dataset(path):
@@ -63,6 +80,27 @@ def split_dataset(dataset):
     kfold = KFold(n_splits=10, shuffle=True, random_state=configs["seed"])
     for train, test in kfold.split(dataset):
         return train, test
+
+
+def init_xgb():
+    """
+        NOTICE: a checkpoint
+    """
+    return XGBRegressor(
+        max_depth=3,
+        gamma=0.0001,
+        min_child_weight=1,
+        subsample=1.0,
+        eta=0.3,
+        reg_lambda=1.00,
+        alpha=0,
+        objective="reg:squarederror",
+        n_jobs=-1
+    )
+
+def init_lr():
+    from sklearn.linear_model import LinearRegression
+    return LinearRegression(n_jobs=-1)
 
 
 class MLP(nn.Module):
@@ -103,7 +141,7 @@ class BaseDataset(data.Dataset, ABC):
         pass
 
 
-class PPADataset(BaseDataset):
+class PPADatasetV1(BaseDataset):
     def __init__(self, train, test, idx, batch=16):
         """
             train: <torch.Tensor>
@@ -160,6 +198,23 @@ class PPADataset(BaseDataset):
         return len(self.test_ipc_feature)
 
 
+class PPADatasetV2(object):
+    def __init__(self, train, test, idx):
+        super(PPADatasetV2, self).__init__()
+        self.train_ipc_feature = train[:, [i for i in range(idx)] + [-3]]
+        self.train_ipc_gt = train[:, idx]
+        self.train_power_feature = train[:, [i for i in range(idx)] + [-2]]
+        self.train_power_gt = train[:, idx + 1]
+        self.train_area_feature = train[:, [i for i in range(idx)] + [-1]]
+        self.train_area_gt = train[:, idx + 2]
+        self.test_ipc_feature = test[:, [i for i in range(idx)] + [-3]]
+        self.test_ipc_gt = test[:, idx]
+        self.test_power_feature = test[:, [i for i in range(idx)] + [-2]]
+        self.test_power_gt = test[:, idx + 1]
+        self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
+        self.test_area_gt = test[:, idx + 2]
+
+
 def calib_mlp_train(design_space, dataset):
     criterion = nn.MSELoss()
     for metric in metrics:
@@ -188,15 +243,8 @@ def calib_mlp_train(design_space, dataset):
         mkdir(os.path.join(configs["ppa-model"]))
         model.save(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt"))
 
+
 def calib_mlp_test(design_space, dataset):
-    markers = [
-        '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
-        '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
-        'X', 'D', 'd', '|', '_'
-    ]
-    colors = [
-        'c', 'b', 'g', 'r', 'm', 'y', 'k', # 'w'
-    ]
     plt.rcParams['savefig.dpi'] = 600
     plt.rcParams['figure.dpi'] = 600
     L2 = nn.MSELoss()
@@ -246,34 +294,99 @@ def calib_mlp_test(design_space, dataset):
             plt.close()
 
 
+def calib_xgboost_train(dataset):
+    for metric in metrics:
+        print("[INFO]: train %s model." % metric)
+        model = init_xgb()
+        if metric == "ipc":
+            model.fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
+        elif metric == "power":
+            model.fit(dataset.train_power_feature, dataset.train_power_gt)
+        else:
+            assert metric == "area", "[ERROR]: unsupported metric."
+            model.fit(dataset.train_area_feature, dataset.train_area_gt)
+        joblib.dump(
+            model,
+            os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt")
+        )
+
+
+def calib_xgboost_test(dataset):
+    plt.rcParams['savefig.dpi'] = 600
+    plt.rcParams['figure.dpi'] = 600
+    lims = {
+        "ipc": [0.630, 0.850],
+        "power": [0.002, 0.014],
+        "area": [200000, 900000]
+    }
+    for metric in metrics:
+        print("[INFO]: test %s model." % metric)
+        model = joblib.load(
+            os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt")
+        )
+        if metric == "ipc":
+            pred = model.predict(dataset.test_ipc_feature)
+            mae = mean_absolute_error(dataset.test_ipc_gt, pred)
+            mse = mean_squared_error(dataset.test_ipc_gt, pred)
+            plt.scatter(pred, dataset.test_ipc_gt, s=2, marker=markers[2], c=colors[1])
+        elif metric == "power":
+            pred = model.predict(dataset.test_power_feature)
+            mae = mean_absolute_error(dataset.test_power_gt, pred)
+            mse = mean_squared_error(dataset.test_power_gt, pred)
+            plt.scatter(pred, dataset.test_power_gt, s=2, marker=markers[2], c=colors[1])
+        else:
+            assert metric == "area", "[ERROR]: unsupported metric."
+            pred = model.predict(dataset.test_area_feature)
+            mae = mean_absolute_error(dataset.test_area_gt, pred)
+            mse = mean_squared_error(dataset.test_area_gt, pred)
+            plt.scatter(pred, dataset.test_area_gt, s=2, marker=markers[2], c=colors[1])
+        print("[INFO] MAE: {:.8f}, MSE: {:.8f}".format(mae, mse))
+        plt.plot(
+            np.linspace([lims[metric][0], lims[metric][1]], 1000),
+            np.linspace([lims[metric][0], lims[metric][1]], 1000),
+            c=colors[3],
+            linewidth=1,
+            ls='--'
+        )
+        plt.xlabel("Predicton")
+        plt.ylabel("GT")
+        plt.xlim(lims[metric])
+        plt.ylim(lims[metric])
+        plt.grid()
+        plt.title("{}-{} MAE: {:.8f}".format(configs["design"], metric, mae))
+        plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
+        print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
+        plt.close()
+
+
 def main():
     dataset = load_dataset(os.path.join(os.path.pardir, configs["dataset-output-path"]))
     design_space = load_design_space()
     # construct pre-generated dataset
     new_dataset = []
 
-    for data in dataset:
-        print("[INFO]: evaluate microarchitecture:", data[:-3])
-        ipc, power, area = design_space.evaluate_microarchitecture(
-            configs,
-            # architectural feature
-            data[:-3].astype(int),
-            1,
-            split=True
-        )
-        new_dataset.append(
-            np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
-        )
-        _new_dataset = np.array(new_dataset)
-        write_txt(
-            os.path.join(
-                os.path.pardir,
-                os.path.dirname(configs["dataset-output-path"]),
-                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
-            ),
-            _new_dataset,
-            fmt="%f"
-        )
+    # for data in dataset:
+    #     print("[INFO]: evaluate microarchitecture:", data[:-3])
+    #     ipc, power, area = design_space.evaluate_microarchitecture(
+    #         configs,
+    #         # architectural feature
+    #         data[:-3].astype(int),
+    #         1,
+    #         split=True
+    #     )
+    #     new_dataset.append(
+    #         np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
+    #     )
+    #     _new_dataset = np.array(new_dataset)
+    #     write_txt(
+    #         os.path.join(
+    #             os.path.pardir,
+    #             os.path.dirname(configs["dataset-output-path"]),
+    #             os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+    #         ),
+    #         _new_dataset,
+    #         fmt="%f"
+    #     )
     dataset = load_dataset(os.path.join(
             os.path.pardir,
             os.path.dirname(configs["dataset-output-path"]),
@@ -281,21 +394,39 @@ def main():
         )
     )
     train, test = split_dataset(dataset)
-    train_data = torch.Tensor(dataset[train])
-    test_data = torch.Tensor(dataset[test])
-    calib_mlp_train(
-        design_space,
-        PPADataset(train_data, test_data, idx=design_space.n_dim)
-    )
-    calib_mlp_test(
-        design_space,
-        PPADataset(train_data, test_data, idx=design_space.n_dim)
-    )
+    if opt == "mlp":
+        train_data = torch.Tensor(dataset[train])
+        test_data = torch.Tensor(dataset[test])
+        calib_mlp_train(
+            design_space,
+            PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
+        )
+        calib_mlp_test(
+            design_space,
+            PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
+        )
+    else:
+        assert opt == "xgboost", "[ERROR]: unsupported method"
+        calib_xgboost_train(
+            PPADatasetV2(
+                dataset[train],
+                dataset[train],
+                idx=design_space.n_dim
+            )
+        )
+        calib_xgboost_test(
+            PPADatasetV2(
+                dataset[train],
+                dataset[train],
+                idx=design_space.n_dim
+            )
+        )
 
 
 if __name__ == '__main__':
     configs = get_configs(parse_args().configs)
     metrics = ["ipc", "power", "area"]
-    metrics = ["ipc"]
+    metrics = ["area"]
+    opt = "xgboost"
     configs["logger"] = None
     main()
