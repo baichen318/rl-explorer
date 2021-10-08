@@ -424,7 +424,6 @@ class Gem5Wrapper(BasicComponent):
             "gem5-research"
         )
         self.construct_link()
-        mkdir(MACROS["temp-root"])
 
     def construct_link(self):
         self.root_btb = os.path.join(
@@ -451,6 +450,11 @@ class Gem5Wrapper(BasicComponent):
             self.root,
             "m5out"
         )
+        self.root_temp = os.path.join(
+            MACROS["temp-root"],
+            str(self.idx)
+        )
+        mkdir(self.root_temp)
 
 
     def modify_gem5(self):
@@ -540,7 +544,7 @@ class Gem5Wrapper(BasicComponent):
     def simulate(self):
         machine = os.popen("hostname").readlines()[0].strip()
         for bmark in self.configs["benchmarks"]:
-            remove(os.path.join(MACROS["temp-root"], "m5out-%s" % bmark))
+            remove(os.path.join(self.root_temp, "m5out-%s" % bmark))
         ipc = 0
         for bmark in self.configs["benchmarks"]:
             if machine == "proj12" or machine.startswith("dgg4"):
@@ -580,7 +584,7 @@ class Gem5Wrapper(BasicComponent):
             execute(
                 "mv -f %s %s" % (
                     self.root_m5out,
-                    os.path.join(MACROS["temp-root"], "m5out-%s" % bmark)
+                    os.path.join(self.root_temp, "m5out-%s" % bmark)
                 )
             )
         ipc /= len(self.configs["benchmarks"])
@@ -632,12 +636,12 @@ class Gem5Wrapper(BasicComponent):
         power, area = 0, 0
         for bmark in self.configs["benchmarks"]:
             mcpat_xml = os.path.join(
-                MACROS["temp-root"],
+                self.root_temp,
                 "m5out-%s" % bmark,
                 "%s-%s.xml" % ("Rocket", self.idx)
             )
             mcpat_report = os.path.join(
-                MACROS["temp-root"],
+                self.root_temp,
                 "m5out-%s" % bmark,
                 "%s-%s.rpt" % ("Rocket", self.idx)
             )
@@ -645,8 +649,8 @@ class Gem5Wrapper(BasicComponent):
                 "python2 %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
                     os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),
                     self.configs["design"],
-                    os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "config.json"),
-                    os.path.join(MACROS["temp-root"], "m5out-%s" % bmark, "stats.txt"),
+                    os.path.join(self.root_temp, "m5out-%s" % bmark, "config.json"),
+                    os.path.join(self.root_temp, "m5out-%s" % bmark, "stats.txt"),
                     os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
                     ' '.join([str(s) for s in self.state]),
                     mcpat_xml
