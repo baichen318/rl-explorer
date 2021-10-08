@@ -2,10 +2,17 @@
 Design Explorer: Design Space Explorer focusing on the CPU design
 
 ## End-to-end Flow
+- Rocket@CUHK
 ```bash
-$ python main.py -c configs/boom.yml
+$ set_conda
+$ python main.py -c configs/rocket.yml
+```
+- Rocket@proj12
+```bash
+$ python3 main.py -c configs/rocket.yml
 ```
 
 ## TODO
-- VLSI:
-	* More robust auto-vlsi
+- Multi-Objective A3C
+- BOOM PPA Models
+- BOOM Flow
