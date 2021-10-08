@@ -101,7 +101,7 @@ class RocketDesignSpace(Space):
     def load_ppa_model(self):
         pass
 
-    def evaluate_microarchitecture(self, configs, state, idx, split=False, test=False):
+    def evaluate_microarchitecture(self, configs, state, idx, test=False):
         # NOTICE: we use light-weight white-box model
         if test:
             return torch.Tensor([random.random()]).squeeze(0)
@@ -109,11 +109,7 @@ class RocketDesignSpace(Space):
         ipc = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
         print("[INFO]: state:", state, "IPC: %f, Power: %f, Area: %f" % (ipc, power, area))
-        # TODO: PV as the reward
-        if split:
-            return ipc, power, area
-        else:
-            return ipc + power + area
+        return ipc, power, area
 
 
 def parse_design_space(design_space, **kwargs):

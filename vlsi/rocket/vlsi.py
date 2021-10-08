@@ -496,20 +496,21 @@ class Gem5Wrapper(BasicComponent):
 
     def generate_gem5(self):
         # NOTICE: commands are manually designed
-        if os.popen("hostname").readlines()[0].strip() == "cuhk":
+        machine = os.popen("hostname").readlines()[0].strip()
+        if machine == "cuhk":
             cmd = "cd %s; " % self.root
             cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
             cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
             cmd += "cd -; "
-        elif os.popen("hostname").readlines()[0].strip() == "proj12":
+        elif machine == "proj12":
             cmd = "cd %s; " % self.root
             cmd += "scons "
             cmd += "build/RISCV/gem5.opt "
             cmd += "-j%d; " % int(round(2 * multiprocessing.cpu_count()))
             cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
             cmd += "cd -; "
-        else:
+        elif machine.startswith("hpc"):
             cmd = "cd %s; " % self.root
             cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
             cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
@@ -517,6 +518,12 @@ class Gem5Wrapper(BasicComponent):
             cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
             cmd += "cd -"
+        elif machine.startswith("dgg4"):
+            pass
+        else:
+            print("[ERROR]: %s is not support." % machine)
+            exit(-1)
+
         execute(cmd)
 
     def get_results(self):
@@ -531,13 +538,14 @@ class Gem5Wrapper(BasicComponent):
         return instructions, cycles
 
     def simulate(self):
+        machine = os.popen("hostname").readlines()[0].strip()
         for bmark in self.configs["benchmarks"]:
             remove(os.path.join(MACROS["temp-root"], "m5out-%s" % bmark))
         ipc = 0
         for bmark in self.configs["benchmarks"]:
-            if os.popen("hostname").readlines()[0].strip() == "proj12":
+            if machine == "proj12" or machine.startswith("dgg4"):
                 cmd = "cd %s; build/RISCV/gem5-%d-%d.opt configs/example/se.py " % (self.root, self.state[0], self.state[5])
-            else:
+            elif machine == "cuhk" or machine.startswith("hpc"):
                 cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % (self.root)
             cmd += "--cmd=%s " % os.path.join(
                 MACROS["gem5-benchmark-root"],

@@ -365,28 +365,28 @@ def main():
     # construct pre-generated dataset
     new_dataset = []
 
-    # for data in dataset:
-    #     print("[INFO]: evaluate microarchitecture:", data[:-3])
-    #     ipc, power, area = design_space.evaluate_microarchitecture(
-    #         configs,
-    #         # architectural feature
-    #         data[:-3].astype(int),
-    #         1,
-    #         split=True
-    #     )
-    #     new_dataset.append(
-    #         np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
-    #     )
-    #     _new_dataset = np.array(new_dataset)
-    #     write_txt(
-    #         os.path.join(
-    #             os.path.pardir,
-    #             os.path.dirname(configs["dataset-output-path"]),
-    #             os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
-    #         ),
-    #         _new_dataset,
-    #         fmt="%f"
-    #     )
+    for data in dataset:
+        print("[INFO]: evaluate microarchitecture:", data[:-3])
+        ipc, power, area = design_space.evaluate_microarchitecture(
+            configs,
+            # architectural feature
+            data[:-3].astype(int),
+            1,
+            split=True
+        )
+        new_dataset.append(
+            np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
+        )
+        _new_dataset = np.array(new_dataset)
+        write_txt(
+            os.path.join(
+                os.path.pardir,
+                os.path.dirname(configs["dataset-output-path"]),
+                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+            ),
+            _new_dataset,
+            fmt="%f"
+        )
     dataset = load_dataset(os.path.join(
             os.path.pardir,
             os.path.dirname(configs["dataset-output-path"]),
@@ -426,7 +426,6 @@ def main():
 if __name__ == '__main__':
     configs = get_configs(parse_args().configs)
     metrics = ["ipc", "power", "area"]
-    metrics = ["area"]
     opt = "xgboost"
     configs["logger"] = None
     main()

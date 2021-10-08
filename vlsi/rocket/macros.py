@@ -9,20 +9,38 @@ MACROS = {
         os.path.pardir
     ),
     "chipyard-root": "/research/dept8/gds/cbai/research/chipyard",
-    "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr",
-    # CUHK
-    # "gem5-root": "/home/baichen/cbai/research/gem5-repo/",
-    # proj12
-    "gem5-root": "/home/cbai/research/gem5-repo",
-    # "gem5-root": "/research/dept8/gds/cbai/research/gem5-repo/",
-    # "gem5-benchmark-root": "/research/dept8/gds/cbai/data/gem5-riscv-tests",
-    # CUHK
-    # "gem5-benchmark-root": "/home/baichen/cbai/research/data/gem5-riscv-tests"
-    # proj12
-    "gem5-benchmark-root": "/home/cbai/data/gem5-riscv-tests"
+    "power-root": "/research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr"
 }
 
 def handle_macros():
+    machine = os.popen("hostname").readlines()[0].strip()
+    if machine == "cuhk":
+        MACROS["gem5-root"] = os.path.join(
+            os.sep, "home", "baichen", "cbai", "research", "gem5-repo"
+        )
+        MACROS["gem5-benchmark-root"] = os.path.join(
+            os.sep, "home", "baichen", "cbai", "research", "data", "gem5-riscv-tests"
+        )
+    elif machine == "proj12":
+        MACROS["gem5-root"] = os.path.join(
+            os.sep, "home", "cbai", "research", "gem5-repo"
+        )
+        MACROS["gem5-benchmark-root"] = os.path.join(
+            os.sep, "home", "cbai", "data", "gem5-riscv-tests"
+        )
+    elif machine.startswith("hpc"):
+        MACROS["gem5-root"] = os.path.join(
+            os.sep, "research", "dept8", "gds", "cbai", "research", "gem5-repo"
+        )
+        MACROS["gem5-benchmark-root"] = os.path.join(
+            os.sep, "research", "dept8", "gds", "cbai", "data", "gem5-riscv-tests"
+        )
+    elif machine.startswith("dgg4"):
+        pass
+    else:
+        print("[ERROR]: %s is not supported." % machine)
+        exit(-1)
+
     MACROS["rl-explorer-root"] = os.path.join(
         os.path.abspath(os.path.dirname(__file__)),
         os.path.pardir,

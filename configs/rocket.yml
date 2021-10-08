@@ -79,7 +79,7 @@ benchmarks:
   # - spmv
 
 # mode: generate-design | generate-dataset | rl
-mode: generate-dataset
+mode: rl
 
 # design: boom | rocket | cva6
 design: rocket
@@ -113,7 +113,7 @@ cuda: False
 # random seed
 seed: 2021
 # no. of A3C agents
-num-process: 5
+num-process: 1
 # discount factor for rewards
 gamma: 0.99
 # hidden size
@@ -124,7 +124,7 @@ hidden-size:
 # no. of TD steps
 n-step-td: 5
 # no. of environment steps to train
-num-env-step: 10000
+num-env-step: 100
 # value loss coefficient
 value-loss-weight: 0.5
 # entropy term coefficient
@@ -138,7 +138,7 @@ alpha: 0.99
 # max. norm of gradients
 max-grad-norm: 0.5
 # save interval, one save per n updates
-save-interval: 100
+save-interval: 10
 # eval interval, one eval per n updates
 eval-interval: 500
 # early stopping criterion

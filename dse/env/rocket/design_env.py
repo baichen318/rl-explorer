@@ -8,6 +8,10 @@ import logging
 import gym
 from gym import spaces
 import numpy as np
+try:
+    from sklearn.externals import joblib
+except ImportError:
+    import joblib
 from dse.env.rocket.design_space import parse_design_space
 from vlsi.rocket.vlsi import online_vlsi, test_online_vlsi
 
@@ -19,10 +23,13 @@ class BasicEnv(gym.Env):
         # NOTICE: `self.idx`, a key to distinguish different
         # gem5 repo.
         self.idx = idx
+        # NOTICE: every agent should have different initial seeds,
+        # so we make a small perturbation.
+        seed = round(np.random.rand() * self.configs["seed"])
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],
-            random_state=self.configs["seed"],
+            random_state=seed,
         )
         self.action_list = self.construct_action_list()
         self.set_random_state(self.configs["seed"])
@@ -58,6 +65,30 @@ class RocketDesignEnv(BasicEnv):
         self.n_step = 0
         self.last_update = 0
         self.best_reward = 0
+        self.load_model()
+
+    def load_model(self):
+        self.ipc_model = joblib.load(
+            os.path.join(
+                "tools",
+                self.configs["ppa-model"],
+                self.configs["design"] + '-' + "ipc.pt"
+            )
+        )
+        self.power_model = joblib.load(
+            os.path.join(
+                "tools",
+                self.configs["ppa-model"],
+                self.configs["design"] + '-' + "power.pt"
+            )
+        )
+        self.area_model = joblib.load(
+            os.path.join(
+                "tools",
+                self.configs["ppa-model"],
+                self.configs["design"] + '-' + "area.pt"
+            )
+        )
 
     def step(self, action):
         assert self.action_space.contains(action), "[ERROR]: action %d is unsupported" % action
@@ -70,11 +101,34 @@ class RocketDesignEnv(BasicEnv):
                 idx += 1
         self.state[idx] = self.action_list[action]
 
-        reward = self.design_space.evaluate_microarchitecture(
+        ipc, power, area = self.design_space.evaluate_microarchitecture(
             self.configs,
             self.state.numpy().astype(int),
             self.idx
         )
+        ipc = self.ipc_model.predict(
+            np.expand_dims(
+                np.concatenate((self.state.numpy(), [ipc])),
+                axis=0
+            )
+        )
+        power = self.power_model.predict(
+            np.expand_dims(
+                np.concatenate((self.state.numpy(), [power])),
+                axis=0
+            )
+        )
+        area = self.area_model.predict(
+            np.expand_dims(
+                np.concatenate((self.state.numpy(), [area])),
+                axis=0
+            )
+        )
+        # TODO: PV as the reward
+        reward = torch.Tensor(
+            (ipc + 1e3 * power + 1e-6 * area).squeeze()
+        )
+
         msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)
         self.info(msg)
         if reward > self.best_reward:

@@ -115,7 +115,6 @@ def rl_explorer():
         a3c(BoomDesignEnv, configs)
     elif configs["design"] == "rocket":
         from dse.env.rocket.design_env import RocketDesignEnv
-        env = RocketDesignEnv(configs)
         a3c(RocketDesignEnv, configs)
     else:
         assert configs["design"] == "cva6", \
