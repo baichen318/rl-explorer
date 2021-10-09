@@ -506,6 +506,7 @@ class Gem5Wrapper(BasicComponent):
             cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
             cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
             cmd += "cd -; "
         elif machine == "proj12":
             cmd = "cd %s; " % self.root
@@ -547,9 +548,9 @@ class Gem5Wrapper(BasicComponent):
             remove(os.path.join(self.root_temp, "m5out-%s" % bmark))
         ipc = 0
         for bmark in self.configs["benchmarks"]:
-            if machine == "proj12" or machine.startswith("dgg4"):
+            if machine == "proj12" or machine == "cuhk" or machine.startswith("dgg4"):
                 cmd = "cd %s; build/RISCV/gem5-%d-%d.opt configs/example/se.py " % (self.root, self.state[0], self.state[5])
-            elif machine == "cuhk" or machine.startswith("hpc"):
+            elif machine.startswith("hpc"):
                 cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % (self.root)
             cmd += "--cmd=%s " % os.path.join(
                 MACROS["gem5-benchmark-root"],

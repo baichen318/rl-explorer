@@ -2,7 +2,13 @@
 
 import sys
 import visdom
+import numpy as np
 from subprocess import Popen, PIPE
+
+if sys.version_info[0] == 2:
+    VisdomExceptionBase = Exception
+else:
+    VisdomExceptionBase = ConnectionError
 
 class Visualizer(object):
     """docstring for Visualizer"""
@@ -68,7 +74,7 @@ class Visualizer(object):
                 Y=np.array(self.plot_reward['Y']),
                 opts={
                     "title": "Rewards over time",
-                    "legend": self.plot_loss["legend"],
+                    "legend": self.plot_reward["legend"],
                     "xlabel": "epoch",
                     "ylabel": "reward"
                 },
