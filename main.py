@@ -74,8 +74,9 @@ def generate_dataset():
         from vlsi.boom.vlsi import generate_dataset
         generate_dataset(configs)
     elif configs["design"] == "rocket":
-        from vlsi.rocket.vlsi import generate_dataset
-        generate_dataset(configs)
+        from vlsi.rocket.vlsi import generate_dataset, generate_detail_dataset
+        # generate_dataset(configs)
+        generate_detail_dataset(configs)
     elif configs["design"] == "cva6":
         from vlsi.cva6.vlsi import generate_dataset
         generate_dataset(configs)
