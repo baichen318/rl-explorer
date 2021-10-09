@@ -109,6 +109,7 @@ def a3c(env, configs):
     buffer.obs[0].copy_(obs)
     buffer.to(device)
     episode_rewards = deque(maxlen=10)
+    total_rewards = []
     start = time.time()
     num_updates = configs["num-env-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
@@ -127,6 +128,7 @@ def a3c(env, configs):
             for _info in info:
                 if "reward" in _info.keys():
                     episode_rewards.append(_info["reward"])
+                    total_rewards.append(_info["reward"])
 
             masks = torch.FloatTensor(
                 [[0.0] if _done else [1.0] for _done in done]
@@ -182,10 +184,17 @@ def a3c(env, configs):
                     }
                 ),
                 OrderedDict({
-                        "mean reward": np.mean(episode_rewards),
-                        "median reward": np.median(episode_rewards),
-                        "min. reward": np.min(episode_rewards),
-                        "max. reward": np.max(episode_rewards)
+                        "mean episode reward": np.mean(episode_rewards),
+                        "median episode reward": np.median(episode_rewards),
+                        "min. episode reward": np.min(episode_rewards),
+                        "max. episode reward": np.max(episode_rewards)
+                    }
+                ),
+                OrderedDict({
+                        "mean total reward": np.mean(total_rewards),
+                        "median total reward": np.median(total_rewards),
+                        "min. total reward": np.min(total_rewards),
+                        "max. total reward": np.max(total_rewards)
                     }
                 )
             )

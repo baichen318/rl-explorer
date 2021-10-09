@@ -589,7 +589,6 @@ class Gem5Wrapper(BasicComponent):
             cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
             execute(cmd, logger=self.configs["logger"])
             instructions, cycles = self.get_results()
-            print("[TEST]: instructions:", instructions, "cycles:", cycles)
             ipc += (instructions / cycles)
             # for McPAT usage
             execute(
@@ -628,7 +627,6 @@ class Gem5Wrapper(BasicComponent):
                 except Exception as e:
                     print("[ERROR]:", e)
                     exit(1)
-            print("[TEST]", mcpat_report, "dynamic power", dynamic)
             return subthreshold + gate + dynamic
 
         def extract_area(mcpat_report):
@@ -641,7 +639,6 @@ class Gem5Wrapper(BasicComponent):
                 except Exception as e:
                     print("[ERROR]:", e)
                     exit(1)
-            print("[TEST]", mcpat_report, "area", area)
             return area
 
         power, area = 0, 0
