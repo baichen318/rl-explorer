@@ -37,6 +37,13 @@ def handle_macros():
         )
     elif machine.startswith("dgg4"):
         pass
+    elif machine == "MacBook-Pro.local":
+        MACROS["gem5-root"] = os.path.join(
+            os.sep, "Users", "baichen", "Research", "gem5-repo"
+        )
+        MACROS["gem5-benchmark-root"] = os.path.join(
+            os.sep, "Users", "baichen", "Research", "gem5-riscv-tests"
+        )
     else:
         print("[ERROR]: %s is not supported." % machine)
         exit(-1)

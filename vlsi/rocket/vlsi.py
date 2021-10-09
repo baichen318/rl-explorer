@@ -525,6 +525,13 @@ class Gem5Wrapper(BasicComponent):
             cmd += "cd -"
         elif machine.startswith("dgg4"):
             pass
+        elif machine == "MacBook-Pro.local":
+            cmd = "cd %s; " % self.root
+            cmd += "scons "
+            cmd += "build/RISCV/gem5.opt "
+            cmd += "-j%d; " % int(round(multiprocessing.cpu_count()))
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
+            cmd += "cd -; "
         else:
             print("[ERROR]: %s is not support." % machine)
             exit(-1)
@@ -548,7 +555,10 @@ class Gem5Wrapper(BasicComponent):
             remove(os.path.join(self.root_temp, "m5out-%s" % bmark))
         ipc = 0
         for bmark in self.configs["benchmarks"]:
-            if machine == "proj12" or machine == "cuhk" or machine.startswith("dgg4"):
+            if machine == "proj12" or \
+                machine == "cuhk" or \
+                machine.startswith("dgg4") or \
+                machine == "MacBook-Pro.local":
                 cmd = "cd %s; build/RISCV/gem5-%d-%d.opt configs/example/se.py " % (self.root, self.state[0], self.state[5])
             elif machine.startswith("hpc"):
                 cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % (self.root)
