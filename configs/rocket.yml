@@ -93,7 +93,7 @@ design-output-path: data/rocket/rocket-design.txt
 idx: 1
 
 # generate-data: data-output-path
-dataset-output-path: data/rocket/dataset-v3.txt
+dataset-output-path: data/rocket/dataset-v2.txt
 
 # PPA related
 # performance model learning rate
@@ -128,9 +128,11 @@ hidden-size:
 # no. of TD steps
 n-step-td: 5
 # no. of environment steps to train
-num-env-step: 1000
+num-train-step: 1000
+# max. of environment steps
+num-env-step: 20
 # value loss coefficient
-value-loss-weight: 0.5
+value-loss-weight: 0.01
 # entropy term coefficient
 entropy-weight: 0.01
 # learning rate
@@ -145,8 +147,6 @@ max-grad-norm: 0.5
 save-interval: 1
 # eval interval, one eval per n updates
 eval-interval: 500
-# early stopping criterion
-early-stopping: 200
 # TODO: these flags need to be verified
 batch-size: 16
 log: logs/a3c-rocket

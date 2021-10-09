@@ -81,6 +81,7 @@ def a3c(env, configs):
     actor_critic = Policy(
         envs.observation_space.shape,
         envs.action_space,
+        envs.reward_size,
         configs["hidden-size"]
     )
     actor_critic.to(device)
@@ -100,6 +101,7 @@ def a3c(env, configs):
         configs["n-step-td"],
         configs["num-process"],
         envs.observation_space.shape,
+        envs.reward_size
     )
 
     visualizer = Visualizer(configs)
@@ -111,7 +113,7 @@ def a3c(env, configs):
     episode_rewards = deque(maxlen=10)
     total_rewards = []
     start = time.time()
-    num_updates = configs["num-env-step"] // configs["n-step-td"] // configs["num-process"]
+    num_updates = configs["num-train-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
         for step in range(configs["n-step-td"]):
             with torch.no_grad():
@@ -120,15 +122,15 @@ def a3c(env, configs):
                     buffer.masks[step]
                 )
             obs, reward, done, info = envs.step(action)
-            msg = "[INFO]: action: {}, obs: {}, reward: {}, done: {}, info: {}".format(
-                action, obs, reward, done, info
+            msg = "[INFO]: action: {}, obs: {}, reward: {}, done: {}".format(
+                action, obs, reward, done
             )
             configs["logger"].info(msg)
 
-            for _info in info:
-                if "reward" in _info.keys():
-                    episode_rewards.append(_info["reward"])
-                    total_rewards.append(_info["reward"])
+            # for _info in info:
+            #     if "reward" in _info.keys():
+            #         episode_rewards.append(_info["reward"])
+            #         total_rewards.append(_info["reward"])
 
             masks = torch.FloatTensor(
                 [[0.0] if _done else [1.0] for _done in done]
@@ -139,10 +141,13 @@ def a3c(env, configs):
             )
             buffer.insert(obs, action, action_log_prob, value, reward, masks, bad_masks)
 
+        # Omega preference space on PPA metrics
+        w = torch.randn(1, envs.reward_size)
+        w = torch.abs(w) / torch.sum(torch.abs(w))
         with torch.no_grad():
-            next_value = actor_critic.get_value(
+            _, next_value = actor_critic.get_value(
                 buffer.obs[-1],
-                buffer.masks[-1]
+                w
             ).detach()
         buffer.compute_returns(next_value, configs["gamma"])
         value_loss, action_loss, dist_entropy = agent.update(buffer)
@@ -191,9 +196,9 @@ def a3c(env, configs):
                     }
                 ),
                 OrderedDict({
-                        "mean total reward": np.mean(total_rewards),
-                        "median total reward": np.median(total_rewards),
-                        "min. total reward": np.min(total_rewards),
+                        # "mean total reward": np.mean(total_rewards),
+                        # "median total reward": np.median(total_rewards),
+                        # "min. total reward": np.min(total_rewards),
                         "max. total reward": np.max(total_rewards)
                     }
                 )

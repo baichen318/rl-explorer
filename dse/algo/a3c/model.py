@@ -12,18 +12,19 @@ def init(module, weight_init, bias_init, gain=1):
     return module
 
 class NNBase(nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, reward_size, action_size):
         super(NNBase, self).__init__()
         self._hidden_size = hidden_size
+        self._output_size = self.action_size * self.reward_size
 
     @property
     def output_size(self):
-        return self._hidden_size[-1]
+        return _output_size
 
 
 class MLPBase(NNBase):
-    def __init__(self, num_inputs, hidden_size):
-        super(MLPBase, self).__init__(hidden_size)
+    def __init__(self, num_inputs, reward_size, action_size, hidden_size):
+        super(MLPBase, self).__init__(reward_size, action_size)
         _init = lambda m: init(
             m,
             nn.init.orthogonal_,
@@ -31,7 +32,7 @@ class MLPBase(NNBase):
         )
         # Actor
         self.actor = nn.Sequential(
-            _init(nn.Linear(num_inputs, hidden_size[0])), nn.Tanh(),
+            _init(nn.Linear(num_inputs + reward_size, hidden_size[0])), nn.Tanh(),
             _init(nn.Linear(hidden_size[0], hidden_size[1])), nn.Tanh(),
             _init(nn.Linear(hidden_size[1], hidden_size[2])), nn.Tanh()
         )
@@ -41,10 +42,10 @@ class MLPBase(NNBase):
             _init(nn.Linear(hidden_size[0], hidden_size[1])), nn.Tanh(),
             _init(nn.Linear(hidden_size[1], hidden_size[2])), nn.Tanh()
         )
-        self.critic_linear = _init(nn.Linear(hidden_size[-1], 1))
+        self.critic_linear = _init(nn.Linear(hidden_size[-1], action_size * reward_size))
         self.train()
 
-    def forward(self, x, masks):
+    def forward(self, x):
         hidden_critic = self.critic(x)
         hidden_actor = self.actor(x)
 
@@ -85,10 +86,12 @@ class Categorical(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, hidden_size):
+    def __init__(self, obs_shape, action_space, reward_size, hidden_size):
         super(Policy, self).__init__()
-        self.base = MLPBase(obs_shape[0], hidden_size)
-        self.dist = Categorical(self.base.output_size, action_space.n)
+        self.reward_size = reward_size
+        self.action_size = action_space.n
+        self.base = MLPBase(obs_shape[0], reward_size, action_size, hidden_size)
+        # self.dist = Categorical(self.base.output_size, action_space.n)
 
     def forward(self, inputs, masks):
         raise NotImplementedError
@@ -102,10 +105,30 @@ class Policy(nn.Module):
 
         return value, action, action_log_prob
 
-    def get_value(self, inputs, masks):
-        value, _ = self.base(inputs, masks)
+    def mo_operator(self, q, w):
+        w = w.unsqueeze(2).repeat(1, self.action_size, 1).view(-1, self.reward_size)
+        prod = torch.bmm(q.unsqueeze(1), w.unsqueeze(2)).squeeze().view(-1, self.action_size)
+        index = prod.max(1)[1]
+        mask = torch.ByteTensor(prod.size()).zero_()
+        mask.scatter_(1, index.data.unsqueeze(1), 1)
+        mask = mask.view(-1, 1).repeat(1, self.reward_size)
 
-        return value
+        # get the MOQ: <1 x `self.reward_size`>
+        MOQ = q.masked_select(Variable(mask)).view(-1, self.reward_size)
+
+        return MOQ
+
+
+    def get_value(self, inputs, preference):
+        x = torch.cat((inputs, preference), dim=1)
+        value, _ = self.base(inputs)
+
+        MOQ = self.mo_operator(
+            value.detach(),
+            preference
+        )
+
+        return MOQ, value
 
     def evaluate_actions(self, inputs, masks, action):
         value, actor_features = self.base(inputs, masks)

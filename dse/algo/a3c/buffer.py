@@ -8,11 +8,13 @@ class Buffer(object):
         num_steps,
         num_processes,
         obs_shape,
+        reward_size
     ):
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
-        self.rewards = torch.zeros(num_steps, num_processes, 1)
+        self.rewards = torch.zeros(num_steps, num_processes, reward_size)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
-        self.returns = torch.zeros(num_steps + 1, num_processes, 1)
+        # TODO: action_size
+        self.returns = torch.zeros(num_steps + 1, num_processes, action_size, reward_size)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
         self.actions = torch.zeros(num_steps, num_processes, 1).long()
         self.masks = torch.ones(num_steps + 1, num_processes, 1)

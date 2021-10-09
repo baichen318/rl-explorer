@@ -61,6 +61,7 @@ class RocketDesignEnv(BasicEnv):
         super(RocketDesignEnv, self).__init__(configs, idx)
         self.action_space = spaces.Discrete(len(self.action_list))
         self.observation_space = spaces.MultiDiscrete(self.design_space.dims)
+        self.reward_size = 3
         self.state = None
         self.n_step = 0
         self.last_update = 0
@@ -125,28 +126,18 @@ class RocketDesignEnv(BasicEnv):
             )
         )
         # TODO: PV as the reward
+        # reward = torch.Tensor(
+        #     (ipc + 1e3 * power + 1e-6 * area).squeeze()
+        # )
         reward = torch.Tensor(
-            (ipc + 1e3 * power + 1e-6 * area).squeeze()
+            np.concatenate((ipc, power, area))
         )
 
         msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)
         self.info(msg)
-        if reward > self.best_reward:
-            self.best_reward = reward
-            self.last_update = self.n_step
-            msg = "[INFO]: current best state: %s, current best reward: %.8f" % (
-                self.state.numpy(),
-                self.best_reward
-            )
-            self.info(msg)
-        done = bool(
-            self.n_step > self.configs["num-env-step"] or \
-            (self.n_step - self.last_update) >= self.configs["early-stopping"]
-        )
+        done = bool(self.n_step > self.configs["num-env-step"])
         self.n_step += 1
-        # construct `info`
-        info = {}
-        return self.state.clone(), reward.clone(), done, dict(reward=float(reward))
+        return self.state.clone(), reward, done, {}
 
     def reset(self):
         self.state = self.design_space.sample(1)

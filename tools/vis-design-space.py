@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from util import load_txt, get_configs, parse_args
 
-def vis_design_space():
+def vis_design_space_v1():
     dataset = load_txt(os.path.join(os.path.pardir, configs["dataset-output-path"]), fmt=float)
     remove_idx = []
     perf = dataset[:, -3]
@@ -47,6 +47,11 @@ def vis_design_space():
     plt.show()
 
 
+def vis_design_space_v2():
+    # this is for detail dataset
+    pass
+
+
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
-    vis_design_space()
+    vis_design_space_v1()
