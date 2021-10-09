@@ -107,6 +107,10 @@ ppa-epoch: 2000
 # ppa model path
 ppa-model: calib-models
 
+# Vis. related
+# port
+port: 20123
+
 # RL related
 # cuda enable
 cuda: False
@@ -124,7 +128,7 @@ hidden-size:
 # no. of TD steps
 n-step-td: 5
 # no. of environment steps to train
-num-env-step: 100
+num-env-step: 1000
 # value loss coefficient
 value-loss-weight: 0.5
 # entropy term coefficient
@@ -138,7 +142,7 @@ alpha: 0.99
 # max. norm of gradients
 max-grad-norm: 0.5
 # save interval, one save per n updates
-save-interval: 10
+save-interval: 1
 # eval interval, one eval per n updates
 eval-interval: 500
 # early stopping criterion

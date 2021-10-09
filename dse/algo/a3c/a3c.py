@@ -5,10 +5,12 @@ import os
 import torch
 import torch.nn as nn
 import numpy as np
-from collections import deque
+from collections import deque, OrderedDict
 from dse.algo.a3c.util import make_vec_envs
 from dse.algo.a3c.buffer import Buffer
 from dse.algo.a3c.model import Policy
+from visualizer import Visualizer
+
 
 class A3CAgent():
     def __init__(
@@ -100,6 +102,7 @@ def a3c(env, configs):
         envs.observation_space.shape,
     )
 
+    visualizer = Visualizer(configs)
     # reset
     obs = envs.reset()
     configs["logger"].info("[INFO]: initialized status: {}".format(obs))
@@ -167,5 +170,22 @@ def a3c(env, configs):
                 os.path.join(
                     configs["model-path"],
                     "a3c.pt"
+                )
+            )
+            visualizer.plot_current_status(
+                i,
+                i / num_updates,
+                OrderedDict({
+                        "value loss": value_loss,
+                        "action loss": action_loss,
+                        "entropy loss": dist_entropy
+                    }
+                ),
+                OrderedDict({
+                        "mean reward": np.mean(episode_rewards),
+                        "median reward": np.median(episode_rewards),
+                        "min. reward": np.min(episode_rewards),
+                        "max. reward": np.max(episode_rewards)
+                    }
                 )
             )
