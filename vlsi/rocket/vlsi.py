@@ -926,3 +926,99 @@ def generate_dataset(configs):
         dataset.append(_dataset)
     dataset = np.array(dataset)
     write_txt(configs["dataset-output-path"], dataset, fmt="%f")
+
+
+def generate_detail_ipc(configs, root):
+    ipc = [0 for i in range(3 * len(configs["benchmarks"]))]
+    for bmark in configs["benchmarks"]:
+        f = os.path.join(
+            root,
+            bmark + ".riscv",
+            bmark + ".log"
+        )
+        if if_exist(f):
+            with open(f, 'r') as f:
+                cnt = f.readlines()
+            for line in cnt:
+                if "[INFO]" in line and "cycles" in line and "instructions" in line:
+                    try:
+                        cycles = re.search(r'\d+\ cycles', line).group()
+                        cycles = int(cycles.split("cycles")[0])
+                        instructions = re.search(r'\d+\ instructions', line).group()
+                        instructions = int(_instructions.split("instructions")[0])
+                        idx = configs["benchmarks"].index(bmark)
+                        ipc[3 * idx] = instructions
+                        ipc[3 * idx + 1] = cycles
+                        ipc[3 * idx + 2] = instructions / cycles
+                    except AttributeError:
+                        continue
+    return ipc
+
+
+def generate_detail_power(configs, root):
+    power = [0 for i in range(len(configs["benchmarks"]))]
+    for bmark in configs["benchmarks"]:
+        f = os.path.join(
+            root,
+            bmark,
+            "reports",
+            "vcdplus.power.avg.max.report"
+        )
+        if if_exist(f):
+            with open(f, 'r') as f:
+                for line in f.readlines():
+                    # NOTICE: extract power of RocketTile
+                    if "tile (RocketTile)" in line:
+                        power[configs["benchmarks"].index(bmark)] = float(line.split()[-2])
+    return power
+
+
+def generate_detail_dataset(configs):
+    def write_metainfo(path, dataset):
+        print("[INFO]: writing to %s" % path)
+        with open(path, 'w') as f:
+            for data in dataset:
+                f.write(data[0] + '\t')
+                f.write(str(data[1]) + '\t')
+                for _data in data[2]:
+                    f.write(_data[0] + '\t')
+                    f.write(str(_data[1]) + '\t')
+                    f.write(str(_data[2]) + '\t')
+                    f.write(str(_data[3]) + '\t')
+                f.write("avg" + '\t')
+                f.write(str(data[3]) + '\n')
+
+    dataset = []
+    design_set = load_txt(configs["design-output-path"])
+    for i in range(1, configs["batch"] + 1):
+        _dataset = np.array([])
+        # add arch. feature
+        _dataset = np.concatenate((_dataset, design_set[i - 1]))
+        soc_name = "Rocket%dConfig" % i
+        project_name = "chipyard.TestHarness.Rocket%dConfig-ChipTop" % i
+        vlsi_root = os.path.join(
+            MACROS["chipyard-vlsi-root"],
+            "build",
+            project_name
+        )
+        power_root = os.path.join(
+            MACROS["power-root"],
+            soc_name + "-power"
+        )
+        vlsi_sim_root = os.path.join(
+            vlsi_root,
+            "sim-syn-rundir"
+        )
+        vlsi_syn_root = os.path.join(
+            vlsi_root,
+            "syn-rundir"
+        )
+        # generate ipc
+        _dataset = np.concatenate((_dataset, generate_detail_ipc(configs, vlsi_sim_root)))
+        # generate power
+        _dataset = np.concatenate((_dataset, [generate_detail_power(configs, power_root)]))
+        # generate area
+        _dataset = np.concatenate((_dataset, [generate_area(configs, vlsi_syn_root)]))
+        dataset.append(_dataset)
+    dataset = np.array(dataset)
+    write_txt(configs["dataset-output-path"], dataset, fmt="%f")
