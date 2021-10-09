@@ -942,7 +942,7 @@ def generate_detail_ipc(configs, root):
                         cycles = re.search(r'\d+\ cycles', line).group()
                         cycles = int(cycles.split("cycles")[0])
                         instructions = re.search(r'\d+\ instructions', line).group()
-                        instructions = int(_instructions.split("instructions")[0])
+                        instructions = int(instructions.split("instructions")[0])
                         idx = configs["benchmarks"].index(bmark)
                         ipc[3 * idx] = instructions
                         ipc[3 * idx + 1] = cycles
@@ -1013,7 +1013,7 @@ def generate_detail_dataset(configs):
         # generate ipc
         _dataset = np.concatenate((_dataset, generate_detail_ipc(configs, vlsi_sim_root)))
         # generate power
-        _dataset = np.concatenate((_dataset, [generate_detail_power(configs, power_root)]))
+        _dataset = np.concatenate((_dataset, generate_detail_power(configs, power_root)))
         # generate area
         _dataset = np.concatenate((_dataset, [generate_area(configs, vlsi_syn_root)]))
         dataset.append(_dataset)
