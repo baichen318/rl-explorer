@@ -12,19 +12,23 @@ def init(module, weight_init, bias_init, gain=1):
     return module
 
 class NNBase(nn.Module):
-    def __init__(self, reward_size, action_size):
+    def __init__(self, reward_size, action_size, hidden_size):
         super(NNBase, self).__init__()
-        self._hidden_size = hidden_size
-        self._output_size = self.action_size * self.reward_size
+        self._actor_output_size = hidden_size
+        self._critic_output_size = action_size * reward_size
 
     @property
-    def output_size(self):
-        return _output_size
+    def actor_output_size(self):
+        return self._actor_output_size
+
+    @property
+    def critic_output_size(self):
+        return _critic_output_size
 
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, reward_size, action_size, hidden_size):
-        super(MLPBase, self).__init__(reward_size, action_size)
+        super(MLPBase, self).__init__(reward_size, action_size, hidden_size[-1])
         _init = lambda m: init(
             m,
             nn.init.orthogonal_,
@@ -38,7 +42,7 @@ class MLPBase(NNBase):
         )
         # Critic
         self.critic = nn.Sequential(
-            _init(nn.Linear(num_inputs, hidden_size[0])), nn.Tanh(),
+            _init(nn.Linear(num_inputs + reward_size, hidden_size[0])), nn.Tanh(),
             _init(nn.Linear(hidden_size[0], hidden_size[1])), nn.Tanh(),
             _init(nn.Linear(hidden_size[1], hidden_size[2])), nn.Tanh()
         )
@@ -86,24 +90,30 @@ class Categorical(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, reward_size, hidden_size):
+    def __init__(self, configs, obs_shape, action_space):
         super(Policy, self).__init__()
-        self.reward_size = reward_size
+        self.reward_size = len(configs["metrics"])
         self.action_size = action_space.n
-        self.base = MLPBase(obs_shape[0], reward_size, action_size, hidden_size)
-        # self.dist = Categorical(self.base.output_size, action_space.n)
+        self.base = MLPBase(obs_shape[0], self.reward_size, self.action_size, configs["hidden-size"])
+        self.dist = Categorical(self.base.actor_output_size, action_space.n)
 
-    def forward(self, inputs, masks):
+    def forward(self, inputs):
         raise NotImplementedError
 
-    def act(self, inputs, masks):
-        value, actor_features = self.base(inputs, masks)
+    def act(self, inputs, preference):
+        x = torch.cat((inputs, preference), dim=1)
+        value, actor_features = self.base(x)
         dist = self.dist(actor_features)
         action = dist.sample()
         action_log_prob = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
+        value = self.mo_layout(value)
+
         return value, action, action_log_prob
+
+    def mo_layout(self, value):
+        return value.view(value.size(0), self.action_size, self.reward_size)
 
     def mo_operator(self, q, w):
         w = w.unsqueeze(2).repeat(1, self.action_size, 1).view(-1, self.reward_size)
@@ -114,26 +124,31 @@ class Policy(nn.Module):
         mask = mask.view(-1, 1).repeat(1, self.reward_size)
 
         # get the MOQ: <1 x `self.reward_size`>
-        MOQ = q.masked_select(Variable(mask)).view(-1, self.reward_size)
+        MOQ = q.masked_select(torch.autograd.Variable(mask.bool())).view(-1, self.reward_size)
 
         return MOQ
 
 
     def get_value(self, inputs, preference):
         x = torch.cat((inputs, preference), dim=1)
-        value, _ = self.base(inputs)
+        value, _ = self.base(x)
+
+        value = self.mo_layout(value)
 
         MOQ = self.mo_operator(
-            value.detach(),
+            value.detach().view(-1, self.reward_size),
             preference
         )
 
         return MOQ, value
 
-    def evaluate_actions(self, inputs, masks, action):
-        value, actor_features = self.base(inputs, masks)
+    def evaluate_actions(self, inputs, preference, action):
+        x = torch.cat((inputs, preference), dim=1)
+        value, actor_features = self.base(x)
         dist = self.dist(actor_features)
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
+
+        value = self.mo_layout(value)
 
         return value, action_log_probs, dist_entropy

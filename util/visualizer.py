@@ -63,8 +63,7 @@ class Visualizer(object):
         self.plot_loss['Y'].append([losses[k] for k in self.plot_loss["legend"]])
         self.plot_episode_reward['X'].append(epoch + counter_ratio)
         self.plot_episode_reward['Y'].append([episode_rewards[k] for k in self.plot_episode_reward["legend"]])
-        self.plot_total_reward['X'].append(epoch + counter_ratio)
-        self.plot_total_reward['Y'].append([total_rewards[k] for k in self.plot_total_reward["legend"]])
+        self.plot_total_reward['Y'].append([total_rewards[k] for k in self.plot_total_reward["legend"]][0])
         try:
             self.vis.line(
                 X=np.stack(
@@ -94,13 +93,9 @@ class Visualizer(object):
                 win=2
             )
             self.vis.line(
-                X=np.stack(
-                    [np.array(self.plot_total_reward['X'])] * len(self.plot_total_reward["legend"]),
-                    1
-                ),
                 Y=np.array(self.plot_total_reward['Y']),
                 opts={
-                    "title": "Total rewards over time",
+                    "title": "Total rewards over epoch",
                     "legend": self.plot_total_reward["legend"],
                     "xlabel": "Epoch",
                     "ylabel": "Total reward"

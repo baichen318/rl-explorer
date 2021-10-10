@@ -125,14 +125,12 @@ class RocketDesignEnv(BasicEnv):
                 axis=0
             )
         )
-        # TODO: PV as the reward
-        # reward = torch.Tensor(
-        #     (ipc + 1e3 * power + 1e-6 * area).squeeze()
-        # )
+        # NOTICE: scale it manually!
+        power = 10 * power
+        area = 1e-6 * area
         reward = torch.Tensor(
-            np.concatenate((ipc, power, area))
-        )
-
+            np.concatenate((ipc, -power, -area))
+        ).squeeze(0)
         msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)
         self.info(msg)
         done = bool(self.n_step > self.configs["num-env-step"])

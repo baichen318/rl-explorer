@@ -112,6 +112,11 @@ ppa-model: calib-models
 port: 20123
 
 # RL related
+# metrics:
+metrics:
+  - ipc
+  - power
+  - area
 # cuda enable
 cuda: False
 # random seed
@@ -126,13 +131,13 @@ hidden-size:
   - 500
   - 50
 # no. of TD steps
-n-step-td: 5
+n-step-td: 1
 # no. of environment steps to train
 num-train-step: 1000
 # max. of environment steps
 num-env-step: 20
 # value loss coefficient
-value-loss-weight: 0.01
+value-loss-weight: 0.1
 # entropy term coefficient
 entropy-weight: 0.01
 # learning rate
@@ -149,5 +154,7 @@ save-interval: 1
 eval-interval: 500
 # TODO: these flags need to be verified
 batch-size: 16
+# intial beta for evelope A3C
+beta: 0.01
 log: logs/a3c-rocket
 debug: False

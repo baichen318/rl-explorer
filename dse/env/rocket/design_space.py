@@ -108,7 +108,7 @@ class RocketDesignSpace(Space):
         manager = Gem5Wrapper(configs, state, idx)
         ipc = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
-        print("[INFO]: state:", state, "IPC: %f, Power: %f, Area: %f" % (ipc, power, area))
+        print("[INFO]: state:", state, "before calib, IPC: %f, Power: %f, Area: %f" % (ipc, power, area))
         return ipc, power, area
 
 

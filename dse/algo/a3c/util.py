@@ -32,7 +32,7 @@ class A3CVecEnvWrapper(VecEnvWrapper):
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
         obs = torch.from_numpy(obs).float().to(self.device)
-        reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
+        reward = torch.from_numpy(reward).float()
         return obs, reward, done, info
 
 
