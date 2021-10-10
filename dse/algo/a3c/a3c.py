@@ -210,7 +210,7 @@ def a3c(env, configs):
             agent.save(
                 os.path.join(
                     configs["model-path"],
-                    "a3c.pt"
+                    "a3c-%d.pt" % (i + 1)
                 )
             )
             visualizer.plot_current_status(
@@ -232,5 +232,12 @@ def a3c(env, configs):
                 OrderedDict({
                         "max. total reward": np.max(total_rewards)
                     }
-                )
+                ),
+                OrderedDict({
+                        "mean total reward": np.mean(total_rewards),
+                        "median total reward": np.median(total_rewards),
+                        "min. total reward": np.min(total_rewards),
+                        "max. total reward": np.max(total_rewards),
+                    }
+                ),
             )

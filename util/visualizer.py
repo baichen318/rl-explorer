@@ -44,6 +44,7 @@ class Visualizer(object):
             counter_ratio,
             losses,
             episode_rewards,
+            max_total_rewards,
             total_rewards
         ):
         """
@@ -51,19 +52,25 @@ class Visualizer(object):
             counter_ratio: <float> -- progress (percentage) in the current epoch, between 0 to 1
             losses <OrderedDict> -- training losses stored in the format of (name, float) pairs
             episode_rewards: <OrderedDict> -- episode_rewards
+            max_total_rewards: <OrderedDict> -- max_total_rewards
             total_rewards: <OrderedDict> -- total_rewards
         """
         if not hasattr(self, "plot_loss"):
             self.plot_loss = {'X': [], 'Y': [], "legend": list(losses.keys())}
         if not hasattr(self, "plot_episode_reward"):
             self.plot_episode_reward = {'X': [], 'Y': [], "legend": list(episode_rewards.keys())}
+        if not hasattr(self, "plot_max_total_reward"):
+            self.plot_max_total_reward = {'X': [], 'Y': [], "legend": list(max_total_rewards.keys())}
         if not hasattr(self, "plot_total_reward"):
             self.plot_total_reward = {'X': [], 'Y': [], "legend": list(total_rewards.keys())}
         self.plot_loss['X'].append(epoch + counter_ratio)
         self.plot_loss['Y'].append([losses[k] for k in self.plot_loss["legend"]])
         self.plot_episode_reward['X'].append(epoch + counter_ratio)
         self.plot_episode_reward['Y'].append([episode_rewards[k] for k in self.plot_episode_reward["legend"]])
-        self.plot_total_reward['Y'].append([total_rewards[k] for k in self.plot_total_reward["legend"]][0])
+        self.plot_max_total_reward['X'].append(epoch + counter_ratio)
+        self.plot_max_total_reward['Y'].append([max_total_rewards[k] for k in self.plot_max_total_reward["legend"]][0])
+        self.plot_total_reward['X'].append(epoch + counter_ratio)
+        self.plot_total_reward['Y'].append([total_rewards[k] for k in self.plot_total_reward["legend"]])
         try:
             self.vis.line(
                 X=np.stack(
@@ -93,6 +100,21 @@ class Visualizer(object):
                 win=2
             )
             self.vis.line(
+                X=self.plot_max_total_reward['X'],
+                Y=self.plot_max_total_reward['Y'],
+                opts={
+                    "title": "Total rewards over epoch",
+                    "legend": self.plot_max_total_reward["legend"],
+                    "xlabel": "Epoch",
+                    "ylabel": "Total reward"
+                },
+                win=3
+            )
+            self.vis.line(
+                X=np.stack(
+                    [np.array(self.plot_total_reward['X'])] * len(self.plot_total_reward["legend"]),
+                    1
+                ),
                 Y=np.array(self.plot_total_reward['Y']),
                 opts={
                     "title": "Total rewards over epoch",
@@ -100,7 +122,7 @@ class Visualizer(object):
                     "xlabel": "Epoch",
                     "ylabel": "Total reward"
                 },
-                win=3
+                win=4
             )
         except VisdomExceptionBase:
             self.create_visdom_connections()
