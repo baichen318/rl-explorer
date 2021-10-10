@@ -371,8 +371,7 @@ def main():
             configs,
             # architectural feature
             data[:-3].astype(int),
-            1,
-            split=True
+            1
         )
         new_dataset.append(
             np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
