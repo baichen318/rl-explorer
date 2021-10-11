@@ -25,7 +25,7 @@ class BasicEnv(gym.Env):
         self.idx = idx
         # NOTICE: every agent should have different initial seeds,
         # so we make a small perturbation.
-        seed = round(np.random.rand() * self.configs["seed"])
+        seed = round(self.idx + np.random.rand() * self.configs["seed"])
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],

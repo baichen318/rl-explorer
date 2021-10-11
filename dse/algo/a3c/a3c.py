@@ -151,7 +151,7 @@ def a3c(env, configs):
     num_updates = configs["num-train-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
         # Omega preference space on PPA metrics
-        w = torch.randn(1, len(configs["metrics"]))
+        w = torch.randn(configs["num-process"], len(configs["metrics"]))
         w = torch.abs(w) / torch.sum(torch.abs(w))
         for step in range(configs["n-step-td"]):
             with torch.no_grad():

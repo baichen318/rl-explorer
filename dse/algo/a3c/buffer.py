@@ -17,6 +17,7 @@ class Buffer(object):
         self.action_log_probs = torch.zeros(configs["n-step-td"], configs["num-process"], 1)
         self.actions = torch.zeros(configs["n-step-td"], configs["num-process"], 1).long()
         self.masks = torch.ones(configs["n-step-td"] + 1, configs["num-process"], 1)
+        self.num_agents = configs["num-process"]
         self.num_steps = configs["n-step-td"]
         self.step = 0
 
@@ -57,6 +58,8 @@ class Buffer(object):
     ):
         self.returns[-1].copy_(next_value)
         for step in reversed(range(self.rewards.size(0))):
-            self.returns[step].copy_(
-                self.returns[step + 1] * gamma * self.masks[step + 1] + self.rewards[step]
-            )
+            for agent in range(self.num_agents):
+                self.returns[step].copy_(
+                    self.returns[step + 1][agent] * gamma * self.masks[step + 1][agent] + self.rewards[step][agent]
+                )
+
