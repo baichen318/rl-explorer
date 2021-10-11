@@ -58,7 +58,7 @@ class A3CAgent():
                 1, actions.view(-1, action_shape).view(-1, 1, 1).expand(values.size(0), 1, values.size(2))
             ).view(-1, reward_shape)
             return values, torch.bmm(
-                torch.autograd.Variable(w.unsqueeze(1)),
+                torch.autograd.Variable(w.repeat(self.configs["num-process"], 1).unsqueeze(1)),
                 values.unsqueeze(2)
             ).squeeze()
 
@@ -66,7 +66,7 @@ class A3CAgent():
 
         values, action_log_probs, dist_entropy = self.actor_critic.evaluate_actions(
             buffer.obs[:-1].view(-1, *obs_shape),
-            w,
+            w.repeat(self.configs["num-process"], 1),
             buffer.actions.view(-1, action_shape)
         )
 
@@ -77,7 +77,10 @@ class A3CAgent():
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         values, w_values = scalarize(values, buffer.actions)
-        returns, w_returns = scalarize(buffer.returns[:-1][0], buffer.actions)
+        returns, w_returns = scalarize(
+            buffer.returns[:-1].view(-1, self.actor_critic.action_size, reward_shape),
+            buffer.actions
+        )
 
         # NOTICE: beta * || w^TR - w^TV ||^2 + (1 - beta) * || R - V ||^2
         # NOTICE: advantages = w^TR - w^TV
@@ -144,9 +147,8 @@ def a3c(env, configs):
     configs["logger"].info("[INFO]: initialized status: {}".format(obs))
     buffer.obs[0].copy_(obs)
     buffer.to(device)
-    probe = [1 / 3, 1 / 3, 1 / 3]
     episode_rewards = deque(maxlen=10)
-    total_rewards = []
+    total_rewards, ipc, power, area = [], [], [], []
     start = time.time()
     num_updates = configs["num-train-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
@@ -162,6 +164,13 @@ def a3c(env, configs):
             )
             configs["logger"].info(msg)
             for r in reward:
+                # NOTICE: refers to dse/env/rocket/design_env.py
+                assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
+                ipc.append(r[0])
+                # unit: w
+                power.append((-r[1] / 10) * 1e3)
+                # unit: mm^2
+                area.append(-r[2])
                 r = r * (1 / 3)
                 episode_rewards.append(
                     torch.sum(r)
@@ -230,14 +239,29 @@ def a3c(env, configs):
                     }
                 ),
                 OrderedDict({
-                        "max. total reward": np.max(total_rewards)
+                        "max. reward": np.max(total_rewards)
                     }
                 ),
                 OrderedDict({
-                        "mean total reward": np.mean(total_rewards),
-                        "median total reward": np.median(total_rewards),
-                        "min. total reward": np.min(total_rewards),
-                        "max. total reward": np.max(total_rewards),
+                        "mean reward": np.mean(total_rewards),
+                        "median reward": np.median(total_rewards),
+                        "min. reward": np.min(total_rewards),
+                        "max. reward": np.max(total_rewards),
                     }
                 ),
+                OrderedDict({
+                        "mean IPC": np.mean(ipc),
+                        "median IPC": np.median(ipc),
+                        "min. IPC": np.min(ipc),
+                        "max. IPC": np.max(ipc),
+                        "mean power": np.mean(power),
+                        "median power": np.median(power),
+                        "min. power": np.min(power),
+                        "max. power": np.max(power),
+                        "mean area": np.mean(area),
+                        "median area": np.median(area),
+                        "min. area": np.min(area),
+                        "max. area": np.max(area)
+                    }
+                )
             )

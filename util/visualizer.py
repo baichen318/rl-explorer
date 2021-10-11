@@ -45,7 +45,8 @@ class Visualizer(object):
             losses,
             episode_rewards,
             max_total_rewards,
-            total_rewards
+            total_rewards,
+            ppa
         ):
         """
             epoch: <int> -- current epoch
@@ -54,6 +55,7 @@ class Visualizer(object):
             episode_rewards: <OrderedDict> -- episode_rewards
             max_total_rewards: <OrderedDict> -- max_total_rewards
             total_rewards: <OrderedDict> -- total_rewards
+            ppa: <OrderedDict> -- ppa
         """
         if not hasattr(self, "plot_loss"):
             self.plot_loss = {'X': [], 'Y': [], "legend": list(losses.keys())}
@@ -63,6 +65,8 @@ class Visualizer(object):
             self.plot_max_total_reward = {'X': [], 'Y': [], "legend": list(max_total_rewards.keys())}
         if not hasattr(self, "plot_total_reward"):
             self.plot_total_reward = {'X': [], 'Y': [], "legend": list(total_rewards.keys())}
+        if not hasattr(self, "plot_ppa"):
+            self.plot_ppa = {'X': [], 'Y': [], "legend": list(ppa.keys())}
         self.plot_loss['X'].append(epoch + counter_ratio)
         self.plot_loss['Y'].append([losses[k] for k in self.plot_loss["legend"]])
         self.plot_episode_reward['X'].append(epoch + counter_ratio)
@@ -71,6 +75,8 @@ class Visualizer(object):
         self.plot_max_total_reward['Y'].append([max_total_rewards[k] for k in self.plot_max_total_reward["legend"]][0])
         self.plot_total_reward['X'].append(epoch + counter_ratio)
         self.plot_total_reward['Y'].append([total_rewards[k] for k in self.plot_total_reward["legend"]])
+        self.plot_ppa['X'].append(epoch + counter_ratio)
+        self.plot_ppa['Y'].append([ppa[k] for k in self.plot_ppa["legend"]])
         try:
             self.vis.line(
                 X=np.stack(
@@ -103,10 +109,10 @@ class Visualizer(object):
                 X=self.plot_max_total_reward['X'],
                 Y=self.plot_max_total_reward['Y'],
                 opts={
-                    "title": "Total rewards over epoch",
+                    "title": "Rewards over epoch",
                     "legend": self.plot_max_total_reward["legend"],
                     "xlabel": "Epoch",
-                    "ylabel": "Total reward"
+                    "ylabel": "Reward"
                 },
                 win=3
             )
@@ -117,12 +123,26 @@ class Visualizer(object):
                 ),
                 Y=np.array(self.plot_total_reward['Y']),
                 opts={
-                    "title": "Total rewards over epoch",
+                    "title": "Rewards over epoch",
                     "legend": self.plot_total_reward["legend"],
                     "xlabel": "Epoch",
-                    "ylabel": "Total reward"
+                    "ylabel": "Reward"
                 },
                 win=4
+            )
+            self.vis.line(
+                X=np.stack(
+                    [np.array(self.plot_episode_reward['X'])] * len(self.plot_episode_reward["legend"]),
+                    1
+                ),
+                Y=np.array(self.plot_episode_reward['Y']),
+                opts={
+                    "title": "PPA over time",
+                    "legend": self.plot_episode_reward["legend"],
+                    "xlabel": "Epoch",
+                    "ylabel": "PPA"
+                },
+                win=5
             )
         except VisdomExceptionBase:
             self.create_visdom_connections()
