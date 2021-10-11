@@ -91,8 +91,8 @@ def init_xgb():
         gamma=0.0001,
         min_child_weight=1,
         subsample=1.0,
-        eta=0.3,
-        reg_lambda=1.00,
+        eta=0.25,
+        reg_lambda=2.30,
         alpha=0,
         objective="reg:squarederror",
         n_jobs=-1
@@ -328,19 +328,22 @@ def calib_xgboost_test(dataset):
             pred = model.predict(dataset.test_ipc_feature)
             mae = mean_absolute_error(dataset.test_ipc_gt, pred)
             mse = mean_squared_error(dataset.test_ipc_gt, pred)
+            error = np.mean((abs(pred - dataset.test_ipc_gt) / dataset.test_ipc_gt)) * 1e2
             plt.scatter(pred, dataset.test_ipc_gt, s=2, marker=markers[2], c=colors[1])
         elif metric == "power":
             pred = model.predict(dataset.test_power_feature)
             mae = mean_absolute_error(dataset.test_power_gt, pred)
             mse = mean_squared_error(dataset.test_power_gt, pred)
+            error = np.mean((abs(pred - dataset.test_power_gt) / dataset.test_power_gt)) * 1e2
             plt.scatter(pred, dataset.test_power_gt, s=2, marker=markers[2], c=colors[1])
         else:
             assert metric == "area", "[ERROR]: unsupported metric."
             pred = model.predict(dataset.test_area_feature)
             mae = mean_absolute_error(dataset.test_area_gt, pred)
             mse = mean_squared_error(dataset.test_area_gt, pred)
+            error = np.mean((abs(pred - dataset.test_area_gt) / dataset.test_area_gt)) * 1e2
             plt.scatter(pred, dataset.test_area_gt, s=2, marker=markers[2], c=colors[1])
-        print("[INFO] MAE: {:.8f}, MSE: {:.8f}".format(mae, mse))
+        print("[INFO] MAE: {:.8f}, MSE: {:.8f}, Error: {:.4f}%".format(mae, mse, error))
         plt.plot(
             np.linspace([lims[metric][0], lims[metric][1]], 1000),
             np.linspace([lims[metric][0], lims[metric][1]], 1000),
@@ -353,11 +356,56 @@ def calib_xgboost_test(dataset):
         plt.xlim(lims[metric])
         plt.ylim(lims[metric])
         plt.grid()
-        plt.title("{}-{} MAE: {:.8f}".format(configs["design"], metric, mae))
+        plt.title("{}-{} \n MAE: {:.8f} MSE: {:.8f} Error: {:.4f}%".format(configs["design"], metric, mae, mse, error))
         plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
         print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
         plt.close()
 
+
+
+def concat_dataset(design_space, dataset, supp):
+    supp = load_txt(supp, fmt=float)
+    new_dataset = []
+    for i in range(1, dataset.shape[0]):
+        f = False
+        for _supp in supp:
+            if all(np.equal(dataset[i][:6], _supp[:6])):
+                new_dataset.append(
+                    np.insert(dataset[i], len(dataset[i]), values=_supp[-3:], axis=0)
+                )
+                _new_dataset = np.array(new_dataset)
+                write_txt(
+                    os.path.join(
+                        os.path.pardir,
+                        os.path.dirname(configs["dataset-output-path"]),
+                        os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+                    ),
+                    _new_dataset,
+                    fmt="%f"
+                )
+                f = True
+                break
+        if f:
+            continue
+        ipc, power, area = design_space.evaluate_microarchitecture(
+            configs,
+            # architectural feature
+            dataset[i][:-3].astype(int),
+            1
+        )
+        new_dataset.append(
+            np.insert(dataset[i], len(dataset[i]), values=np.array([ipc, power, area * 1e6]), axis=0)
+        )
+        _new_dataset = np.array(new_dataset)
+        write_txt(
+            os.path.join(
+                os.path.pardir,
+                os.path.dirname(configs["dataset-output-path"]),
+                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+            ),
+            _new_dataset,
+            fmt="%f"
+        )
 
 def main():
     dataset = load_dataset(os.path.join(os.path.pardir, configs["dataset-output-path"]))
@@ -392,6 +440,7 @@ def main():
             os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
         )
     )
+    # concat_dataset(design_space, dataset, os.path.join(os.path.pardir, "data", "rocket", "misc", "dataset-v2-E.txt"))
     train, test = split_dataset(dataset)
     if opt == "mlp":
         train_data = torch.Tensor(dataset[train])
@@ -409,14 +458,14 @@ def main():
         calib_xgboost_train(
             PPADatasetV2(
                 dataset[train],
-                dataset[train],
+                dataset[test],
                 idx=design_space.n_dim
             )
         )
         calib_xgboost_test(
             PPADatasetV2(
                 dataset[train],
-                dataset[train],
+                dataset[test],
                 idx=design_space.n_dim
             )
         )
