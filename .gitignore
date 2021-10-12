@@ -151,5 +151,5 @@ test.py
 *.pdf
 test/
 temp/
-.DS_store/
+.DS_store
 

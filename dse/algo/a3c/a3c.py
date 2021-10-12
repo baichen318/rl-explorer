@@ -149,18 +149,16 @@ def a3c(env, configs):
     configs["logger"].info("[INFO]: initialized status: {}".format(obs))
     buffer.obs[0].copy_(obs)
     buffer.to(device)
-    episode_rewards = deque(maxlen=10)
-    episode_rewards = {
+    episode_ppa = {
         "ipc": deque(maxlen=10),
         "power": deque(maxlen=10),
         "area": deque(maxlen=10)
     }
-    rewards = {
+    ppa = {
         "ipc": [],
         "power": [],
         "area": []
     }
-    total_rewards = []
     start = time.time()
     num_updates = configs["num-train-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
@@ -179,14 +177,14 @@ def a3c(env, configs):
             for r in reward:
                 # NOTICE: refers to dse/env/rocket/design_env.py
                 assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
-                episode_rewards["ipc"].append(r[0])
-                rewards["ipc"].append(r[0])
-                # unit: W
-                episode_rewards["power"].append((-r[1] / 10) * 1e3)
-                rewards["power"].append((-r[1] / 10) * 1e3)
+                episode_ppa["ipc"].append(r[0])
+                ppa["ipc"].append(r[0])
+                # unit: mW
+                episode_ppa["power"].append((-r[1] / 10) * 1e3)
+                ppa["power"].append((-r[1] / 10) * 1e3)
                 # unit: mm^2
-                episode_rewards["area"].append(-r[2])
-                rewards["area"].append(-r[2])
+                episode_ppa["area"].append(-r[2])
+                ppa["area"].append(-r[2])
 
             masks = torch.FloatTensor(
                 [[0.0] if _done else [1.0] for _done in done]
@@ -204,27 +202,20 @@ def a3c(env, configs):
         value_loss, action_loss, dist_entropy = agent.update(buffer, w)
         agent.homotopy_optimization()
         buffer.after_update()
-        if i % configs["save-interval"] == 0 and len(episode_rewards) > 1:
+        if i % configs["save-interval"] == 0:
             total_num_steps = (i + 1) * configs["num-process"] * configs["n-step-td"]
             end = time.time()
             msg = "[INFO]: updates {}, num timesteps {}, FPS {:.4f}. Last {} training episode. ".format(
                 i,
                 total_num_steps,
                 total_num_steps / (end - start),
-                len(episode_rewards)
-            )
-            msg += "mean/median reward: {:.4f}/{:.4f}, min/max reward: {:.4f}/{:.4f}. ".format(
-                np.mean(episode_rewards),
-                np.median(episode_rewards),
-                np.min(episode_rewards),
-                np.max(episode_rewards)
+                len(episode_ppa["ipc"])
             )
             msg += "value loss: {:.4f}, action loss: {:.4f}, entroy loss: {:.4f}. ".format(
                 value_loss,
                 action_loss,
                 dist_entropy
             )
-            msg += "max reward util now: {:.4f}.".format(np.max(total_rewards))
             configs["logger"].info(msg)
             agent.save(
                 os.path.join(
@@ -244,42 +235,54 @@ def a3c(env, configs):
                 ),
                 title="MOA3C Losses Over Time",
                 xlabel="Epoch",
-                ylabel="Loss"
+                ylabel="Loss",
+                win=1
             )
             visualizer.plot_current_status(
                 i,
                 i / num_updates,
+                "episode_ppa",
                 OrderedDict({
-                        "mean episode reward": np.mean(episode_rewards),
-                        "median episode reward": np.median(episode_rewards),
-                        "min. episode reward": np.min(episode_rewards),
-                        "max. episode reward": np.max(episode_rewards)
+                        "mean episode IPC": np.mean(episode_ppa["ipc"]),
+                        "median episode IPC": np.median(episode_ppa["ipc"]),
+                        "min. episode IPC": np.min(episode_ppa["ipc"]),
+                        "max. episode IPC": np.max(episode_ppa["ipc"]),
+                        "mean episode power": np.mean(episode_ppa["power"]),
+                        "median episode power": np.median(episode_ppa["power"]),
+                        "min. episode power": np.min(episode_ppa["power"]),
+                        "max. episode power": np.max(episode_ppa["power"]),
+                        "mean episode area": np.mean(episode_ppa["area"]),
+                        "median episode area": np.median(episode_ppa["area"]),
+                        "min. episode area": np.min(episode_ppa["area"]),
+                        "max. episode area": np.max(episode_ppa["area"]),
                     }
                 ),
+                title="Episode PPA Over Time",
+                xlabel="Epoch",
+                ylabel="Episode PPA",
+                win=2
+            )
+            visualizer.plot_current_status(
+                i,
+                i / num_updates,
+                "ppa",
                 OrderedDict({
-                        "max. reward": np.max(total_rewards)
+                        "mean IPC": np.mean(ppa["ipc"]),
+                        "median IPC": np.median(ppa["ipc"]),
+                        "min. IPC": np.min(ppa["ipc"]),
+                        "max. IPC": np.max(ppa["ipc"]),
+                        "mean power": np.mean(ppa["power"]),
+                        "median power": np.median(ppa["power"]),
+                        "min. power": np.min(ppa["power"]),
+                        "max. power": np.max(ppa["power"]),
+                        "mean area": np.mean(ppa["area"]),
+                        "median area": np.median(ppa["area"]),
+                        "min. area": np.min(ppa["area"]),
+                        "max. area": np.max(ppa["area"])
                     }
                 ),
-                OrderedDict({
-                        "mean reward": np.mean(total_rewards),
-                        "median reward": np.median(total_rewards),
-                        "min. reward": np.min(total_rewards),
-                        "max. reward": np.max(total_rewards),
-                    }
-                ),
-                OrderedDict({
-                        "mean IPC": np.mean(ipc),
-                        "median IPC": np.median(ipc),
-                        "min. IPC": np.min(ipc),
-                        "max. IPC": np.max(ipc),
-                        "mean power": np.mean(power),
-                        "median power": np.median(power),
-                        "min. power": np.min(power),
-                        "max. power": np.max(power),
-                        "mean area": np.mean(area),
-                        "median area": np.median(area),
-                        "min. area": np.min(area),
-                        "max. area": np.max(area)
-                    }
-                )
+                title="PPA Over Time",
+                xlabel="Epoch",
+                ylabel="PPA",
+                win=3
             )
