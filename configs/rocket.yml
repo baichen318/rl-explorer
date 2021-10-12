@@ -131,7 +131,7 @@ hidden-size:
   - 500
   - 50
 # no. of TD steps
-n-step-td: 1
+n-step-td: 5
 # no. of environment steps to train
 num-train-step: 1000
 # max. of environment steps

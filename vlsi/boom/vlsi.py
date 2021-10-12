@@ -490,6 +490,353 @@ class %s extends Config(
         return ipc
 
 
+class Gem5Wrapper(BasicComponent):
+    """Gem5Wrapper"""
+    def __init__(self, configs, state, idx):
+        super(Gem5Wrapper, self).__init__(configs)
+        self.state = state
+        self.idx = idx
+        # NOTICE: a fixed structure
+        self.root = os.path.join(
+            MACROS["gem5-root"],
+            str(self.idx),
+            "gem5-research"
+        )
+        self.construct_link()
+
+    def construct_link(self):
+        self.root_btb = os.path.join(
+            self.root,
+            "src",
+            "cpu",
+            "pred",
+            "BranchPredictor.py"
+        )
+        self.root_tlb = os.path.join(
+            self.root,
+            "src",
+            "arch",
+            "riscv",
+            "RiscvTLB.py"
+        )
+        self.root_cache = os.path.join(
+            self.root,
+            "configs",
+            "common",
+            "Caches.py"
+        )
+        self.root_o3cpu = os.path.join(
+            self.root,
+            "src",
+            "cpu",
+            "o3",
+            "O3CPU.py"
+        )
+        self.root_m5out = os.path.join(
+            self.root,
+            "m5out"
+        )
+        self.root_temp = os.path.join(
+            MACROS["temp-root"],
+            str(self.idx)
+        )
+        mkdir(self.root_temp)
+
+
+    def modify_gem5(self):
+        # NOTICE: we modify gem5 w.r.t. state[0] & state[5]
+        def _modify_gem5(src, pattern, target, count=0):
+            cnt = open(src, "r+").read()
+            with open(src, 'w') as f:
+                f.write(re.sub(r"%s" % pattern, target, cnt, count))
+
+        # fetchWidth
+        _modify_gem5(
+            self.root_o3cpu,
+            "fetchWidth\ =\ Param.Unsigned\(\d+,\ \"Fetch\ width\"\)",
+            "fetchWidth = Param.Unsigned(%d, \"Fetch width\")" % self.state[1]
+        )
+
+        # decodeWidth
+        _modify_gem5(
+            self.root_o3cpu,
+            "decodeWidth\ =\ Param.Unsigned\(\d+,\ \"Decode\ width\"\)",
+            "decodeWidth = Param.Unsigned(%d, \"Decode width\")" % self.state[4]
+        )
+
+        # numFetchBufferEntries
+        _modify_gem5(
+            self.root_o3cpu,
+            "fetchBufferSize\ =\ Param.Unsigned\(\d+,\ \"Fetch\ buffer\ size\ in\ bytes\"\)",
+            "fetchBufferSize = Param.Unsigned(%d, \"Fetch buffer size in bytes\")" %
+                self.ifu_buffers[self.state[2]][0]
+        )
+
+        # numRobEntries
+        _modify_gem5(
+            self.root_o3cpu,
+            "numROBEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ reorder\ buffer\ entries\"\)",
+            "numROBEntries = Param.Unsigned(%d, \"Number of reorder buffer entries\")" %
+                self.state[5]
+        )
+
+        # numIntPhysRegisters
+        _modify_gem5(
+            self.root_o3cpu,
+            "numPhysIntRegs\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ physical\ integer\ registers\"\)",
+            "numPhysIntRegs = Param.Unsigned(%d, \"Number of physical integer registers\")" %
+                self.registers[self.state[6]][0]
+        )
+
+        # numFpPhysRegisters
+        _modify_gem5(
+            self.root_o3cpu,
+            "numPhysFloatRegs\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ physical\ floating\ point\ \"",
+            "numPhysFloatRegs = Param.Unsigned(%d, \"Number of physical floating point \"" %
+                self.registers[self.state[6]][1]
+        )
+
+        # numLdqEntries
+        _modify_gem5(
+            self.root_o3cpu,
+            "LQEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ load\ queue\ entries\"\)",
+            "LQEntries = Param.Unsigned(%d, \"Number of load queue entries\")" %
+                self.lsu[self.state[8]][0]
+        )
+
+        # numStqEntries
+        _modify_gem5(
+            self.root_o3cpu,
+            "SQEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ store\ queue\ entries\"\)",
+            "SQEntries = Param.Unsigned(%d, \"Number of store queue entries\")" %
+                self.lsu[self.state[8]][1]
+        )
+
+        # issueEntries
+        _modify_gem5(
+            self.root_o3cpu,
+            "issueWidth\ =\ Param.Unsigned\(\d+,\ \"Issue\ width\"\)",
+            "issueWidth = Param.Unsigned(%d, \"Issue width\")" % (
+                int(self.issue_unit[self.state[7]][0]) + \
+                int(self.issue_unit[self.state[7]][1]) + \
+                int(self.issue_unit[self.state[7]][2])
+            )
+        )
+
+
+
+        # # RAS@btb
+        # _modify_gem5(
+        #     self.root_btb,
+        #     "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
+        #     "RASSize = Param.Unsigned(%d, \"RAS size\")" % (4 if self.btb[self.state[0]][0] == 0 else \
+        #         round_power_of_two(self.btb[self.state[0]][0])
+        #     )
+        # )
+        # # BTB@btb
+        # _modify_gem5(
+        #     self.root_btb,
+        #     "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
+        #     "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % (2 if self.btb[self.state[0]][1] == 0 \
+        #         else round_power_of_two(self.btb[self.state[0]][1])
+        #     )
+        # )
+        # # TLB@D-Cache
+        # _modify_gem5(
+        #     self.root_tlb,
+        #     "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
+        #     "size = Param.Int(%d, \"TLB size\")" % (2 if self.dcache[self.state[5]][2] == 0 else \
+        #         round_power_of_two(self.dcache[self.state[5]][2])
+        #     )
+        # )
+        # # MSHR@D-Cache
+        # _modify_gem5(
+        #     self.root_cache,
+        #     "mshrs\ =\ \d+",
+        #     "mshrs = %d" % (1 if self.dcache[self.state[5]][3] == 0 else \
+        #         round_power_of_two(self.dcache[self.state[5]][3])
+        #     ),
+        #     count=1
+        # )
+
+    def generate_gem5(self):
+        # NOTICE: commands are manually designed
+        machine = os.popen("hostname").readlines()[0].strip()
+        if machine == "cuhk":
+            cmd = "cd %s; " % self.root
+            cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
+            cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
+            cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
+            cmd += "cd -; "
+        elif machine == "proj12":
+            cmd = "cd %s; " % self.root
+            cmd += "scons "
+            cmd += "build/RISCV/gem5.opt "
+            cmd += "-j%d; " % int(round(2 * multiprocessing.cpu_count()))
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
+            cmd += "cd -; "
+        elif machine.startswith("hpc"):
+            cmd = "cd %s; " % self.root
+            cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+            cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
+            cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
+            cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+            cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
+            cmd += "cd -"
+        elif machine.startswith("dgg4"):
+            pass
+        elif machine == "MacBook-Pro.local":
+            cmd = "cd %s; " % self.root
+            cmd += "scons "
+            cmd += "build/RISCV/gem5.opt "
+            cmd += "-j%d; " % int(round(multiprocessing.cpu_count()))
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
+            cmd += "cd -; "
+        else:
+            print("[ERROR]: %s is not support." % machine)
+            exit(-1)
+
+        execute(cmd)
+
+    def get_results(self):
+        instructions, cycles = 0, 0
+        with open(os.path.join(self.root_m5out, "stats.txt"), 'r') as f:
+            cnt = f.readlines()
+        for line in cnt:
+            if line.startswith("simInsts"):
+                instructions = int(line.split()[1])
+            if line.startswith("system.cpu.numCycles"):
+                cycles = int(line.split()[1])
+        return instructions, cycles
+
+    def simulate(self):
+        machine = os.popen("hostname").readlines()[0].strip()
+        for bmark in self.configs["benchmarks"]:
+            remove(os.path.join(self.root_temp, "m5out-%s" % bmark))
+        ipc = 0
+        for bmark in self.configs["benchmarks"]:
+            if machine == "proj12" or \
+                machine == "cuhk" or \
+                machine.startswith("dgg4") or \
+                machine == "MacBook-Pro.local":
+                cmd = "cd %s; build/RISCV/gem5-%d-%d.opt configs/example/se.py " % (self.root, self.state[0], self.state[5])
+            elif machine.startswith("hpc"):
+                cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % (self.root)
+            cmd += "--cmd=%s " % os.path.join(
+                MACROS["gem5-benchmark-root"],
+                "riscv-tests",
+                bmark + ".riscv"
+            )
+            cmd += "--num-cpus=1 "
+            cmd += "--cpu-type=TimingSimpleCPU "
+            cmd += "--caches --l1d_size=%dkB --l1i_size=%dkB " % (
+                round(int(self.dcache[self.state[5]][0] * self.dcache[self.state[5]][1] * 64 / 1024)),
+                round(int(self.dcache[self.state[1]][0] * 64 * 64 / 1024))
+            )
+            cmd += "--sys-clock=2000000000Hz "
+            cmd += "--cpu-clock=2000000000Hz "
+            cmd += "--sys-voltage=6.3V "
+            cmd += "--l2cache "
+            cmd += "--l2_size=64MB "
+            cmd += "--l2_assoc=8 "
+            cmd += "--mem-size=4096MB "
+            cmd += "--mem-type=LPDDR3_1600_1x32 "
+            cmd += "--mem-channels=1 "
+            cmd += "--enable-dram-powerdown "
+            cmd += "--bp-type=BiModeBP "
+            cmd += "--l1i-hwp-type=TaggedPrefetcher "
+            cmd += "--l1d-hwp-type=TaggedPrefetcher "
+            cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
+            execute(cmd, logger=self.configs["logger"])
+            instructions, cycles = self.get_results()
+            ipc += (instructions / cycles)
+            # for McPAT usage
+            execute(
+                "mv -f %s %s" % (
+                    self.root_m5out,
+                    os.path.join(self.root_temp, "m5out-%s" % bmark)
+                )
+            )
+        ipc /= len(self.configs["benchmarks"])
+        return ipc
+
+
+    def evaluate_perf(self):
+        if if_exist(
+            os.path.join(self.root, "build", "RISCV", "gem5-%d-%d.opt" % (self.state[0], self.state[5]))
+        ):
+            ipc = self.simulate()
+            return ipc
+        self.modify_gem5()
+        self.generate_gem5()
+        ipc = self.simulate()
+        return ipc
+
+    def evaluate_power_and_area(self):
+        def extract_power(mcpat_report):
+            # p_subthreshold = re.compile(r"Subthreshold\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            # p_gate = re.compile(r"Gate\ Leakage\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            p_dynamic = re.compile(r"Runtime\ Dynamic\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ W")
+            subthreshold, gate, dynamic = 0, 0, 0
+            with open(mcpat_report, 'r') as rpt:
+                rpt = rpt.read()
+                try:
+                    # subthreshold = float(p_subthreshold.findall(rpt)[1][0])
+                    # gate = float(p_gate.findall(rpt)[1][0])
+                    dynamic = float(p_dynamic.findall(rpt)[1][0])
+                except Exception as e:
+                    print("[ERROR]:", e)
+                    exit(1)
+            return subthreshold + gate + dynamic
+
+        def extract_area(mcpat_report):
+            p_area = re.compile(r"Area\ =\ [+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\ mm\^2")
+            area = 0
+            with open(mcpat_report, 'r') as rpt:
+                rpt = rpt.read()
+                try:
+                    area = float(p_area.findall(rpt)[1][0])
+                except Exception as e:
+                    print("[ERROR]:", e)
+                    exit(1)
+            return area
+
+        power, area = 0, 0
+        for bmark in self.configs["benchmarks"]:
+            mcpat_xml = os.path.join(
+                self.root_temp,
+                "m5out-%s" % bmark,
+                "%s-%s.xml" % ("Rocket", self.idx)
+            )
+            mcpat_report = os.path.join(
+                self.root_temp,
+                "m5out-%s" % bmark,
+                "%s-%s.rpt" % ("Rocket", self.idx)
+            )
+            execute(
+                "python2 %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
+                    os.path.join(MACROS["tools-root"], "gem5-mcpat-parser.py"),
+                    self.configs["design"],
+                    os.path.join(self.root_temp, "m5out-%s" % bmark, "config.json"),
+                    os.path.join(self.root_temp, "m5out-%s" % bmark, "stats.txt"),
+                    os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
+                    ' '.join([str(s) for s in self.state]),
+                    mcpat_xml
+                ),
+                logger=self.configs["logger"]
+            )
+            execute(
+                "%s -infile %s -print_level 5 > %s" % (
+                    os.path.join(MACROS["mcpat-root"], "mcpat"),
+                    mcpat_xml,
+                    mcpat_report
+                )
+            )
+            power += extract_power(mcpat_report)
+            area += extract_area(mcpat_report)
+        return power / len(self.configs["benchmarks"]), area / len(self.configs["benchmarks"])
+
 
 def test_online_vlsi(configs, state):
     """

@@ -13,6 +13,8 @@ import numpy as np
 from time import time
 from collections import OrderedDict
 from util import if_exist, load_txt
+from vlsi.boom.vlsi import Gem5Wrapper
+
 
 class Space(object):
     def __init__(self, dims):
@@ -197,8 +199,15 @@ class BOOMDesignSpace(Space):
                 return False
         return True
 
-    def evaluate_microarchitecture(self, state):
-        pass
+    def evaluate_microarchitecture(self, configs, state, idx, test=False):
+        # NOTICE: we use light-weight white-box model
+        if test:
+            return torch.Tensor([random.random()]).squeeze(0)
+        manager = Gem5Wrapper(configs, state, idx)
+        ipc = manager.evaluate_perf()
+        power, area = manager.evaluate_power_and_area()
+        print("[INFO]: state:", state, "before calib, IPC: %f, Power: %f, Area: %f" % (ipc, power, area))
+        return ipc, power, area
 
 
 def parse_design_space(design_space, **kwargs):
@@ -220,4 +229,3 @@ def parse_design_space(design_space, **kwargs):
         dims.append(len(temp))
 
     return BOOMDesignSpace(features, bounds, dims, **kwargs)
-

@@ -4,7 +4,6 @@ import os
 import torch
 import random
 import time
-import logging
 import gym
 from gym import spaces
 import numpy as np
@@ -29,7 +28,7 @@ class BasicEnv(gym.Env):
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],
-            random_state=seed,
+            random_state=seed
         )
         self.action_list = self.construct_action_list()
         self.set_random_state(self.configs["seed"])

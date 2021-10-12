@@ -52,7 +52,6 @@ class RocketDesignSpace(Space):
         self.set_random_state(kwargs["random_state"])
         self.basic_component = kwargs["basic_component"]
         self.visited = set()
-        self.load_ppa_model()
 
     def set_random_state(self, random_state):
         random.seed(random_state)
@@ -98,9 +97,6 @@ class RocketDesignSpace(Space):
     def validate(self, configs):
         return True
 
-    def load_ppa_model(self):
-        pass
-
     def evaluate_microarchitecture(self, configs, state, idx, test=False):
         # NOTICE: we use light-weight white-box model
         if test:
@@ -131,4 +127,3 @@ def parse_design_space(design_space, **kwargs):
         dims.append(len(temp))
 
     return RocketDesignSpace(features, bounds, dims, **kwargs)
-

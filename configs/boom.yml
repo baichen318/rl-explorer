@@ -131,7 +131,7 @@ design-output-path: data/boom/boom-design.txt
 idx: 1
 
 # generate-data: data-output-path
-data-output-path: data/test/dataset.txt
+dataset-output-path: data/boom/dataset-v1.txt
 
 # RL related
 seed: 2021
