@@ -126,8 +126,9 @@ class RocketDesignEnv(BasicEnv):
             )
         )
         # NOTICE: scale it manually!
+        ipc = 10 * ipc
         power = 10 * power
-        area = 1e-6 * area
+        area = 1e-6 * 10 * area
         reward = torch.Tensor(
             np.concatenate((ipc, -power, -area))
         ).squeeze(0)
