@@ -49,12 +49,12 @@ def vis_design_space_v1():
     area = np.delete(area, remove_idx)
     fig = plt.figure()
     ax = Axes3D(fig)
-    ax.scatter(perf, power, area, s=3, marker=markers[-10])
+    ax.scatter(perf, power, area, s=1, marker=markers[-10])
     ax.set_title("%s PPA" % configs["design"], pad=15, fontsize="10")
     ax.set_xlabel("IPC")
     ax.set_ylabel("Power")
     ax.set_zlabel("Area")
-    ax.view_init(elev=22, azim=33)
+    ax.view_init(elev=7, azim=21)
     path = os.path.join(os.path.dirname(__file__), "vis-%s.png" % configs["design"])
     plt.savefig(
         path,
@@ -102,7 +102,7 @@ def vis_design_space_v3():
             remove_idx.append(i)
             continue
     perf = np.delete(perf, remove_idx)
-    power = np.delete(area, remove_idx)
+    area = np.delete(area, remove_idx)
     plt.scatter(area, perf, s=2, marker=markers[-10], c=colors[1])
     plt.xlabel("Area")
     plt.ylabel("IPC")

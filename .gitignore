@@ -148,7 +148,7 @@ img/
 # latency.csv
 # area.csv
 test.py
-*.pdf
+# *.pdf
 test/
 temp/
 .DS_store
