@@ -39,6 +39,41 @@ class Visualizer(object):
         print("[WARN]: Command: %s" % cmd)
         Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 
+    def plot_current_status(self, epoch, counter_ratio. name, status, **kwargs):
+        """
+            epoch: <int>
+            counter_ratio: <float>
+            name: <str>
+            status: <OrderedDict>
+        """
+        if not hasattr(self, name):
+            self.name = {
+                'X': [],
+                'Y': [],
+                "legend": list(status.keys())
+            }
+        self.name['X'].append(epoch + counter_ratio)
+        self.name['Y'].append(
+            [status[k] for k in self.name["legend"]]
+        )
+        try:
+            self.vis.line(
+                x=np.stack(
+                    [np.array(self.name['X'])] * len(self.name["legend"]),
+                    1
+                ),
+                Y=np.array(self.name['Y']),
+                opts={
+                    "title": kwargs["title"],
+                    "legend": self.name["legend"],
+                    "xlabel": kwargs["xlabel"],
+                    "ylabel": kwargs["ylabel"]
+                },
+                win=kwargs["win"]
+            )
+        except VisdomExceptionBase:
+            self.create_visdom_connections()
+
     def plot_current_status(self,
             epoch,
             counter_ratio,

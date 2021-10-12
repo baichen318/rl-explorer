@@ -54,11 +54,13 @@ class A3CAgent():
             # NOTICE: Key point in MOA3C, we need to optimize along the
             # current best direction w.r.t. Omega space, simultaneously,
             # we need to return values for multi-objective optimizations
+            # values: <n-step-td x num-process, 3>
+            # w_values: <n-step-td x num-process, 1>
             values = values.gather(
                 1, actions.view(-1, action_shape).view(-1, 1, 1).expand(values.size(0), 1, values.size(2))
             ).view(-1, reward_shape)
             return values, torch.bmm(
-                torch.autograd.Variable(w.repeat(self.configs["num-process"], 1).unsqueeze(1)),
+                torch.autograd.Variable(w.view(-1, reward_shape).unsqueeze(1)),
                 values.unsqueeze(2)
             ).squeeze()
 
@@ -66,7 +68,7 @@ class A3CAgent():
 
         values, action_log_probs, dist_entropy = self.actor_critic.evaluate_actions(
             buffer.obs[:-1].view(-1, *obs_shape),
-            w.repeat(self.configs["num-process"], 1),
+            w.view(-1, reward_shape),
             buffer.actions.view(-1, action_shape)
         )
 
@@ -148,16 +150,27 @@ def a3c(env, configs):
     buffer.obs[0].copy_(obs)
     buffer.to(device)
     episode_rewards = deque(maxlen=10)
-    total_rewards, ipc, power, area = [], [], [], []
+    episode_rewards = {
+        "ipc": deque(maxlen=10),
+        "power": deque(maxlen=10),
+        "area": deque(maxlen=10)
+    }
+    rewards = {
+        "ipc": [],
+        "power": [],
+        "area": []
+    }
+    total_rewards = []
     start = time.time()
     num_updates = configs["num-train-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
-        # Omega preference space on PPA metrics
+        # NOTICE: Omega preference space on PPA metrics
         w = torch.randn(configs["num-process"], len(configs["metrics"]))
         w = torch.abs(w) / torch.sum(torch.abs(w))
+        w = w.view(-1, configs["num-process"], len(configs["metrics"])).repeat(configs["n-step-td"], 1, 1)
         for step in range(configs["n-step-td"]):
             with torch.no_grad():
-                value, action, action_log_prob = actor_critic.act(buffer.obs[step], w)
+                value, action, action_log_prob = actor_critic.act(buffer.obs[step], w[step])
             obs, reward, done, info = envs.step(action)
             msg = "[INFO]: action: {}, obs: {}, reward: {}, done: {}".format(
                 action, obs, reward, done
@@ -166,18 +179,14 @@ def a3c(env, configs):
             for r in reward:
                 # NOTICE: refers to dse/env/rocket/design_env.py
                 assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
-                ipc.append(r[0])
-                # unit: w
-                power.append((-r[1] / 10) * 1e3)
+                episode_rewards["ipc"].append(r[0])
+                rewards["ipc"].append(r[0])
+                # unit: W
+                episode_rewards["power"].append((-r[1] / 10) * 1e3)
+                rewards["power"].append((-r[1] / 10) * 1e3)
                 # unit: mm^2
-                area.append(-r[2])
-                r = r * (1 / 3)
-                episode_rewards.append(
-                    torch.sum(r)
-                )
-                total_rewards.append(
-                    torch.sum(r)
-                )
+                episode_rewards["area"].append(-r[2])
+                rewards["area"].append(-r[2])
 
             masks = torch.FloatTensor(
                 [[0.0] if _done else [1.0] for _done in done]
@@ -187,7 +196,8 @@ def a3c(env, configs):
         with torch.no_grad():
             _, next_value = actor_critic.get_value(
                 buffer.obs[-1],
-                w
+                # w is the same in every TD step
+                w[-1]
             )
             next_value = next_value.detach()
         buffer.compute_returns(next_value, configs["gamma"])
@@ -225,12 +235,20 @@ def a3c(env, configs):
             visualizer.plot_current_status(
                 i,
                 i / num_updates,
+                "loss",
                 OrderedDict({
                         "value loss": value_loss,
                         "action loss": action_loss,
                         "entropy loss": dist_entropy
                     }
                 ),
+                title="MOA3C Losses Over Time",
+                xlabel="Epoch",
+                ylabel="Loss"
+            )
+            visualizer.plot_current_status(
+                i,
+                i / num_updates,
                 OrderedDict({
                         "mean episode reward": np.mean(episode_rewards),
                         "median episode reward": np.median(episode_rewards),
