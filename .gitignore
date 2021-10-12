@@ -152,4 +152,5 @@ test.py
 test/
 temp/
 .DS_store
+tools/mcpat-riscv-7/Documents/
 
