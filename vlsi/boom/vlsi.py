@@ -544,7 +544,9 @@ class Gem5Wrapper(BasicComponent):
 
 
     def modify_gem5(self):
-        # NOTICE: we modify gem5 w.r.t. state[0] & state[5]
+        # NOTICE: we modify gem5 w.r.t. state[1], state[2],
+        # state[4], state[5], state[6], state[7], state[8],
+        # state[9] (eight)
         def _modify_gem5(src, pattern, target, count=0):
             cnt = open(src, "r+").read()
             with open(src, 'w') as f:
@@ -623,41 +625,21 @@ class Gem5Wrapper(BasicComponent):
             )
         )
 
+        # dcache.nMSHRs
+        _modify_gem5(
+            self.root_cache,
+            "mshrs\ =\ \d+",
+            "mshrs = %d" % round_power_of_two(self.dcache[self.state[9]][0])
+            count=1
+        )
 
-
-        # # RAS@btb
-        # _modify_gem5(
-        #     self.root_btb,
-        #     "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
-        #     "RASSize = Param.Unsigned(%d, \"RAS size\")" % (4 if self.btb[self.state[0]][0] == 0 else \
-        #         round_power_of_two(self.btb[self.state[0]][0])
-        #     )
-        # )
-        # # BTB@btb
-        # _modify_gem5(
-        #     self.root_btb,
-        #     "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
-        #     "BTBEntries = Param.Unsigned(%d, \"Number of BTB entries\")" % (2 if self.btb[self.state[0]][1] == 0 \
-        #         else round_power_of_two(self.btb[self.state[0]][1])
-        #     )
-        # )
-        # # TLB@D-Cache
-        # _modify_gem5(
-        #     self.root_tlb,
-        #     "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
-        #     "size = Param.Int(%d, \"TLB size\")" % (2 if self.dcache[self.state[5]][2] == 0 else \
-        #         round_power_of_two(self.dcache[self.state[5]][2])
-        #     )
-        # )
-        # # MSHR@D-Cache
-        # _modify_gem5(
-        #     self.root_cache,
-        #     "mshrs\ =\ \d+",
-        #     "mshrs = %d" % (1 if self.dcache[self.state[5]][3] == 0 else \
-        #         round_power_of_two(self.dcache[self.state[5]][3])
-        #     ),
-        #     count=1
-        # )
+        # dcache.nTLBWays
+        _modify_gem5(
+            self.root_cache,
+            "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
+            "size = Param.Int(%d, \"TLB size\")" %
+                round_power_of_two(self.dcache[self.state[9]][1])
+        )
 
     def generate_gem5(self):
         # NOTICE: commands are manually designed
@@ -667,15 +649,33 @@ class Gem5Wrapper(BasicComponent):
             cmd += "/home/baichen/cbai/tools/Python-3.9.7/build/bin/scons "
             cmd += "build/RISCV/gem5.opt PYTHON_CONFIG=\"/home/baichen/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
-            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
-            cmd += "cd -; "
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d-%d-%d-%d-%d-%d-%d.opt; " % (
+                self.state[1],
+                self.state[2],
+                self.state[4],
+                self.state[5],
+                self.state[6],
+                self.state[7],
+                self.state[8],
+                self.state[9]
+            )
+            cmd += "cd -;"
         elif machine == "proj12":
             cmd = "cd %s; " % self.root
             cmd += "scons "
             cmd += "build/RISCV/gem5.opt "
             cmd += "-j%d; " % int(round(2 * multiprocessing.cpu_count()))
-            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
-            cmd += "cd -; "
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d-%d-%d-%d-%d-%d-%d.opt; " % (
+                self.state[1],
+                self.state[2],
+                self.state[4],
+                self.state[5],
+                self.state[6],
+                self.state[7],
+                self.state[8],
+                self.state[9]
+            )
+            cmd += "cd -;"
         elif machine.startswith("hpc"):
             cmd = "cd %s; " % self.root
             cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
@@ -683,7 +683,17 @@ class Gem5Wrapper(BasicComponent):
             cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
             cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
-            cmd += "cd -"
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d-%d-%d-%d-%d-%d-%d.opt; " % (
+                self.state[1],
+                self.state[2],
+                self.state[4],
+                self.state[5],
+                self.state[6],
+                self.state[7],
+                self.state[8],
+                self.state[9]
+            )
+            cmd += "cd -;"
         elif machine.startswith("dgg4"):
             pass
         elif machine == "MacBook-Pro.local":
@@ -691,8 +701,17 @@ class Gem5Wrapper(BasicComponent):
             cmd += "scons "
             cmd += "build/RISCV/gem5.opt "
             cmd += "-j%d; " % int(round(multiprocessing.cpu_count()))
-            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d.opt; " % (self.state[0], self.state[5])
-            cmd += "cd -; "
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/gem5-%d-%d-%d-%d-%d-%d-%d-%d.opt; " % (
+                self.state[1],
+                self.state[2],
+                self.state[4],
+                self.state[5],
+                self.state[6],
+                self.state[7],
+                self.state[8],
+                self.state[9]
+            )            
+            cmd += "cd -;"
         else:
             print("[ERROR]: %s is not support." % machine)
             exit(-1)
@@ -715,25 +734,32 @@ class Gem5Wrapper(BasicComponent):
         for bmark in self.configs["benchmarks"]:
             remove(os.path.join(self.root_temp, "m5out-%s" % bmark))
         ipc = 0
+        bp = ["LTAGE", "TAGE", "BiModeBP"]
         for bmark in self.configs["benchmarks"]:
-            if machine == "proj12" or \
-                machine == "cuhk" or \
-                machine.startswith("dgg4") or \
-                machine == "MacBook-Pro.local":
-                cmd = "cd %s; build/RISCV/gem5-%d-%d.opt configs/example/se.py " % (self.root, self.state[0], self.state[5])
-            elif machine.startswith("hpc"):
-                cmd = "cd %s; build/RISCV/gem5.opt configs/example/se.py " % (self.root)
+            cmd = "cd %s; build/RISCV/gem5-%d-%d-%d-%d-%d-%d-%d-%d.opt configs/example/se.py " % (
+                self.root,
+                self.state[1],
+                self.state[2],
+                self.state[4],
+                self.state[5],
+                self.state[6],
+                self.state[7],
+                self.state[8],
+                self.state[9]
+            )
             cmd += "--cmd=%s " % os.path.join(
                 MACROS["gem5-benchmark-root"],
                 "riscv-tests",
                 bmark + ".riscv"
             )
             cmd += "--num-cpus=1 "
-            cmd += "--cpu-type=TimingSimpleCPU "
-            cmd += "--caches --l1d_size=%dkB --l1i_size=%dkB " % (
-                round(int(self.dcache[self.state[5]][0] * self.dcache[self.state[5]][1] * 64 / 1024)),
-                round(int(self.dcache[self.state[1]][0] * 64 * 64 / 1024))
-            )
+            cmd += "--cpu-type=DerivO3CPU "
+            cmd += "--caches "
+            cmd += "--cacheline_size=64 "
+            cmd += " --l1d_size=32kB "
+            cmd += "--l1i_size=32kB "
+            cmd += "--l1d_assoc=8 "
+            cmd += "--l1i_assoc=8 "
             cmd += "--sys-clock=2000000000Hz "
             cmd += "--cpu-clock=2000000000Hz "
             cmd += "--sys-voltage=6.3V "
@@ -744,7 +770,9 @@ class Gem5Wrapper(BasicComponent):
             cmd += "--mem-type=LPDDR3_1600_1x32 "
             cmd += "--mem-channels=1 "
             cmd += "--enable-dram-powerdown "
-            cmd += "--bp-type=BiModeBP "
+            cmd += "--bp-type=%s " % (
+                bp[self.state[0]]
+            )
             cmd += "--l1i-hwp-type=TaggedPrefetcher "
             cmd += "--l1d-hwp-type=TaggedPrefetcher "
             cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
@@ -764,7 +792,17 @@ class Gem5Wrapper(BasicComponent):
 
     def evaluate_perf(self):
         if if_exist(
-            os.path.join(self.root, "build", "RISCV", "gem5-%d-%d.opt" % (self.state[0], self.state[5]))
+            os.path.join(self.root, "build", "RISCV", "gem5-%d-%d-%d-%d-%d-%d-%d-%d.opt" % (
+                    self.state[1],
+                    self.state[2],
+                    self.state[4],
+                    self.state[5],
+                    self.state[6],
+                    self.state[7],
+                    self.state[8],
+                    self.state[9]
+                )
+            )
         ):
             ipc = self.simulate()
             return ipc
@@ -807,12 +845,12 @@ class Gem5Wrapper(BasicComponent):
             mcpat_xml = os.path.join(
                 self.root_temp,
                 "m5out-%s" % bmark,
-                "%s-%s.xml" % ("Rocket", self.idx)
+                "%s-%s.xml" % ("BOOM", self.idx)
             )
             mcpat_report = os.path.join(
                 self.root_temp,
                 "m5out-%s" % bmark,
-                "%s-%s.rpt" % ("Rocket", self.idx)
+                "%s-%s.rpt" % ("BOOM", self.idx)
             )
             execute(
                 "python2 %s -d %s -c %s -s %s -t %s --state %s -o %s" % (
@@ -820,7 +858,7 @@ class Gem5Wrapper(BasicComponent):
                     self.configs["design"],
                     os.path.join(self.root_temp, "m5out-%s" % bmark, "config.json"),
                     os.path.join(self.root_temp, "m5out-%s" % bmark, "stats.txt"),
-                    os.path.join(MACROS["tools-root"], "template", "rocket.xml"),
+                    os.path.join(MACROS["tools-root"], "template", "boom.xml"),
                     ' '.join([str(s) for s in self.state]),
                     mcpat_xml
                 ),

@@ -88,7 +88,7 @@
       <!-- integer_pipeline and floating_pipelines, if the floating_pipelines is 0, then the pipeline is shared -->
       <param name="pipelines_per_core" value="1,0"/>
       <!-- pipeline depth of int and fp, if pipeline is shared, the second number is the average cycles of fp ops -->
-      <param name="pipeline_depth" value="5,7"/>
+      <param name="pipeline_depth" value="10,13"/>
       <!-- issue and exe unit-->
       <!-- contains an adder, a shifter, and a logical unit -->
       <param name="ALU_per_core" value="1"/>
@@ -138,16 +138,16 @@
       <param name="RAS_size" value="config.system.cpu.branchPred.RASSize"/>
       <!-- general stats, defines simulation periods;require total, idle, and busy cycles for sanity check  -->
       <!-- please note: if target architecture is X86, then all the instructions refer to (fused) micro-ops -->
-      <stat name="total_instructions" value="stats.system.cpu.iq.iqInstsIssued "/>
-      <stat name="int_instructions" value="stats.system.cpu.commit.int_insts"/>
-      <stat name="fp_instructions" value="stats.system.cpu.commit.fp_insts"/>
+      <stat name="total_instructions" value="stats.system.cpu.instsIssued"/>
+      <stat name="int_instructions" value="stats.system.cpu.commit.integer"/>
+      <stat name="fp_instructions" value="stats.system.cpu.commit.floating"/>
       <stat name="branch_instructions" value="stats.system.cpu.branchPred.condPredicted"/>
       <stat name="branch_mispredictions" value="stats.system.cpu.branchPred.condIncorrect"/>
       <stat name="load_instructions" value="stats.system.cpu.commit.loads"/>
-      <stat name="store_instructions" value="stats.system.cpu.iq.FU_type_0::MemWrite"/>
+      <stat name="store_instructions" value="stats.system.cpu.numStoreInsts"/>
       <stat name="committed_instructions" value="stats.system.cpu.committedOps"/>
-      <stat name="committed_int_instructions" value="stats.system.cpu.commit.committedInsts"/>
-      <stat name="committed_fp_instructions" value="stats.system.cpu.commit.fp_insts"/>
+      <stat name="committed_int_instructions" value="stats.system.cpu.commit.integer"/>
+      <stat name="committed_fp_instructions" value="stats.system.cpu.commit.floating"/>
       <stat name="pipeline_duty_cycle" value="1.0"/>
       <!-- <=1, runtime_ipc/peak_ipc; averaged for all cores if homogeneous -->
       <!-- the following cycle stats are used for heterogeneous cores only,
@@ -159,35 +159,35 @@
       <!-- ROB stats, both RS and Phy based OoOs have ROB. Performance simulator should capture the difference on accesses,
         otherwise, McPAT has to guess based on number of committed instructions. -->
       <!-- RAT accesses -->
-      <stat name="ROB_reads" value="stats.system.cpu.rob.rob_reads"/>
-      <stat name="ROB_writes" value="stats.system.cpu.rob.rob_writes"/>
+      <stat name="ROB_reads" value="stats.system.cpu.rob.reads"/>
+      <stat name="ROB_writes" value="stats.system.cpu.rob.writes"/>
       <!-- lookup in renaming logic -->
       <!-- update dest regs. renaming logic -->
-      <stat name="rename_reads" value="stats.system.cpu.rename.int_rename_lookups"/>
-      <stat name="rename_writes" value="int(stats.system.cpu.rename.RenamedOperands * stats.system.cpu.rename.int_rename_lookups / stats.system.cpu.rename.RenameLookups)"/>
-      <stat name="fp_rename_reads" value="stats.system.cpu.rename.fp_rename_lookups"/>
-      <stat name="fp_rename_writes" value="int(stats.system.cpu.rename.RenamedOperands * stats.system.cpu.rename.fp_rename_lookups / stats.system.cpu.rename.RenameLookups)"/>
+      <stat name="rename_reads" value="stats.system.cpu.rename.intLookups"/>
+      <stat name="rename_writes" value="int(stats.system.cpu.rename.renamedOperands * stats.system.cpu.rename.intLookups / stats.system.cpu.rename.lookups)"/>
+      <stat name="fp_rename_reads" value="stats.system.cpu.rename.intLookups"/>
+      <stat name="fp_rename_writes" value="int(stats.system.cpu.rename.renamedOperands * stats.system.cpu.rename.intLookups / stats.system.cpu.rename.lookups)"/>
       <!-- decode and rename stage use this, should be total ic - nop -->
       <!-- Inst window stats -->
-      <stat name="inst_window_reads" value="stats.system.cpu.iq.int_inst_queue_reads"/>
-      <stat name="inst_window_writes" value="stats.system.cpu.iq.int_inst_queue_writes"/>
-      <stat name="inst_window_wakeup_accesses" value="stats.system.cpu.iq.int_inst_queue_wakeup_accesses"/>
-      <stat name="fp_inst_window_reads" value="stats.system.cpu.iq.fp_inst_queue_reads"/>
-      <stat name="fp_inst_window_writes" value="stats.system.cpu.iq.fp_inst_queue_writes"/>
-      <stat name="fp_inst_window_wakeup_accesses" value="stats.system.cpu.iq.fp_inst_queue_wakeup_accesses"/>
+      <stat name="inst_window_reads" value="stats.system.cpu.intInstQueueReads"/>
+      <stat name="inst_window_writes" value="stats.system.cpu.intInstQueueWrites"/>
+      <stat name="inst_window_wakeup_accesses" value="stats.system.cpu.intInstQueueWakeupAccesses"/>
+      <stat name="fp_inst_window_reads" value="stats.system.cpu.fpInstQueueReads"/>
+      <stat name="fp_inst_window_writes" value="stats.system.cpu.fpInstQueueWrites"/>
+      <stat name="fp_inst_window_wakeup_accesses" value="stats.system.cpu.fpInstQueueWakeupAccesses"/>
       <!--  RF accesses -->
-      <stat name="int_regfile_reads" value="stats.system.cpu.int_regfile_reads"/>
-      <stat name="float_regfile_reads" value="stats.system.cpu.fp_regfile_reads"/>
-      <stat name="int_regfile_writes" value="stats.system.cpu.int_regfile_writes"/>
-      <stat name="float_regfile_writes" value="stats.system.cpu.fp_regfile_writes"/>
+      <stat name="int_regfile_reads" value="stats.system.cpu.intRegfileReads"/>
+      <stat name="float_regfile_reads" value="stats.system.cpu.miscRegfileReads"/>
+      <stat name="int_regfile_writes" value="stats.system.cpu.intRegfileWrites"/>
+      <stat name="float_regfile_writes" value="stats.system.cpu.miscRegfileReads"/>
       <!-- accesses to the working reg -->
-      <stat name="function_calls" value="stats.system.cpu.commit.function_calls"/>
+      <stat name="function_calls" value="stats.system.cpu.commit.functionCalls"/>
       <!-- Number of Windows switches (number of function calls and returns)-->
-      <stat name="context_switches" value="stats.system.cpu.workload.numSyscalls"/>
+      <stat name="context_switches" value="stats.system.cpu.workload.numSyscalls "/>
       <!-- Alu stats by default, the processor has one FPU that includes the divider and
         multiplier. The fpu accesses should include accesses to multiplier and divider -->
-      <stat name="ialu_accesses" value="stats.system.cpu.iq.int_alu_accesses"/>
-      <stat name="fpu_accesses" value="stats.system.cpu.iq.fp_alu_accesses"/>
+      <stat name="ialu_accesses" value="stats.system.cpu.intAluAccesses"/>
+      <stat name="fpu_accesses" value="int(stats.system.cpu.statIssuedInstType_0::IntMult + stats.system.cpu.statIssuedInstType_0::FloatMult)"/>
       <stat name="mul_accesses" value="0"/>
       <stat name="cdb_alu_accesses" value="0"/>
       <stat name="cdb_mul_accesses" value="0"/>
@@ -215,12 +215,12 @@
       <param name="number_of_BPT" value="1"/>
       <component id="system.core.predictor" name="PBT">
         <!-- branch predictor; tournament predictor see Alpha implementation -->
-        <param name="local_predictor_size" value="10,config.system.cpu.branchPred.localCtrBits"/>
-        <param name="local_predictor_entries" value="config.system.cpu.branchPred.localPredictorSize"/>
-        <param name="global_predictor_entries" value="config.system.cpu.branchPred.globalPredictorSize"/>
-        <param name="global_predictor_bits" value="config.system.cpu.branchPred.globalCtrBits"/>
-        <param name="chooser_predictor_entries" value="config.system.cpu.branchPred.choicePredictorSize"/>
-        <param name="chooser_predictor_bits" value="config.system.cpu.branchPred.choiceCtrBits"/>
+        <param name="local_predictor_size" value="10,3"/>
+        <param name="local_predictor_entries" value="1024"/>
+        <param name="global_predictor_entries" value="4096"/>
+        <param name="global_predictor_bits" value="2"/>
+        <param name="chooser_predictor_entries" value="4096"/>
+        <param name="chooser_predictor_bits" value="2"/>
         <!-- These parameters can be combined like below in next version
           <param name="load_predictor" value="10,3,1024"/>
           <param name="global_predictor" value="4096,2"/>
@@ -228,9 +228,9 @@
         -->
       </component>
       <component id="system.core.itlb" name="itlb">
-        <param name="number_entries" value="config.system.cpu.itb.size"/>
-        <stat name="total_accesses" value="stats.system.cpu.itb.accesses"/>
-        <stat name="total_misses" value="stats.system.cpu.itb.misses"/>
+        <param name="number_entries" value="config.system.cpu.mmu.itb.size"/>
+        <stat name="total_accesses" value="stats.system.cpu.mmu.itb.accesses"/>
+        <stat name="total_misses" value="stats.system.cpu.mmu.itb.misses"/>
         <stat name="conflicts" value="stats.system.cpu.itb_walker_cache.replacements"/>
         <!-- there is no write requests to itlb although writes happen to itlb after miss, 
           which is actually a replacement -->
@@ -243,15 +243,15 @@
         <param name="icache_config" value="config.system.cpu.icache.size,config.system.cpu.icache.tags.block_size,config.system.cpu.icache.assoc,1,1,config.system.cpu.icache.response_latency,config.system.cpu.icache.tags.block_size,0"/>
         <!-- cache controller buffer sizes: miss_buffer_size(MSHR), fill_buffer_size, prefetch_buffer_size, wb_buffer_size -->
         <param name="buffer_sizes" value="config.system.cpu.icache.mshrs,config.system.cpu.icache.mshrs,config.system.cpu.icache.mshrs,config.system.cpu.icache.write_buffers"/>
-        <stat name="read_accesses" value="stats.system.cpu.icache.ReadReq_accesses::total"/>
-        <stat name="read_misses" value="stats.system.cpu.icache.ReadReq_misses::total"/>
+        <stat name="read_accesses" value="stats.system.cpu.icache.ReadReq.accesses::total"/>
+        <stat name="read_misses" value="stats.system.cpu.icache.ReadReq.misses::total"/>
         <stat name="conflicts" value="stats.system.cpu.icache.replacements"/>
       </component>
       <component id="system.core.dtlb" name="dtlb">
-        <param name="number_entries" value="config.system.cpu.dtb.size"/>
+        <param name="number_entries" value="config.system.cpu.mmu.dtb.size"/>
         <!--dual threads-->
-        <stat name="total_accesses" value="stats.system.cpu.dtb.accesses"/>
-        <stat name="total_misses" value="stats.system.cpu.dtb.misses"/>
+        <stat name="total_accesses" value="stats.system.cpu.mmu.dtb.accesses"/>
+        <stat name="total_misses" value="stats.system.cpu.mmu.dtb.misses"/>
         <stat name="conflicts" value="stats.system.cpu.dtb_walker_cache.replacements"/>
       </component>
       <component id="system.core.dcache" name="dcache">
@@ -259,10 +259,10 @@
         <param name="dcache_config" value="config.system.cpu.dcache.size,config.system.cpu.dcache.tags.block_size,config.system.cpu.dcache.assoc,1,1,config.system.cpu.dcache.response_latency,config.system.cpu.dcache.tags.block_size,0"/>
         <!-- cache controller buffer sizes: miss_buffer_size(MSHR),fill_buffer_size,prefetch_buffer_size,wb_buffer_size-->
         <param name="buffer_sizes" value="config.system.cpu.dcache.mshrs,config.system.cpu.dcache.mshrs,config.system.cpu.dcache.mshrs,config.system.cpu.dcache.write_buffers"/>
-        <stat name="read_accesses" value="stats.system.cpu.dcache.ReadReq_accesses::total"/>
-        <stat name="write_accesses" value="stats.system.cpu.dcache.WriteReq_accesses::total"/>
-        <stat name="read_misses" value="stats.system.cpu.dcache.ReadReq_misses::total"/>
-        <stat name="write_misses" value="stats.system.cpu.dcache.WriteReq_misses::total"/>
+        <stat name="read_accesses" value="stats.system.cpu.dcache.ReadReq.accesses::total"/>
+        <stat name="write_accesses" value="stats.system.cpu.dcache.WriteReq.accesses::total"/>
+        <stat name="read_misses" value="stats.system.cpu.dcache.ReadReq.misses::total"/>
+        <stat name="write_misses" value="stats.system.cpu.dcache.WriteReq.misses::total"/>
         <stat name="conflicts" value="stats.system.cpu.dcache.replacements"/>
       </component>
       <param name="number_of_BTB" value="1"/>
@@ -330,6 +330,68 @@
       <stat name="memory_accesses" value="(stats.system.mem_ctrls.readReqs + stats.system.mem_ctrls.writeReqs)"/>
       <stat name="memory_reads" value="stats.system.mem_ctrls.readReqs"/>
       <stat name="memory_writes" value="stats.system.mem_ctrls.writeReqs"/>
+    </component>
+    <component id="system.niu" name="niu">
+      <!-- On chip 10Gb Ethernet NIC, including XAUI Phy and MAC controller  -->
+      <!-- For a minimum IP packet size of 84B at 10Gb/s, a new packet arrives every 67.2ns.
+         the low bound of clock rate of a 10Gb MAC is 150Mhz -->
+      <!-- 1: low power; 0 high performance -->
+      <param name="type" value="0"/>
+      <param name="clockrate" value="config.system.cpu_clk_domain.clock.0"/>
+      <!-- 0 means using ITRS default vdd -->
+      <param name="vdd" value="0"/>
+      <!-- "-1" means using default power gating virtual power supply voltage constrained by technology and computed automatically -->
+      <param name="power_gating_vcc" value="-1"/>
+      <!-- unlike PCIe and memory controllers, each Ethernet controller only have one port -->
+      <param name="number_units" value="0"/>
+      <!-- achievable max load <= 1.0 -->
+      <stat name="duty_cycle" value="1.0"/>
+      <!-- ratio of total achieved load to total achieve-able bandwidth -->
+      <!-- McPAT does not track individual nic, instead, it takes the total accesses and calculate
+        the average power per nic or per channel. This is sufficient for most application. -->
+      <stat name="total_load_perc" value="0.7"/>
+    </component>
+    <!--**********************************************************************-->
+    <component id="system.pcie" name="pcie">
+      <!-- On chip PCIe controller, including Phy-->
+      <!-- For a minimum PCIe packet size of 84B at 8Gb/s per lane (PCIe 3.0), a new packet arrives every 84ns.
+         the low bound of clock rate of a PCIe per lane logic is 120Mhz -->
+      <!-- 1: low power; 0 high performance -->
+      <param name="type" value="0"/>
+      <param name="withPHY" value="1"/>
+      <param name="clockrate" value="config.system.cpu_clk_domain.clock.0"/>
+      <!-- 0 means using ITRS default vdd -->
+      <param name="vdd" value="0"/>
+      <!-- "-1" means using default power gating virtual power supply voltage constrained by technology and computed automatically -->
+      <param name="power_gating_vcc" value="-1"/>
+      <param name="number_units" value="0"/>
+      <!-- 2 ,4 ,8 ,16 ,32 -->
+      <param name="num_channels" value="8"/>
+      <!-- achievable max load <= 1.0 -->
+      <stat name="duty_cycle" value="1.0"/>
+      <stat name="total_load_perc" value="0.7"/>
+      <!-- Percentage of total achieved load to total achieve-able bandwidth -->
+      <!-- McPAT does not track individual pcie controllers, instead, it takes the total accesses and calculate
+        the average power per pcie controller or per channel. This is sufficient for most application -->
+    </component>
+    <!--**********************************************************************-->
+    <component id="system.flashc" name="flashc">
+      <param name="number_flashcs" value="0"/>
+      <!-- 1: low power; 0 high performance -->
+      <param name="type" value="1"/>
+      <param name="withPHY" value="1"/>
+      <!--Per controller sustain-able peak rate MB/S -->
+      <param name="peak_transfer_rate" value="200"/>
+      <!-- 0 means using ITRS default vdd -->
+      <param name="vdd" value="0"/>
+      <!-- "-1" means using default power gating virtual power supply voltage constrained by technology and computed automatically -->
+      <param name="power_gating_vcc" value="-1"/>
+      <!-- achievable max load <= 1.0 -->
+      <stat name="duty_cycle" value="1.0"/>
+      <!-- Percentage of total achieved load to total achieve-able bandwidth  -->
+      <!-- McPAT does not track individual flash controller, instead, it takes the total accesses and calculate
+        the average power per fc or per channel. This is sufficient for most application -->
+      <stat name="total_load_perc" value="0.7"/>
     </component>
     <!--**********************************************************************-->
   </component>
