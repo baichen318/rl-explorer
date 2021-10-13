@@ -105,13 +105,13 @@ design-space:
 # benchmarks
 benchmarks:
   - median
-  - mt-vvadd
-  - mt-matmul
+  # - mt-vvadd
+  # - mt-matmul
   - towers
   # - qsort
   # - rsort
-  # - vvadd
-  # - multiply
+  - vvadd
+  - multiply
   # - dhrystone
   # - spmv
 

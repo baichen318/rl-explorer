@@ -4,8 +4,9 @@ import os
 import sys
 import re
 import time
+import multiprocessing
 import numpy as np
-from util import load_txt, execute, if_exist, write_txt
+from util import load_txt, execute, if_exist, write_txt, remove, mkdir, round_power_of_two
 from vlsi.boom.macros import MACROS
 
 class VLSI(object):
@@ -567,11 +568,13 @@ class Gem5Wrapper(BasicComponent):
         )
 
         # numFetchBufferEntries
+        # NOTICE: GEM5 requires `cache block size % fetch buffer == 0`
+        fetch_buffer_entries = [8, 16, 16, 32, 64, 32, 64]
         _modify_gem5(
             self.root_o3cpu,
             "fetchBufferSize\ =\ Param.Unsigned\(\d+,\ \"Fetch\ buffer\ size\ in\ bytes\"\)",
             "fetchBufferSize = Param.Unsigned(%d, \"Fetch buffer size in bytes\")" %
-                self.ifu_buffers[self.state[2]][0]
+                fetch_buffer_entries[self.state[2]]
         )
 
         # numRobEntries
@@ -615,13 +618,15 @@ class Gem5Wrapper(BasicComponent):
         )
 
         # issueEntries
+        # NOTICE: GEM5 requires `issueWidth <= 12`
+        issue_width = int(self.issue_unit[self.state[7]][0]) + \
+            int(self.issue_unit[self.state[7]][1]) + \
+            int(self.issue_unit[self.state[7]][2])
         _modify_gem5(
             self.root_o3cpu,
             "issueWidth\ =\ Param.Unsigned\(\d+,\ \"Issue\ width\"\)",
             "issueWidth = Param.Unsigned(%d, \"Issue width\")" % (
-                int(self.issue_unit[self.state[7]][0]) + \
-                int(self.issue_unit[self.state[7]][1]) + \
-                int(self.issue_unit[self.state[7]][2])
+                12 if issue_width > 12 else issue_width
             )
         )
 
@@ -629,16 +634,30 @@ class Gem5Wrapper(BasicComponent):
         _modify_gem5(
             self.root_cache,
             "mshrs\ =\ \d+",
-            "mshrs = %d" % round_power_of_two(self.dcache[self.state[9]][0])
+            "mshrs = %d" % round_power_of_two(self.dcache[self.state[9]][0]),
             count=1
         )
 
         # dcache.nTLBWays
         _modify_gem5(
-            self.root_cache,
+            self.root_tlb,
             "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
             "size = Param.Int(%d, \"TLB size\")" %
                 round_power_of_two(self.dcache[self.state[9]][1])
+        )
+
+        # BTB
+        _modify_gem5(
+            self.root_btb,
+            "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
+            "RASSize = Param.Unsigned(16, \"RAS size\")"
+        )
+
+        # BTBEntries
+        _modify_gem5(
+            self.root_btb,
+            "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
+            "BTBEntries = Param.Unsigned(32, \"Number of BTB entries\")"
         )
 
     def generate_gem5(self):

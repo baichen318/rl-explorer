@@ -32,7 +32,6 @@ except ImportError:
     import joblib
 from util import parse_args, get_configs, load_txt, write_txt, mkdir
 from xgboost import XGBRegressor
-from dse.env.rocket.design_space import parse_design_space
 
 
 markers = [
@@ -67,11 +66,24 @@ def load_dataset(path):
 
 
 def load_design_space():
-    design_space = parse_design_space(
-        configs["design-space"],
-        basic_component=configs["basic-component"],
-        random_state=configs["seed"],
-    )
+    if configs["design"] == "rocket":
+        from dse.env.rocket.design_space import parse_design_space
+        design_space = parse_design_space(
+            configs["design-space"],
+            basic_component=configs["basic-component"],
+            random_state=configs["seed"],
+        )
+    elif configs["design"] == "boom":
+        from dse.env.boom.design_space import parse_design_space
+        design_space = parse_design_space(
+            configs["design-space"],
+            basic_component=configs["basic-component"],
+            random_state=configs["seed"],
+        )
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: %s is not support." % configs["design"]
+        exit(-1)
     return design_space
 
 
