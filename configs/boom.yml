@@ -133,6 +133,18 @@ idx: 1
 # generate-data: data-output-path
 dataset-output-path: data/boom/dataset-v1.txt
 
+# PPA related
+# performance model learning rate
+ipc-model-lr: 0.001
+# power model learning rate
+power-model-lr: 0.001
+# area model learning rate
+area-model-lr: 0.001
+# epochs to train PPA models.
+ppa-epoch: 2000
+# ppa model path
+ppa-model: calib-models
+
 # RL related
 # metrics:
 metrics:
