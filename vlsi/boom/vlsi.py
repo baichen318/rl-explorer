@@ -1006,6 +1006,7 @@ def offline_vlsi(configs):
     design_set = load_txt(configs["design-output-path"])
     if len(design_set.shape) == 1:
         design_set = np.expand_dims(design_set, axis=0)
+    PreSynthesizeSimulation.set_tick(int(configs["idx"]))
     idx = [PreSynthesizeSimulation.tick() for i in range(configs["idx"], configs["idx"] + design_set.shape[0])]
     vlsi_manager = PreSynthesizeSimulation(
         configs,

@@ -63,7 +63,7 @@ def sample_generate_design():
 
 
 def generate_design():
-    logger, time_str = create_logger(
+    logger, time_str, _ = create_logger(
         os.path.abspath(os.path.dirname(__file__)),
         os.path.basename("generate-design")
     )
