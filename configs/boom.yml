@@ -115,7 +115,7 @@ benchmarks:
   # - dhrystone
   # - spmv
 
-# mode: generate-design | rl
+# mode: sample-generate-design | generate-design | generate-dataset | rl
 mode: generate-design
 
 # design: boom | rocket | cva6
