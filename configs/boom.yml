@@ -134,6 +134,14 @@ idx: 1
 dataset-output-path: data/boom/dataset-v1.txt
 
 # RL related
+# metrics:
+metrics:
+  - ipc
+  - power
+  - area
+# cuda enable
+cuda: False
+# random seed
 seed: 2021
 # no. of A3C agents
 num-process: 5
