@@ -47,7 +47,7 @@ class BasicEnv(gym.Env):
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
-   def info(self, msg):
+    def info(self, msg):
         print(msg)
         time_str = time.strftime("%Y-%m-%d-%H-%M")
         with open(self.configs["log-file"], 'a') as f:
@@ -57,7 +57,7 @@ class BasicEnv(gym.Env):
 class BoomDesignEnv(BasicEnv):
     """ BoomDesignEnv """
     def __init__(self, configs, idx):
-        super(BoomDesignEnv, self).__init__(configs)
+        super(BoomDesignEnv, self).__init__(configs, idx)
         self.action_space = spaces.Discrete(len(self.action_list))
         self.observation_space = spaces.MultiDiscrete(self.design_space.dims)
         self.state = None
