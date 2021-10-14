@@ -54,7 +54,7 @@ def vis_design_space_v1():
     ax.set_xlabel("IPC")
     ax.set_ylabel("Power")
     ax.set_zlabel("Area")
-    ax.view_init(elev=7, azim=21)
+    ax.view_init(elev=3, azim=33)
     path = os.path.join(os.path.dirname(__file__), "vis-%s.png" % configs["design"])
     plt.savefig(
         path,

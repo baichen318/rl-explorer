@@ -105,17 +105,17 @@ design-space:
 # benchmarks
 benchmarks:
   - median
-  - mt-vvadd
-  - mt-matmul
+  # - mt-vvadd
+  # - mt-matmul
   - towers
   # - qsort
   # - rsort
-  # - vvadd
-  # - multiply
+  - vvadd
+  - multiply
   # - dhrystone
   # - spmv
 
-# mode: generate-design | rl
+# mode: sample-generate-design | generate-design | generate-dataset | rl
 mode: generate-design
 
 # design: boom | rocket | cva6
@@ -133,7 +133,27 @@ idx: 1
 # generate-data: data-output-path
 dataset-output-path: data/boom/dataset-v1.txt
 
+# PPA related
+# performance model learning rate
+ipc-model-lr: 0.001
+# power model learning rate
+power-model-lr: 0.001
+# area model learning rate
+area-model-lr: 0.001
+# epochs to train PPA models.
+ppa-epoch: 2000
+# ppa model path
+ppa-model: calib-models
+
 # RL related
+# metrics:
+metrics:
+  - ipc
+  - power
+  - area
+# cuda enable
+cuda: False
+# random seed
 seed: 2021
 # no. of A3C agents
 num-process: 5

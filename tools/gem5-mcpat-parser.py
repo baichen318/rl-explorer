@@ -112,11 +112,6 @@ def read_mcpat_template(template):
     mcpat_template = parse_xml(template)
 
 
-def readBoomParams(boomParamsFile):
-    global boomParams
-    boomParams = parse_xml(boomParamsFile)
-
-
 def generate_template(output):
     num_cores = len(config["system"]["cpu"])
     private_l2 = config["system"]["cpu"][0].has_key("l2cache")
@@ -384,11 +379,81 @@ def post_handle_rocket(root):
                     param.attrib["value"] = "1.5"
 
 
+def post_handle_boom(root):
+    for param in root.iter("param"):
+        name = param.attrib["name"]
+        value = param.attrib["value"]
+        if name == "fp_issue_width":
+            fp_issue_width = [8, 16, 24, 32, 12, 20, 28]
+            param.attrib["value"] = str(fp_issue_width[args.state[7]])
+        if name in [
+            "fp_issue_width"
+        ]:
+            param.attrib["value"] = str(1)
+        elif name in ["phy_Regs_IRF_size", "phy_Regs_FRF_size"]:
+            param.attrib["value"] = str(32)
+        elif name in ["rename_writes", "fp_rename_writes"]:
+            param.attrib["value"] = str(0)
+    for component in root.iter("component"):
+        id = component.attrib["name"]
+        name = component.attrib["name"]
+        if name == "itlb":
+            for param in component.iter("param"):
+                name = param.attrib["name"]
+                if name == "number_entries":
+                    param.attrib["value"] = str(32)
+        if name == "icache":
+            for param in component.iter("param"):
+                name = param.attrib["name"]
+                if name == "icache_config":
+                    param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
+                        int(args.state[1]) * 64 * 64,
+                        64,
+                        args.state[1],
+                        1,
+                        1,
+                        3,
+                        64,
+                        1
+                    )
+                if name == "buffer_sizes":
+                    param.attrib["value"] = "%s,%s,%s,%s" % (
+                        2, 2, 2, 2
+                    )
+        if name == "dtlb":
+            for param in component.iter("param"):
+                name = param.attrib["name"]
+                if name == "number_entries":
+                    param.attrib["value"] = str(32)
+        if name == "dcache":
+            for param in component.iter("param"):
+                name = param.attrib["name"]
+                if name == "dcache_config":
+                    param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
+                        int(args.state[1]) * 64 * 64,
+                        64,
+                        args.state[1],
+                        1,
+                        1,
+                        3,
+                        64,
+                        1
+                    )
+                if name == "buffer_sizes":
+                    mshr = [2, 4 ,8, 16, 4]
+                    param.attrib["value"] = "%s,%s,%s,%s" % (
+                        mshr[args.state[9]],
+                        mshr[args.state[9]],
+                        mshr[args.state[9]],
+                        mshr[args.state[9]]
+                    )
+
+
 def post_handle(root):
     if args.design == "rocket":
         post_handle_rocket(root)
     elif args.design == "boom":
-        pass
+        post_handle_boom(root)
     else:
         assert args.design == "cva6", \
             "[ERROR]: unsupported design: %s" % args.design
@@ -448,7 +513,6 @@ def write_mcpat_xml(output_path):
 def main():
     read_stats(args.stats)
     read_config(args.config)
-    # readBoomParams(args.boom)
     read_mcpat_template(args.template)
     generate_template(args.output)
     write_mcpat_xml(args.output)

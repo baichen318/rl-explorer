@@ -20,9 +20,9 @@ from util import parse_args, get_configs, write_txt, if_exist, \
     mkdir, create_logger, execute
 
 
-def generate_design():
+def sample_generate_design():
     logger, time_str = create_logger(
-        os.path.dirname(os.path.abspath(os.path.dirname(__file__))),
+        os.path.abspath(os.path.dirname(__file__)),
         os.path.basename("generate-design")
     )
     configs["logger"] = logger
@@ -52,6 +52,32 @@ def generate_design():
         )
         design = design_space.sample(batch=configs["batch"])
         write_txt(configs["design-output-path"], design.numpy())
+        if configs["debug"]:
+            test_offline_vlsi(configs)
+        else:
+            offline_vlsi(configs)
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: deisgn: %s not support." % configs["design"]
+        pass
+
+
+def generate_design():
+    logger, time_str = create_logger(
+        os.path.abspath(os.path.dirname(__file__)),
+        os.path.basename("generate-design")
+    )
+    configs["logger"] = logger
+    if configs["design"] == "boom":
+        from vlsi.boom.vlsi import offline_vlsi, test_offline_vlsi
+
+        if configs["debug"]:
+            test_offline_vlsi(configs)
+        else:
+            offline_vlsi(configs)
+    elif configs["design"] == "rocket":
+        from vlsi.rocket.vlsi import offline_vlsi, test_offline_vlsi
+
         if configs["debug"]:
             test_offline_vlsi(configs)
         else:
@@ -128,7 +154,9 @@ def rl_explorer():
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
     mode = configs["mode"]
-    if mode == "generate-design":
+    if mode == "sample-generate-design":
+        sample_generate_design()
+    elif mode == "generate-design":
         generate_design()
     elif mode == "generate-dataset":
         generate_dataset()

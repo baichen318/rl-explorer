@@ -32,7 +32,6 @@ except ImportError:
     import joblib
 from util import parse_args, get_configs, load_txt, write_txt, mkdir
 from xgboost import XGBRegressor
-from dse.env.rocket.design_space import parse_design_space
 
 
 markers = [
@@ -67,11 +66,24 @@ def load_dataset(path):
 
 
 def load_design_space():
-    design_space = parse_design_space(
-        configs["design-space"],
-        basic_component=configs["basic-component"],
-        random_state=configs["seed"],
-    )
+    if configs["design"] == "rocket":
+        from dse.env.rocket.design_space import parse_design_space
+        design_space = parse_design_space(
+            configs["design-space"],
+            basic_component=configs["basic-component"],
+            random_state=configs["seed"],
+        )
+    elif configs["design"] == "boom":
+        from dse.env.boom.design_space import parse_design_space
+        design_space = parse_design_space(
+            configs["design-space"],
+            basic_component=configs["basic-component"],
+            random_state=configs["seed"],
+        )
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: %s is not support." % configs["design"]
+        exit(-1)
     return design_space
 
 
@@ -315,9 +327,16 @@ def calib_xgboost_test(dataset):
     plt.rcParams['savefig.dpi'] = 600
     plt.rcParams['figure.dpi'] = 600
     lims = {
-        "ipc": [0.630, 0.850],
-        "power": [0.002, 0.014],
-        "area": [200000, 900000]
+        "rocket": {
+            "ipc": [0.630, 0.850],
+            "power": [0.002, 0.014],
+            "area": [200000, 900000]
+        },
+        "boom": {
+            "ipc": [0.68, 1.7],
+            "power": [0.035, 0.14],
+            "area": [1.25 * 1e6, 4.8 * 1e6]
+        }
     }
     for metric in metrics:
         print("[INFO]: test %s model." % metric)
@@ -345,16 +364,22 @@ def calib_xgboost_test(dataset):
             plt.scatter(pred, dataset.test_area_gt, s=2, marker=markers[2], c=colors[1])
         print("[INFO] MAE: {:.8f}, MSE: {:.8f}, Error: {:.4f}%".format(mae, mse, error))
         plt.plot(
-            np.linspace([lims[metric][0], lims[metric][1]], 1000),
-            np.linspace([lims[metric][0], lims[metric][1]], 1000),
+            np.linspace(
+                [lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]],
+                1000
+            ),
+            np.linspace(
+                [lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]],
+                1000
+            ),
             c=colors[3],
             linewidth=1,
             ls='--'
         )
         plt.xlabel("Predicton")
         plt.ylabel("GT")
-        plt.xlim(lims[metric])
-        plt.ylim(lims[metric])
+        plt.xlim(lims[configs["design"]][metric])
+        plt.ylim(lims[configs["design"]][metric])
         plt.grid()
         plt.title("{}-{} \n MAE: {:.8f} MSE: {:.8f} Error: {:.4f}%".format(configs["design"], metric, mae, mse, error))
         plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
