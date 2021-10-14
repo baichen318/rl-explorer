@@ -124,7 +124,7 @@ class BoomDesignEnv(BasicEnv):
             )
         )
         # NOTICE: scale it manually!
-        power = 10 * power
+        power = 0.1 * power
         area = 1e-6 * area
         reward = torch.Tensor(
             np.concatenate((ipc, -power, -area))
