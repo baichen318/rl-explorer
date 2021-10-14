@@ -155,7 +155,7 @@ class BOOMDesignSpace(Space):
             self.visited.add(point)
             samples.append(design)
             cnt += 1
-        return torch.Tensor(samples).long()
+        return torch.Tensor(samples).squeeze().long()
 
     def sample_v3(self, batch, decodeWidth):
         """
