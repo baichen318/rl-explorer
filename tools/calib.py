@@ -61,7 +61,7 @@ def load_dataset(path):
         if area[i] == 0:
             remove_idx.append(i)
             continue
-    dataset = np.delete(dataset, remove_idx, axis=0)
+    # dataset = np.delete(dataset, remove_idx, axis=0)
     return dataset
 
 
@@ -226,6 +226,22 @@ class PPADatasetV2(object):
         self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
         self.test_area_gt = test[:, idx + 2]
 
+        # remove zero elements from the test set
+        remove_idx = []
+        for i in range(self.test_ipc_gt.shape[0]):
+            if np.equal(self.test_ipc_gt[i], 0):
+                remove_idx.append(i)
+            if np.equal(self.test_power_gt[i], 0):
+                remove_idx.append(i)
+            if np.equal(self.test_area_gt[i], 0):
+                remove_idx.append(i)
+        self.test_ipc_feature = np.delete(self.test_ipc_feature, remove_idx, axis=0)
+        self.test_ipc_gt = np.delete(self.test_ipc_gt, remove_idx, axis=0)
+        self.test_power_feature = np.delete(self.test_power_feature, remove_idx, axis=0)
+        self.test_power_gt = np.delete(self.test_power_gt, remove_idx, axis=0)
+        self.test_area_feature = np.delete(self.test_area_feature, remove_idx, axis=0)
+        self.test_area_gt = np.delete(self.test_area_gt, remove_idx, axis=0)
+
 
 def calib_mlp_train(design_space, dataset):
     criterion = nn.MSELoss()
@@ -333,7 +349,7 @@ def calib_xgboost_test(dataset):
             "area": [200000, 900000]
         },
         "boom": {
-            "ipc": [0.68, 1.7],
+            "ipc": [0.65, 1.7],
             "power": [0.035, 0.14],
             "area": [1.25 * 1e6, 4.8 * 1e6]
         }
