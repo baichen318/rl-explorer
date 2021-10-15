@@ -557,8 +557,9 @@ class Gem5Wrapper(BasicComponent):
         _modify_gem5(
             self.root_o3cpu,
             "fetchWidth\ =\ Param.Unsigned\(\d+,\ \"Fetch\ width\"\)",
-            "fetchWidth = Param.Unsigned(%d, \"Fetch width\")" %
-                12 if (self.state[1] << 1) > 12 else (self.state[1] << 1)
+            "fetchWidth = Param.Unsigned(%d, \"Fetch width\")" % (
+                12 if ((self.state[1]) << 1) > 12 else int(self.state[1]) << 1
+            )
         )
 
         # decodeWidth
