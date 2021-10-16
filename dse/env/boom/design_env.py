@@ -60,6 +60,7 @@ class BoomDesignEnv(BasicEnv):
         super(BoomDesignEnv, self).__init__(configs, idx)
         self.action_space = spaces.Discrete(len(self.action_list))
         self.observation_space = spaces.MultiDiscrete(self.design_space.dims)
+        self.reward_size = 3
         self.state = None
         self.n_step = 0
         self.last_update = 0
@@ -133,7 +134,7 @@ class BoomDesignEnv(BasicEnv):
         self.info(msg)
         done = bool(self.n_step > self.configs["num-env-step"])
         self.n_step += 1
-        return self.state.clone(), reward, done, {}
+        return self.state, reward, done, {}
 
     def reset(self):
         self.state = self.design_space.sample_v2(1)

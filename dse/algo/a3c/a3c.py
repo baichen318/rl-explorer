@@ -175,16 +175,30 @@ def a3c(env, configs):
             )
             configs["logger"].info(msg)
             for r in reward:
-                # NOTICE: refers to dse/env/rocket/design_env.py
                 assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
-                episode_ppa["ipc"].append(r[0])
-                ppa["ipc"].append(r[0])
-                # unit: mW
-                episode_ppa["power"].append((-r[1] / 10) * 1e3)
-                ppa["power"].append((-r[1] / 10) * 1e3)
-                # unit: mm^2
-                episode_ppa["area"].append(-r[2])
-                ppa["area"].append(-r[2])
+                if configs["design"] == "rocket":
+                    # NOTICE: refers to dse/env/rocket/design_env.py
+                    episode_ppa["ipc"].append(r[0] / 10)
+                    ppa["ipc"].append(r[0] / 10)
+                    # unit: mW
+                    episode_ppa["power"].append((-r[1] / 10) * 1e3)
+                    ppa["power"].append((-r[1] / 10) * 1e3)
+                    # unit: mm^2
+                    episode_ppa["area"].append(-r[2] / 10)
+                    ppa["area"].append(-r[2] / 10)
+                elif configs["design"] == "boom":
+                    # NOTICE: refers to dse/env/boom/design_env.py
+                    episode_ppa["ipc"].append(r[0])
+                    ppa["ipc"].append(r[0])
+                    # unit: mW
+                    episode_ppa["power"].append(-r[1] * 10)
+                    ppa["power"].append(-r[1] * 10)
+                    # unit: mm^2
+                    episode_ppa["area"].append(-r[2] / 3)
+                    ppa["area"].append(-r[2] / 3)
+                else:
+                    assert configs["design"] == "cva6", \
+                        "[ERROR]: %s is unsupported." % configs["design"]
 
             masks = torch.FloatTensor(
                 [[0.0] if _done else [1.0] for _done in done]
