@@ -26,6 +26,8 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import GridSearchCV
+from scipy.stats import stats
 try:
     from sklearn.externals import joblib
 except ImportError:
@@ -98,16 +100,36 @@ def init_xgb():
     """
         NOTICE: a checkpoint
     """
-    return XGBRegressor(
-        max_depth=3,
-        gamma=0.0001,
-        min_child_weight=1,
-        subsample=1.0,
-        eta=0.25,
-        reg_lambda=2.30,
-        alpha=0,
-        objective="reg:squarederror",
-        n_jobs=-1
+
+    # return XGBRegressor(
+    #     max_depth=5,
+    #     gamma=0.00001,
+    #     min_child_weight=2,
+    #     subsample=1.0,
+    #     eta=0.05,
+    #     reg_alpha=1.0,
+    #     reg_lambda=0.1,
+    #     booster="gbtree",
+    #     objective="reg:squarederror",
+    #     eval_metric="mae",
+    #     n_jobs=-1
+    # )
+    return GridSearchCV(
+        estimator=XGBRegressor(
+            subsample=1.0,
+            booster="gbtree",
+            objective="reg:squarederror",
+            n_jobs=-1
+        ),
+        param_grid={
+            "max_depth": [i for i in range(3, 8)],
+            "gamma": [0.0001, 0.00001, 0.000001, 0.0000001],
+            "min_child_weight": [1, 2],
+            "eta": [i for i in np.arange(0.05, 0.4, 0.01)],
+            "reg_alpha": [i for i in np.arange(1.0, 3.0, 0.1)],
+            "reg_lambda": [i for i in np.arange(0.1, 1, 0.01)],
+        },
+        cv=5
     )
 
 def init_lr():
@@ -173,6 +195,22 @@ class PPADatasetV1(BaseDataset):
         self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
         self.test_area_gt = test[:, idx + 2]
         self.batch = batch
+
+        # remove zero elements from the test set
+        remove_idx = []
+        for i in range(self.test_ipc_gt.shape[0]):
+            if np.equal(self.test_ipc_gt[i], 0):
+                remove_idx.append(i)
+            if np.equal(self.test_power_gt[i], 0):
+                remove_idx.append(i)
+            if np.equal(self.test_area_gt[i], 0):
+                remove_idx.append(i)
+        self.test_ipc_feature = np.delete(self.test_ipc_feature, remove_idx, axis=0)
+        self.test_ipc_gt = np.delete(self.test_ipc_gt, remove_idx, axis=0)
+        self.test_power_feature = np.delete(self.test_power_feature, remove_idx, axis=0)
+        self.test_power_gt = np.delete(self.test_power_gt, remove_idx, axis=0)
+        self.test_area_feature = np.delete(self.test_area_feature, remove_idx, axis=0)
+        self.test_area_gt = np.delete(self.test_area_gt, remove_idx, axis=0)
 
     def __getitem__(self, index):
         return {
@@ -269,7 +307,7 @@ def calib_mlp_train(design_space, dataset):
                     )
                 )
         mkdir(os.path.join(configs["ppa-model"]))
-        model.save(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt"))
+        model.save(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + "-torch.pt"))
 
 
 def calib_mlp_test(design_space, dataset):
@@ -278,12 +316,21 @@ def calib_mlp_test(design_space, dataset):
     L2 = nn.MSELoss()
     L1 = nn.L1Loss()
     lims = {
-        "ipc": [0.630, 0.850],
+        "rocket": {
+            "ipc": [0.630, 0.850],
+            "power": [0.002, 0.014],
+            "area": [200000, 900000]
+        },
+        "boom": {
+            "ipc": [0.620, 1.760],
+            "power": [0.030, 0.14],
+            "area": [1.25 * 1e6, 4.8 * 1e6]
+        }
     }
     for metric in metrics:
         print("[INFO]: test %s model." % metric)
         model = MLP(design_space.n_dim + 1, 1)
-        model.load(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt"))
+        model.load(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + "-torch.pt"))
         model.eval()
         error, l1, l2 = 0, 0, 0
         x, y = [], []
@@ -298,23 +345,24 @@ def calib_mlp_test(design_space, dataset):
                 l1 += _l1
                 l2 += _l2
             print("[INFO]: {} model, error: {:.8f}, L1: {:.8f}, L2: {:.8f}".format(
-                metric,
-                error / dataset.get_test_data_size(),
-                l1,
-                l2)
+                    metric,
+                    error / dataset.get_test_data_size(),
+                    l1,
+                    l2
+                )
             )
             plt.scatter(x, y, s=2, marker=markers[2], c=colors[1])
             plt.plot(
-                np.linspace([lims[metric][0], lims[metric][1]], 1000),
-                np.linspace([lims[metric][0], lims[metric][1]], 1000),
+                np.linspace([lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]], 1000),
+                np.linspace([lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]], 1000),
                 c=colors[3],
                 linewidth=1,
                 ls='--'
             )
             plt.xlabel("Predicton")
             plt.ylabel("GT")
-            plt.xlim(lims[metric])
-            plt.ylim(lims[metric])
+            plt.xlim(lims[configs["design"]][metric])
+            plt.ylim(lims[configs["design"]][metric])
             plt.grid()
             plt.title("%s-%s" % (configs["design"], metric))
             plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
@@ -333,6 +381,8 @@ def calib_xgboost_train(dataset):
         else:
             assert metric == "area", "[ERROR]: unsupported metric."
             model.fit(dataset.train_area_feature, dataset.train_area_gt)
+        if isinstance(model, GridSearchCV):
+            print("[INFO]", type(model), model.best_estimator_, model.best_params_)
         joblib.dump(
             model,
             os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt")
@@ -349,8 +399,8 @@ def calib_xgboost_test(dataset):
             "area": [200000, 900000]
         },
         "boom": {
-            "ipc": [0.65, 1.7],
-            "power": [0.035, 0.14],
+            "ipc": [0.620, 1.760],
+            "power": [0.030, 0.14],
             "area": [1.25 * 1e6, 4.8 * 1e6]
         }
     }
@@ -364,12 +414,14 @@ def calib_xgboost_test(dataset):
             mae = mean_absolute_error(dataset.test_ipc_gt, pred)
             mse = mean_squared_error(dataset.test_ipc_gt, pred)
             error = np.mean((abs(pred - dataset.test_ipc_gt) / dataset.test_ipc_gt)) * 1e2
+            kendall_tau, _ = stats.kendalltau(pred, dataset.test_ipc_gt)
             plt.scatter(pred, dataset.test_ipc_gt, s=2, marker=markers[2], c=colors[1])
         elif metric == "power":
             pred = model.predict(dataset.test_power_feature)
             mae = mean_absolute_error(dataset.test_power_gt, pred)
             mse = mean_squared_error(dataset.test_power_gt, pred)
             error = np.mean((abs(pred - dataset.test_power_gt) / dataset.test_power_gt)) * 1e2
+            kendall_tau, _ = stats.kendalltau(pred, dataset.test_power_gt)
             plt.scatter(pred, dataset.test_power_gt, s=2, marker=markers[2], c=colors[1])
         else:
             assert metric == "area", "[ERROR]: unsupported metric."
@@ -377,8 +429,12 @@ def calib_xgboost_test(dataset):
             mae = mean_absolute_error(dataset.test_area_gt, pred)
             mse = mean_squared_error(dataset.test_area_gt, pred)
             error = np.mean((abs(pred - dataset.test_area_gt) / dataset.test_area_gt)) * 1e2
+            kendall_tau, _ = stats.kendalltau(pred, dataset.test_area_gt)
             plt.scatter(pred, dataset.test_area_gt, s=2, marker=markers[2], c=colors[1])
-        print("[INFO] MAE: {:.8f}, MSE: {:.8f}, Error: {:.4f}%".format(mae, mse, error))
+        print("[INFO] MAE: {:.8f}, MSE: {:.8f}, Error: {:.4f}%, Kendall Tau: {:.4f}".format(
+                mae, mse, error, kendall_tau
+            )
+        )
         plt.plot(
             np.linspace(
                 [lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]],
@@ -397,7 +453,10 @@ def calib_xgboost_test(dataset):
         plt.xlim(lims[configs["design"]][metric])
         plt.ylim(lims[configs["design"]][metric])
         plt.grid()
-        plt.title("{}-{} \n MAE: {:.8f} MSE: {:.8f} Error: {:.4f}%".format(configs["design"], metric, mae, mse, error))
+        plt.title("{}-{} \n MAE: {:.8f} MSE: {:.8f} Error: {:.4f}% \n Kendall Tau: {:.4f}".format(
+                configs["design"], metric, mae, mse, error, kendall_tau
+            )
+        )
         plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
         print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
         plt.close()
