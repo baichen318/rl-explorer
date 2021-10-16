@@ -101,36 +101,36 @@ def init_xgb():
         NOTICE: a checkpoint
     """
 
-    # return XGBRegressor(
-    #     max_depth=5,
-    #     gamma=0.00001,
-    #     min_child_weight=2,
-    #     subsample=1.0,
-    #     eta=0.05,
-    #     reg_alpha=1.0,
-    #     reg_lambda=0.1,
-    #     booster="gbtree",
-    #     objective="reg:squarederror",
-    #     eval_metric="mae",
-    #     n_jobs=-1
-    # )
-    return GridSearchCV(
-        estimator=XGBRegressor(
-            subsample=1.0,
-            booster="gbtree",
-            objective="reg:squarederror",
-            n_jobs=-1
-        ),
-        param_grid={
-            "max_depth": [i for i in range(3, 8)],
-            "gamma": [0.0001, 0.00001, 0.000001, 0.0000001],
-            "min_child_weight": [1, 2],
-            "eta": [i for i in np.arange(0.05, 0.4, 0.01)],
-            "reg_alpha": [i for i in np.arange(1.0, 3.0, 0.1)],
-            "reg_lambda": [i for i in np.arange(0.1, 1, 0.01)],
-        },
-        cv=5
+    return XGBRegressor(
+        max_depth=3,
+        gamma=0.00001,
+        min_child_weight=1,
+        subsample=1.0,
+        eta=0.3,
+        reg_alpha=0.1,
+        reg_lambda=0.1,
+        booster="gbtree",
+        objective="reg:squarederror",
+        eval_metric="mae",
+        n_jobs=-1
     )
+    # return GridSearchCV(
+    #     estimator=XGBRegressor(
+    #         subsample=1.0,
+    #         booster="gbtree",
+    #         objective="reg:squarederror",
+    #         n_jobs=-1
+    #     ),
+    #     param_grid={
+    #         "max_depth": [i for i in range(3, 8)],
+    #         "gamma": [0.0001, 0.00001, 0.000001, 0.0000001],
+    #         "min_child_weight": [1, 2],
+    #         "eta": [i for i in np.arange(0.05, 0.4, 0.01)],
+    #         "reg_alpha": [i for i in np.arange(1.0, 3.0, 0.1)],
+    #         "reg_lambda": [i for i in np.arange(0.1, 1, 0.01)],
+    #     },
+    #     cv=5
+    # )
 
 def init_lr():
     from sklearn.linear_model import LinearRegression
@@ -324,7 +324,7 @@ def calib_mlp_test(design_space, dataset):
         "boom": {
             "ipc": [0.620, 1.760],
             "power": [0.030, 0.14],
-            "area": [1.25 * 1e6, 4.8 * 1e6]
+            "area": [1.20 * 1e6, 4.8 * 1e6]
         }
     }
     for metric in metrics:
@@ -401,7 +401,7 @@ def calib_xgboost_test(dataset):
         "boom": {
             "ipc": [0.620, 1.760],
             "power": [0.030, 0.14],
-            "area": [1.25 * 1e6, 4.8 * 1e6]
+            "area": [1.20 * 1e6, 4.8 * 1e6]
         }
     }
     for metric in metrics:
