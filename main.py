@@ -97,7 +97,11 @@ def generate_design():
     else:
         assert configs["design"] == "cva6", \
             "[ERROR]: deisgn: %s not support." % configs["design"]
-        pass
+        from vlsi.cva6.vlsi import offline_vlsi, test_offline_vlsi
+        if configs["debug"]:
+            test_offline_vlsi(configs)
+        else:
+            offline_vlsi(configs)
 
 
 def sim():
@@ -116,12 +120,10 @@ def generate_dataset():
         # generate_dataset(configs)
         generate_detail_dataset(configs)
     elif configs["design"] == "cva6":
-        from vlsi.cva6.vlsi import generate_dataset
-        generate_dataset(configs)
-    else:
         assert configs["design"] == "cva6", \
             "[ERROR]: design: %s not support." % configs["design"]
-        pass
+        from vlsi.cva6.vlsi import generate_dataset
+        generate_dataset(configs)
 
 
 def set_torch():
@@ -160,7 +162,6 @@ def rl_explorer():
             "[ERROR]: deisng: %s not support." % configs["design"]
         from dse.env.cva6.design_env import CVA6DesignEnv
         a3c(CVA6DesignEnv, configs)
-
 
 
 if __name__ == "__main__":

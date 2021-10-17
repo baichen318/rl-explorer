@@ -87,7 +87,7 @@ basic-component:
 design-space:
   bpd:
     start: 0
-    end: 11
+    end: 9
     stride: 1
   dcache:
     start: 0
@@ -108,12 +108,12 @@ benchmarks:
   # - qsort
   # - rsort
   - towers
-  # - vvadd
-  # - multiply
+  - vvadd
+  - multiply
   # - dhrystone
   # - spmv
-  - mt-vvadd
-  - mt-matmul
+  # mt-vvadd
+  # mt-matmul
 
 # mode: sample-generate-design | generate-design | generate-dataset | rl
 mode: sample-generate-design
@@ -194,4 +194,4 @@ batch-size: 16
 # intial beta for evelope A3C
 beta: 0.01
 log: logs/a3c-cva6
-debug: False
+debug: True
