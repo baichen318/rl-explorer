@@ -4,9 +4,10 @@ import os
 import sys
 import re
 import time
+import multiprocessing
 import numpy as np
-from util import load_txt, execute, if_exist, write_txt
-from vlsi.boom.macros import MACROS
+from util import load_txt, execute, if_exist, write_txt, remove, mkdir, round_power_of_two
+from vlsi.cva6.macros import MACROS
 
 class VLSI(object):
     """ VLSI Flow """
@@ -27,26 +28,22 @@ class BasicComponent(object):
     def __init__(self, configs):
         super(BasicComponent, self).__init__()
         self.configs = configs
-        self.registers = self.init_registers()
-        self.issue_unit = self.init_issue_unit()
+        self.btb = self.init_btb()
         self.dcache = self.init_dcache()
-        self.lsu = self.init_lsu()
-        self.ifu_buffers = self.init_ifu_buffers()
+        self.icache = self.init_icache()
+        self.muldiv = self.init_muldiv()
 
-    def init_registers(self):
-        return self.configs["basic-component"]["registers"]
-
-    def init_issue_unit(self):
-        return self.configs["basic-component"]["issue-unit"]
+    def init_btb(self):
+        return self.configs["basic-component"]["btb"]
 
     def init_dcache(self):
         return self.configs["basic-component"]["dcache"]
 
-    def init_lsu(self):
-        return self.configs["basic-component"]["lsu"]
+    def init_icache(self):
+        return self.configs["basic-component"]["icache"]
 
-    def init_ifu_buffers(self):
-        return self.configs["basic-component"]["ifu-buffers"]
+    def init_muldiv(self):
+        return self.configs["basic-component"]["mul-unroll"]
 
 
 class PreSynthesizeSimulation(BasicComponent, VLSI):
@@ -56,7 +53,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
     def __init__(self, configs, **kwargs):
         super(PreSynthesizeSimulation, self).__init__(configs)
         # a 10-dim vector: <torch.Tensor>
-        self.boom_configs = kwargs["boom_configs"]
+        self.cva6_configs = kwargs["cva6_configs"]
         self.soc_name = kwargs["soc_name"]
         self.core_name = kwargs["core_name"]
         self.batch = len(self.soc_name)
@@ -85,62 +82,9 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
         PreSynthesizeSimulation.counter += 1
         return PreSynthesizeSimulation.counter
 
-    def __generate_bpd(self, idx):
-        choice = self.boom_configs[idx][0]
-        if choice == 0:
-            return "new WithTAGELBPD ++"
-        elif choice == 1:
-            return "new WithBoom2BPD ++"
-        elif choice == 2:
-            return "new WithAlpha21264BPD ++"
-        else:
-            assert choice == 3
-            return "new WithSWBPD ++"
-
-    def __generate_issue_unit(self, idx):
-        return """Seq(
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d),
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d),
-                IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue, dispatchWidth=%d)
-              )""" % (
-                # IQT_MEM
-                1 if self.boom_configs[idx][4] <= 3 else 2,
-                self.issue_unit[self.boom_configs[idx][7]][0],
-                self.boom_configs[idx][4],
-                # IQT_INT
-                self.boom_configs[idx][4],
-                self.issue_unit[self.boom_configs[idx][7]][1],
-                self.boom_configs[idx][4],
-                # IQT_FP
-                1 if self.boom_configs[idx][4] <= 3 else 2,
-                self.issue_unit[self.boom_configs[idx][7]][2],
-                self.boom_configs[idx][4]
-            )
-
-    def __generate_registers(self, idx):
-        return """numIntPhysRegisters = %d,
-              numFpPhysRegisters = %d""" % (
-                self.registers[self.boom_configs[idx][6]][0],
-                self.registers[self.boom_configs[idx][6]][1]
-            )
-
-    def __generate_lsu(self, idx):
-        return """numLdqEntries = %d,
-              numStqEntries = %d""" % (
-                self.lsu[self.boom_configs[idx][8]][0],
-                self.lsu[self.boom_configs[idx][8]][1]
-            )
-
-    def __generate_ifu_buffers(self, idx):
-        return """numFetchBufferEntries = %d,
-              ftq = FtqParameters(nEntries=%d)""" % (
-                self.ifu_buffers[self.boom_configs[idx][2]][0],
-                self.ifu_buffers[self.boom_configs[idx][2]][1]
-            )
-
     def __generate_mulDiv(self, idx):
         """ deprecated """
-        choice = self.boom_configs[idx][13]
+        choice = self.cva6_configs[idx][13]
         if choice == 0:
             return "1"
         else:
@@ -150,7 +94,7 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
     def __generate_dcache(self, idx):
         def __generate_replacement_policy():
             """ deprecated """
-            choice = self.boom_configs[idx][16]
+            choice = self.cva6_configs[idx][16]
             if choice == 0:
                 return "random"
             elif choice == 1:
@@ -161,33 +105,39 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
 
         return """Some(
                 DCacheParams(
-                  rowBits=site(SystemBusKey).beatBits,
-                  nSets=64,
+                  nSets=%d,
                   nWays=%d,
+                  nTLBSets=%d,
                   nTLBWays=%d,
                   nMSHRs=%d
                 )
             )""" % (
-                self.boom_configs[idx][1],
-                self.dcache[self.boom_configs[idx][9]][1],
-                self.dcache[self.boom_configs[idx][9]][0],
+                self.dcache[self.cva6_configs[idx][1]][0],
+                self.dcache[self.cva6_configs[idx][1]][1],
+                self.dcache[self.cva6_configs[idx][1]][2],
+                self.dcache[self.cva6_configs[idx][1]][3],
+                self.dcache[self.cva6_configs[idx][1]][4],   
             )
 
     def __generate_icache(self, idx):
         """ deprecated """
         return """Some(
-                ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=%d, nWays=%d, nTLBSets=%d, nTLBWays=%d, fetchBytes=%d)
+                ICacheParams(
+                  nSets=%d,
+                  nWays=%d,
+                  nTLBSets=%d,
+                  nTLBWays=%d
+                )
             )""" % (
-                self.icache[self.boom_configs[idx][0]][0],
-                self.icache[self.boom_configs[idx][0]][1],
-                self.icache[self.boom_configs[idx][0]][2],
-                self.icache[self.boom_configs[idx][0]][3],
-                self.icache[self.boom_configs[idx][0]][4],
+                self.icache[self.cva6_configs[idx][2]][0],
+                self.icache[self.cva6_configs[idx][2]][1],
+                self.icache[self.cva6_configs[idx][2]][2],
+                self.icache[self.cva6_configs[idx][2]][3]
             )
 
     def __generate_system_bus_key(self, idx):
         # fetchBytes
-        choice = self.boom_configs[idx][1]
+        choice = self.cva6_configs[idx][1]
         if choice == 4:
             return 8
         else:
@@ -199,65 +149,43 @@ class PreSynthesizeSimulation(BasicComponent, VLSI):
 
         for idx in range(self.batch):
             codes.append('''
-class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
-  %s
-  new Config((site, here, up) => {
-    case TilesLocated(InSubsystem) => {
-      val prev = up(TilesLocated(InSubsystem), site)
-      val idOffset = overrideIdOffset.getOrElse(prev.size)
-      (0 until n).map { i =>
-        BoomTileAttachParams(
-          tileParams = BoomTileParams(
-            core = BoomCoreParams(
-              fetchWidth = %d,
-              decodeWidth = %d,
-              numRobEntries = %d,
-              issueParams = %s,
-              %s,
-              %s,
-              maxBrCount = %d,
-              %s,
-              fpu = Some(
-                freechips.rocketchip.tile.FPUParams(
-                  sfmaLatency=4, dfmaLatency=4, divSqrt=true
-                )
-              )
-            ),
-            dcache = %s,
-            icache = Some(
-              ICacheParams(rowBits = site(SystemBusKey).beatBits, nSets=64, nWays=%d, fetchBytes=%d*4)
-            ),
-            hartId = i + idOffset
-          ),
-          crossingParams = RocketCrossingParams()
-        )
-      } ++ prev
-    }
-    case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = %d)
-    case XLen => 64
-  })
-)
+class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config((site, here, up) => {
+  case TilesLocated(InSubsystem) => {
+    val prev = up(TilesLocated(InSubsystem), site)
+    val idOffset = overrideIdOffset.getOrElse(prev.size)
+    (0 until n).map { i =>
+      CVA6TileAttachParams(
+        tileParams = CVA6TileParams(
+          hartId = i + idOffset,
+          dcache = %s,
+          icache = %s,
+          core = CVA6CoreParams(
+            rasEntries = %s,
+            btbEntries = %s,
+            bhtEntries = %s
+          )
+        ),
+        crossingParams = RocketCrossingParams()
+      )
+    } ++ prev
+  }
+  case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 8)
+  case XLen => 64
+})
+
 ''' % (
         self.core_name[idx],
-        self.__generate_bpd(idx),
-        self.boom_configs[idx][1],
-        self.boom_configs[idx][4],
-        self.boom_configs[idx][5],
-        self.__generate_issue_unit(idx),
-        self.__generate_registers(idx),
-        self.__generate_lsu(idx),
-        self.boom_configs[idx][3],
-        self.__generate_ifu_buffers(idx),
         self.__generate_dcache(idx),
-        self.boom_configs[idx][1],
-        self.boom_configs[idx][1] // 2,
+        self.__generate_icache(idx),
+        self.cva6_configs[idx][1],
+        self.cva6_configs[idx][1] // 2,
         self.__generate_system_bus_key(idx)
     )
 )
 
         return codes
 
-    def _generate_boom_configs(self):
+    def _generate_cva6_configs(self):
         codes = []
         for idx in range(self.batch):
             codes.append('''
@@ -274,7 +202,7 @@ class %s extends Config(
         codes = self._generate_config_mixins()
         with open(MACROS["config-mixins"], 'a') as f:
             f.writelines(codes)
-        codes = self._generate_boom_configs()
+        codes = self._generate_cva6_configs()
         with open(MACROS["boom-configs"], 'a') as f:
             f.writelines(codes)
 
@@ -512,7 +440,7 @@ def test_online_vlsi(configs, state):
 
     vlsi_manager = PreSynthesizeSimulation(
         configs,
-        boom_configs=state,
+        cva6_configs=state,
         soc_name=[
             "Boom%dConfig" % i for i in idx
         ],
@@ -540,7 +468,7 @@ def online_vlsi(configs, state):
 
     vlsi_manager = PreSynthesizeSimulation(
         configs,
-        boom_configs=state,
+        cva6_configs=state,
         soc_name=[
             "Boom%dConfig" % i for i in idx
         ],
@@ -579,7 +507,7 @@ def test_offline_vlsi(configs):
     for design in design_set:
         vlsi_manager = PreSynthesizeSimulation(
             configs,
-            boom_configs=design,
+            cva6_configs=design,
             soc_name="Boom%dConfig" % idx,
             core_name="WithN%dBooms" % idx
         )
@@ -593,22 +521,25 @@ def offline_vlsi(configs):
     """
         configs: <dict>
     """
-    # affect config-mixins.scala, BoomConfigs.scala and compile.sh
+    # affect ConfigMixins.scala, CVA6Configs.scala and compile.sh
     design_set = load_txt(configs["design-output-path"])
-
-    idx = configs["idx"]
-    for design in design_set:
-        vlsi_manager = PreSynthesizeSimulation(
-            configs,
-            boom_configs=design,
-            soc_name="Boom%dConfig" % idx,
-            core_name="WithN%dBooms" % idx
-        )
-        vlsi_manager.steps = lambda x=None: ["generate_design"]
-        vlsi_manager.run()
-        idx = idx + 1
-
-    vlsi_manager.generate_scripts(len(design_set), configs["idx"])
+    if len(design_set.shape) == 1:
+        design_set = np.expand_dims(design_set, axis=0)
+    PreSynthesizeSimulation.set_tick(int(configs["idx"]))
+    idx = [PreSynthesizeSimulation.tick() for i in range(configs["idx"], configs["idx"] + design_set.shape[0])]
+    vlsi_manager = PreSynthesizeSimulation(
+        configs,
+        rocket_configs=design_set,
+        soc_name=[
+            "CVA6%dConfig" % i for i in idx
+        ],
+        core_name=[
+            "WithN%dCVA6Cores" % i for i in idx
+        ]
+    )
+    vlsi_manager.steps = lambda x=None: ["generate_design"]
+    vlsi_manager.run()
+    vlsi_manager.generate_scripts(idx[0])
 
 def _generate_dataset(configs, design_set, dataset, dir_n):
     # get feature vector `fv`

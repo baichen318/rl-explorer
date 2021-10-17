@@ -21,7 +21,7 @@ from util import parse_args, get_configs, write_txt, if_exist, \
 
 
 def sample_generate_design():
-    logger, time_str = create_logger(
+    logger, time_str, _ = create_logger(
         os.path.abspath(os.path.dirname(__file__)),
         os.path.basename("generate-design")
     )
@@ -59,7 +59,19 @@ def sample_generate_design():
     else:
         assert configs["design"] == "cva6", \
             "[ERROR]: deisgn: %s not support." % configs["design"]
-        pass
+        from dse.env.cva6.design_space import parse_design_space
+        from vlsi.cva6.vlsi import offline_vlsi, test_offline_vlsi
+        design_space = parse_design_space(
+            configs["design-space"],
+            random_state=round(time()),
+            basic_component=configs["basic-component"]
+        )
+        design = design_space.sample(batch=configs["batch"])
+        write_txt(configs["design-output-path"], design.numpy())
+        if configs["debug"]:
+            test_offline_vlsi(configs)
+        else:
+            offline_vlsi(configs)
 
 
 def generate_design():

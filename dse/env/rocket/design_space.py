@@ -71,13 +71,13 @@ class RocketDesignSpace(Space):
         )
 
     def _sample(self):
-        def __filter(design, k, v):
-            # Notice: Google sheet
+        def __filter(v):
+            # NOTICE: Google sheet
             return random.sample(v, 1)[0]
 
         design = []
         for k, v in self.bounds.items():
-            design.append(__filter(design, k, v))
+            design.append(__filter(v))
         return design
 
     def sample(self, batch, f=None):
