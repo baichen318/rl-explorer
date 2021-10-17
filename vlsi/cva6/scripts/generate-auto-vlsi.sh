@@ -27,10 +27,16 @@ benchmarks=(median towers vvadd multiply)
 function build2syn() {
     soc_name=\${1}
     echo "[INFO] build2syn \${soc_name}"
-    make sim-syn \\
-        MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
-        CONFIG=\${soc_name} \\
-        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
+    (make sim-syn \
+        MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \
+        CONFIG=${soc_name} \
+        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv && \\
+    sed -ie "s/endfunctions;/endfunction/g" /research/dept8/gds/cbai/research/chipyard/vlsi/generated-src/chipyard.TestHarness.${soc_name}/CVA6CoreBlackbox.preprocessed.sv && \\
+    sed -i "s/\$fatal(1, \"Invalid value for parameter 'ARBITER'\!\");/\/\/\ \$fatal(1, \"Invalid value for parameter 'ARBITER'\!\");/g" generated-src/chipyard.TestHarness.${soc_name}/CVA6CoreBlackbox.preprocessed.sv && \\
+    make sim-syn \
+        MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \
+        CONFIG=${soc_name} \
+        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &)
 }
 
 function ptpx_impl() {
