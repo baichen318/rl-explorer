@@ -383,11 +383,11 @@ def calib_xgboost_train(dataset):
             print(dataset.train_ipc_feature)
 
             my_mape = make_scorer(mape, greater_is_better=False)
-            kf = KFold(n_splits=10)
+            kf = KFold(n_splits=5)
             cv_params = {'cv': kf, 'scoring': mean_squared_error, 'n_jobs': 8, 'verbose': 1}
             xgb_model = XGBRegressor()
             grid = {'reg_alpha': [0.01], 'reg_lambda': [0.01], 'gamma': [0.00001], 'min_child_weight': [1], 'colsample_bytree': [1],
-                'max_depth': [3, 4], 'subsample': [0.8, 1], 'eta': [0.3, 0.4]}
+                'max_depth': [3, 4, 5], 'subsample': [0.8, 1], 'eta': [0.3, 0.4]}
             model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
 
             print("Best Params: ", model_cv.best_params_)
