@@ -105,7 +105,7 @@ def init_xgb():
         max_depth=3,
         gamma=0.00001,
         min_child_weight=1,
-        subsample=0.8,
+        subsample=0.9,
         eta=0.3,
         reg_alpha=1,
         reg_lambda=1,
