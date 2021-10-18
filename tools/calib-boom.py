@@ -103,7 +103,7 @@ def init_xgb():
 
     return XGBRegressor(
         max_depth=3,
-        gamma=0.0,
+        gamma=0.00001,
         min_child_weight=1,
         subsample=1,
         eta=0.3,
