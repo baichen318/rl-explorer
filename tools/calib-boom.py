@@ -384,7 +384,7 @@ def calib_xgboost_train(dataset):
 
             my_mape = make_scorer(mape, greater_is_better=False)
             kf = KFold(n_splits=10)
-            cv_params = {'cv': kf, 'scoring': my_mape, 'n_jobs': 8, 'verbose': 1}
+            cv_params = {'cv': kf, 'scoring': mean_squared_error, 'n_jobs': 8, 'verbose': 1}
             xgb_model = XGBRegressor()
             grid = {'reg_alpha': [0.01], 'reg_lambda': [0.01], 'gamma': [0.00001], 'min_child_weight': [1], 'colsample_bytree': [1],
                 'learning_rate': [0.02], 'max_depth': [2, 3, 4], 'n_estimators': [1000, 2500, 5000], 'subsample': [0.8, 1]}
