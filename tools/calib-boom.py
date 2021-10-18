@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics import make_scorer
 from sklearn.model_selection import GridSearchCV
 from scipy.stats import stats
 try:
@@ -370,6 +371,8 @@ def calib_mlp_test(design_space, dataset):
             print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
             plt.close()
 
+def mape(y_true, y_pred):
+    return np.mean(np.abs((np.array(y_pred) - np.array(y_true)) / np.array(y_true))) * 100
 
 def calib_xgboost_train(dataset):
     for metric in metrics:
@@ -377,6 +380,18 @@ def calib_xgboost_train(dataset):
         model = init_xgb()
         if metric == "ipc":
             model.fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
+
+            my_mape = make_scorer(mape, greater_is_better=False)
+            kf = KFold(n_splits=10)
+            cv_params = {'cv': kf, 'scoring': my_mape, 'n_jobs': -1, 'verbose': 1}
+            cv_model = XGBRegressor()
+            grid = {'reg_alpha': [0.01], 'reg_lambda': [0.01], 'gamma': [0.00001], 'min_child_weight': [1], 'colsample_bytree': [1],
+                'learning_rate': [0.02], 'max_depth': [2, 3, 4], 'n_estimators': [1000, 2500, 5000], 'subsample': [0.8, 1]}
+            model_cv = GridSearchCV(cv_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
+
+            print("Best Params: ", model_cv.best_params_)
+            print("Best Score_: " + str(model_cv.best_score_))
+
         elif metric == "power":
             model.fit(dataset.train_power_feature, dataset.train_power_gt)
         else:
