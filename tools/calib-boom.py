@@ -396,15 +396,15 @@ def calib_xgboost_train(dataset):
 
         elif metric == "power":
 
-            # kf = KFold(n_splits=10)
-            # cv_params = {'cv': kf, 'scoring': 'r2', 'n_jobs': 8, 'verbose': 1}
-            # xgb_model = XGBRegressor()
-            # grid = {'reg_alpha': [1, 1e-2], 'reg_lambda': [1, 1e-2], 'gamma': [0.1, 1e-3, 1e-5], 'min_child_weight': [1], 'colsample_bytree': [1],
-            #     'max_depth': [2, 3, 4], 'subsample': [0.8, 1], 'eta': [0.1, 0.15, 0.2, 0.25], 'n_estimators': [50, 80, 100, 150]}
-            # model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
-            # print("Best Params: ", model_cv.best_params_)
-            # print("Best Score_: " + str(model_cv.best_score_))
-            # model = model_cv.best_estimator_
+            kf = KFold(n_splits=10)
+            cv_params = {'cv': kf, 'scoring': 'r2', 'n_jobs': 8, 'verbose': 1}
+            xgb_model = XGBRegressor()
+            grid = {'reg_alpha': [1e-2], 'reg_lambda': [1e-2], 'gamma': [0.1, 1e-5], 'min_child_weight': [1], 'colsample_bytree': [1],
+                'max_depth': [3], 'subsample': [0.8, 1], 'eta': [0.15], 'n_estimators': [50, 100, 150]}
+            model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
+            print("Best Params: ", model_cv.best_params_)
+            print("Best Score_: " + str(model_cv.best_score_))
+            model = model_cv.best_estimator_
 
             model.fit(dataset.train_power_feature, dataset.train_power_gt)
         else:
