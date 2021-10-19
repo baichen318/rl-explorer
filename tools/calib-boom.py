@@ -104,13 +104,15 @@ def init_xgb():
 
     return XGBRegressor(
         max_depth=3,
-        n_estimators=5000,
-        gamma=0.00001,
+        n_estimators=80,
+        gamma=1e-5,
         min_child_weight=1,
         subsample=1,
-        eta=0.3,
-        reg_alpha=0.01,
-        reg_lambda=0.01,
+        eta=0.15,
+        reg_alpha=1,
+        reg_lambda=1,
+        colsample_bytree=1,
+        subsample=1,
         booster="gbtree",
         objective="reg:squarederror",
         eval_metric="mae",
@@ -380,16 +382,16 @@ def calib_xgboost_train(dataset):
         model = init_xgb()
         if metric == "ipc":
 
-            my_mape = make_scorer(mape, greater_is_better=False)
-            kf = KFold(n_splits=10)
-            cv_params = {'cv': kf, 'scoring': 'r2', 'n_jobs': 8, 'verbose': 1}
-            xgb_model = XGBRegressor()
-            grid = {'reg_alpha': [1], 'reg_lambda': [1], 'gamma': [1e-5, 1e-6], 'min_child_weight': [1], 'colsample_bytree': [1],
-                'max_depth': [3], 'subsample': [0.8, 0.9, 1], 'eta': [0.15, 0.2, 0.25], 'n_estimators': [80, 100, 200, 500]}
-            model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
-            print("Best Params: ", model_cv.best_params_)
-            print("Best Score_: " + str(model_cv.best_score_))
-            model = model_cv.best_estimator_
+            # my_mape = make_scorer(mape, greater_is_better=False)
+            # kf = KFold(n_splits=10)
+            # cv_params = {'cv': kf, 'scoring': 'r2', 'n_jobs': 8, 'verbose': 1}
+            # xgb_model = XGBRegressor()
+            # grid = {'reg_alpha': [1], 'reg_lambda': [1], 'gamma': [1e-5, 1e-6], 'min_child_weight': [1], 'colsample_bytree': [1],
+            #     'max_depth': [3], 'subsample': [0.8, 0.9, 1], 'eta': [0.15, 0.2, 0.25], 'n_estimators': [80, 100, 200, 500]}
+            # model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
+            # print("Best Params: ", model_cv.best_params_)
+            # print("Best Score_: " + str(model_cv.best_score_))
+            # model = model_cv.best_estimator_
 
             model.fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
 
@@ -398,8 +400,8 @@ def calib_xgboost_train(dataset):
             kf = KFold(n_splits=10)
             cv_params = {'cv': kf, 'scoring': 'r2', 'n_jobs': 8, 'verbose': 1}
             xgb_model = XGBRegressor()
-            grid = {'reg_alpha': [1], 'reg_lambda': [1], 'gamma': [1e-5, 1e-6], 'min_child_weight': [1], 'colsample_bytree': [1],
-                'max_depth': [2, 3, 4], 'subsample': [0.8, 1], 'eta': [0.2, 0.25, 0.3], 'n_estimators': [100, 200, 500, 1000]}
+            grid = {'reg_alpha': [1, 1e-2], 'reg_lambda': [1, 1e-2], 'gamma': [0.1, 1e-3, 1e-5], 'min_child_weight': [1], 'colsample_bytree': [1],
+                'max_depth': [2, 3, 4], 'subsample': [0.8, 1], 'eta': [0.1, 0.15, 0.2, 0.25], 'n_estimators': [50, 80, 100, 150]}
             model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
             print("Best Params: ", model_cv.best_params_)
             print("Best Score_: " + str(model_cv.best_score_))
