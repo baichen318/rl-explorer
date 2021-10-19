@@ -384,8 +384,8 @@ def calib_xgboost_train(dataset):
             kf = KFold(n_splits=10)
             cv_params = {'cv': kf, 'scoring': 'r2', 'n_jobs': 8, 'verbose': 1}
             xgb_model = XGBRegressor()
-            grid = {'reg_alpha': [1, 0.01], 'reg_lambda': [1, 0.01], 'gamma': [0.1, 0.00001, 0], 'min_child_weight': [1], 'colsample_bytree': [1],
-                'max_depth': [2, 3, 4], 'subsample': [1], 'eta': [0.2, 0.3, 0.4], 'n_estimators': [100, 500, 1000, 2000]}
+            grid = {'reg_alpha': [1], 'reg_lambda': [1], 'gamma': [1e-5, 1e-6], 'min_child_weight': [1], 'colsample_bytree': [1],
+                'max_depth': [3], 'subsample': [0.8, 0.9, 1], 'eta': [0.15, 0.2, 0.25], 'n_estimators': [80, 100, 200, 500]}
             model_cv = GridSearchCV(xgb_model, param_grid = grid, **cv_params).fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
             print("Best Params: ", model_cv.best_params_)
             print("Best Score_: " + str(model_cv.best_score_))
