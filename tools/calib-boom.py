@@ -107,7 +107,6 @@ def init_xgb():
         n_estimators=80,
         gamma=1e-5,
         min_child_weight=1,
-        subsample=1,
         eta=0.15,
         reg_alpha=1,
         reg_lambda=1,
