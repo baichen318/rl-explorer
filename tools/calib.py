@@ -264,6 +264,22 @@ class PPADatasetV2(object):
         self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
         self.test_area_gt = test[:, idx + 2]
 
+        # remove zero elements from the train set
+        remove_idx = []
+        for i in range(self.train_ipc_gt.shape[0]):
+            if np.equal(self.train_ipc_gt[i], 0):
+                remove_idx.append(i)
+            if np.equal(self.train_power_gt[i], 0):
+                remove_idx.append(i)
+            if np.equal(self.train_area_gt[i], 0):
+                remove_idx.append(i)
+        self.train_ipc_feature = np.delete(self.train_ipc_feature, remove_idx, axis=0)
+        self.train_ipc_gt = np.delete(self.train_ipc_gt, remove_idx, axis=0)
+        self.train_power_feature = np.delete(self.train_power_feature, remove_idx, axis=0)
+        self.train_power_gt = np.delete(self.train_power_gt, remove_idx, axis=0)
+        self.train_area_feature = np.delete(self.train_area_feature, remove_idx, axis=0)
+        self.train_area_gt = np.delete(self.train_area_gt, remove_idx, axis=0)
+
         # remove zero elements from the test set
         remove_idx = []
         for i in range(self.test_ipc_gt.shape[0]):
