@@ -5,8 +5,8 @@ import torch
 import random
 import time
 import numpy as np
-from dse.env.boom.design_space import parse_design_space
-from vlsi.boom.vlsi import online_vlsi, test_online_vlsi
+from dse.env.cva6.design_space import parse_design_space
+from vlsi.cva6.vlsi import online_vlsi, test_online_vlsi
 
 class BasicEnv(object):
     """ BasicEnv """
@@ -14,11 +14,11 @@ class BasicEnv(object):
         super(BasicEnv, self).__init__()
         self.configs = configs
 
-class BoomDesignEnv(BasicEnv):
-    """ BoomDesignEnv """
+class CVA6DesignEnv(BasicEnv):
+    """ CVA6DesignEnv """
     # def __init__(self, configs, seed=int(time.time())):
     def __init__(self, configs, seed=2021):
-        super(BoomDesignEnv, self).__init__(configs)
+        super(CVA6DesignEnv, self).__init__(configs)
         self.design_space = parse_design_space(
             self.configs["design-space"],
             basic_component=self.configs["basic-component"],

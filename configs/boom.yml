@@ -160,7 +160,7 @@ cuda: False
 # random seed
 seed: 2021
 # no. of A3C agents
-num-process: 5
+num-process: 1
 # discount factor for rewards
 gamma: 0.99
 # hidden size
@@ -196,3 +196,7 @@ batch-size: 16
 beta: 0.01
 log: logs/a3c-boom
 debug: False
+
+# Evaluate related
+model: models/a3c-boom-2021-10-21-22-57
+preference: [1.0, 2.0, 3.0]

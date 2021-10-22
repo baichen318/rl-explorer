@@ -283,3 +283,48 @@ def a3c(env, configs):
                 ylabel="PPA",
                 win=3
             )
+
+def evaluate(env, configs):
+    device = torch.device("cuda:0" if configs["cuda"] else "cpu")
+    envs = make_vec_envs(env, configs, device)
+    actor_critic = Policy(
+        configs,
+        envs.observation_space.shape,
+        envs.action_space
+    )
+
+    preference = torch.Tensor(configs["preference"])
+    preference = torch.abs(preference) / torch.sum(torch.abs(preference))
+
+    log = os.path.join(configs["model"], "evaluate.rpt")
+    for model in os.listdir(os.path.join(configs["model"])):
+        if model.endswith(".pt"):
+            model = os.path.join(configs["model"], model)
+        else:
+            continue
+        ppa = {
+            "ipc": [],
+            "power": [],
+            "area": []
+        }
+        actor_critic.load(model)
+        obs = envs.reset()
+        while len(ppa["ipc"]) < 20:
+            with torch.no_grad():
+                _, action, _ = actor_critic.act(
+                    obs,
+                    preference
+                )
+                obs, reward, done, info = envs.step(action)
+
+                for r in reward:
+                    assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
+                    ppa["ipc"].append(r[0])
+                    ppa["power"].append(-r[1])
+                    ppa["area"].append(-r[2])
+        msg = "[INFO]: evaluate using {}, {} episodes: mean IPC: {:.4f}, mean Power: {:.4f}, mean Area: {:.4f}".format(
+            model, len(ppa["ipc"]), np.mean(ppa["ipc"]), np.mean(ppa["power"]), np.mean(ppa["area"])
+        )
+        print(msg)
+        with open(log, 'a') as f:
+            f.write(msg + '\n')
