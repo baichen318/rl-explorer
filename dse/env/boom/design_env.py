@@ -92,6 +92,7 @@ class BoomDesignEnv(BasicEnv):
 
     def step(self, action):
         assert self.action_space.contains(action), "[ERROR]: action %d is unsupported" % action
+        invalid = False
         s, idx = 0, 0
         for dim in self.design_space.dims:
             s += dim
@@ -101,39 +102,48 @@ class BoomDesignEnv(BasicEnv):
                 idx += 1
         self.state[idx] = self.action_list[action]
 
-        ipc, power, area = self.design_space.evaluate_microarchitecture(
-            self.configs,
-            self.state.numpy().astype(int),
-            self.idx
-        )
-        ipc = self.ipc_model.predict(
-            np.expand_dims(
-                np.concatenate((self.state.numpy(), [ipc])),
-                axis=0
+        if self.design_space.validate(self.state.numpy().astype(int)):
+            # invalid microarchitecture
+            ipc, power, area = -1, -1, -1
+            reward = torch.Tensor([-1, -1, -1])
+            invalid = True
+        else:
+            ipc, power, area = self.design_space.evaluate_microarchitecture(
+                self.configs,
+                self.state.numpy().astype(int),
+                self.idx
             )
-        )
-        power = self.power_model.predict(
-            np.expand_dims(
-                np.concatenate((self.state.numpy(), [power])),
-                axis=0
+            ipc = self.ipc_model.predict(
+                np.expand_dims(
+                    np.concatenate((self.state.numpy(), [ipc])),
+                    axis=0
+                )
             )
-        )
-        area = self.area_model.predict(
-            np.expand_dims(
-                np.concatenate((self.state.numpy(), [area])),
-                axis=0
+            power = self.power_model.predict(
+                np.expand_dims(
+                    np.concatenate((self.state.numpy(), [power])),
+                    axis=0
+                )
             )
-        )
-        # NOTICE: scale it manually!
-        ipc = 2 * ipc
-        power = 2 * 10 * power
-        area = 0.5 * 1e-6 * area
-        reward = torch.Tensor(
-            np.concatenate((ipc, -power, -area))
-        ).squeeze(0)
+            area = self.area_model.predict(
+                np.expand_dims(
+                    np.concatenate((self.state.numpy(), [area])),
+                    axis=0
+                )
+            )
+            # NOTICE: scale it manually!
+            ipc = 2 * ipc
+            power = 2 * 10 * power
+            area = 0.5 * 1e-6 * area
+            reward = torch.Tensor(
+                np.concatenate((ipc, -power, -area))
+            ).squeeze(0)
         msg = "[INFO]: state: %s, reward: %s" % (self.state.numpy(), reward)
         self.info(msg)
-        done = bool(self.n_step > self.configs["num-env-step"])
+        done = bool(
+            self.n_step > self.configs["num-env-step"] or
+            invalid
+        )
         self.n_step += 1
         return self.state, reward, done, {}
 

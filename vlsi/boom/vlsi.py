@@ -1024,17 +1024,13 @@ def offline_vlsi(configs):
     vlsi_manager.run()
     vlsi_manager.generate_scripts(idx[0])
 
-def _generate_dataset(configs, design_set, dataset, dir_n):
-    # get feature vector `fv`
-    idx = dir_n.strip("Boom").strip("Config")
-    fv = list(design_set[int(idx) - 1])
-    # get IPC
-    _dataset = []
+def generate_ipc(configs, root):
     ipc = 0
+    count = 0
     for bmark in configs["benchmarks"]:
         f = os.path.join(
-            MACROS["chipyard-sims-output-root"],
-            dir_n,
+            root,
+            bmark + ".riscv",
             bmark + ".log"
         )
         if if_exist(f):
@@ -1047,27 +1043,59 @@ def _generate_dataset(configs, design_set, dataset, dir_n):
                         cycles = int(cycles.split("cycles")[0])
                         instructions = re.search(r'\d+\ instructions', line).group()
                         instructions = int(instructions.split("instructions")[0])
+                        ipc += (instructions / cycles)
+                        count += 1
                     except AttributeError:
                         continue
-            if "cycles" in locals() and "instructions" in locals():
-                ipc += instructions / cycles
-                _dataset.append([bmark, instructions, cycles, ipc])
-                del cycles, instructions
-    if len(_dataset) > 0:
-        dataset.append([idx, fv, _dataset, ipc / len(_dataset)])
+    # average on all successful benchmarks
+    if count == 0:
+        print("[WARN]: %s is failed in simulation!" % root)
+        return 0
+    else:
+        return ipc / count
+
+
+def generate_power(configs, root):
+    power = 0
+    cnt = 0
+    for bmark in configs["benchmarks"]:
+        f = os.path.join(
+            root,
+            bmark,
+            "reports",
+            "vcdplus.power.avg.max.report"
+        )
+        if if_exist(f):
+            with open(f, 'r') as f:
+                for line in f.readlines():
+                    # NOTICE: extract power of BoomTile
+                    if "boom_tile (BoomTile)" in line:
+                        power += float(line.split()[-2])
+                        cnt += 1
+    # average on all successful benchmarks
+    if cnt == 0:
+        print("[WARN]: %s is failed in power measurement!" % root)
+        return 0
+    else:
+        return power / cnt
+
+
+def generate_area(configs, root):
+    area = 0
+    f = os.path.join(
+        root,
+        "reports",
+        "final_area.rpt"
+    )
+    if if_exist(f):
+        with open(f, 'r') as f:
+            for line in f.readlines():
+                if "BoomTile" in line:
+                    area = float(line.split()[-1])
+    return area
+
 
 def generate_dataset(configs):
-    def _filter(dataset):
-        _dataset = []
-        for data in dataset:
-            temp = []
-            for i in data[1]:
-                temp.append(i)
-            temp.append(data[-1])
-            _dataset.append(temp)
-
-        return np.array(_dataset)
-
     def write_metainfo(path, dataset):
         print("[INFO]: writing to %s" % path)
         with open(path, 'w') as f:
@@ -1082,22 +1110,133 @@ def generate_dataset(configs):
                 f.write("avg" + '\t')
                 f.write(str(data[3]) + '\n')
 
-    design_set = load_txt(configs["design-output-path"])
     dataset = []
-    for dir_n in os.listdir(MACROS["chipyard-sims-output-root"]):
-        try:
-            re.match(r'Boom\d+Config', dir_n).group()
-            _generate_dataset(configs, design_set, dataset, dir_n)
-        except AttributeError:
-            continue
-    write_txt(configs["data-output-path"], _filter(dataset), fmt="%f")
-    # save more info.
+    design_set = load_txt(configs["design-output-path"])
+    for i in range(1, configs["batch"] + 1):
+        _dataset = np.array([])
+        # add arch. feature
+        _dataset = np.concatenate((_dataset, design_set[i - 1]))
+        soc_name = "Boom%dConfig" % i
+        project_name = "chipyard.TestHarness.Boom%dConfig-ChipTop" % i
+        vlsi_root = os.path.join(
+            MACROS["chipyard-vlsi-root"],
+            "build",
+            project_name
+        )
+        power_root = os.path.join(
+            MACROS["power-root"],
+            soc_name + "-power"
+        )
+        vlsi_sim_root = os.path.join(
+            vlsi_root,
+            "sim-syn-rundir"
+        )
+        vlsi_syn_root = os.path.join(
+            vlsi_root,
+            "syn-rundir"
+        )
+        # generate ipc
+        _dataset = np.concatenate((_dataset, [generate_ipc(configs, vlsi_sim_root)]))
+        # generate power
+        _dataset = np.concatenate((_dataset, [generate_power(configs, power_root)]))
+        # generate area
+        _dataset = np.concatenate((_dataset, [generate_area(configs, vlsi_syn_root)]))
+        dataset.append(_dataset)
+    dataset = np.array(dataset)
+    write_txt(configs["dataset-output-path"], dataset, fmt="%f")
 
-    write_metainfo(
-        os.path.join(
-            os.path.dirname(configs["data-output-path"]),
-            os.path.basename(configs["data-output-path"]).split(".")[0] + ".info"
-        ),
-        dataset
-    )
 
+def generate_detail_ipc(configs, root):
+    ipc = [0 for i in range(3 * len(configs["benchmarks"]))]
+    for bmark in configs["benchmarks"]:
+        f = os.path.join(
+            root,
+            bmark + ".riscv",
+            bmark + ".log"
+        )
+        if if_exist(f):
+            with open(f, 'r') as f:
+                cnt = f.readlines()
+            for line in cnt:
+                if "[INFO]" in line and "cycles" in line and "instructions" in line:
+                    try:
+                        cycles = re.search(r'\d+\ cycles', line).group()
+                        cycles = int(cycles.split("cycles")[0])
+                        instructions = re.search(r'\d+\ instructions', line).group()
+                        instructions = int(instructions.split("instructions")[0])
+                        idx = configs["benchmarks"].index(bmark)
+                        ipc[3 * idx] = instructions
+                        ipc[3 * idx + 1] = cycles
+                        ipc[3 * idx + 2] = instructions / cycles
+                    except AttributeError:
+                        continue
+    return ipc
+
+
+def generate_detail_power(configs, root):
+    power = [0 for i in range(len(configs["benchmarks"]))]
+    for bmark in configs["benchmarks"]:
+        f = os.path.join(
+            root,
+            bmark,
+            "reports",
+            "vcdplus.power.avg.max.report"
+        )
+        if if_exist(f):
+            with open(f, 'r') as f:
+                for line in f.readlines():
+                    # NOTICE: extract power of BoomTile
+                    if "boom_tile (BoomTile)" in line:
+                        power[configs["benchmarks"].index(bmark)] = float(line.split()[-2])
+    return power
+
+
+def generate_detail_dataset(configs):
+    def write_metainfo(path, dataset):
+        print("[INFO]: writing to %s" % path)
+        with open(path, 'w') as f:
+            for data in dataset:
+                f.write(data[0] + '\t')
+                f.write(str(data[1]) + '\t')
+                for _data in data[2]:
+                    f.write(_data[0] + '\t')
+                    f.write(str(_data[1]) + '\t')
+                    f.write(str(_data[2]) + '\t')
+                    f.write(str(_data[3]) + '\t')
+                f.write("avg" + '\t')
+                f.write(str(data[3]) + '\n')
+
+    dataset = []
+    design_set = load_txt(configs["design-output-path"])
+    for i in range(1, configs["batch"] + 1):
+        _dataset = np.array([])
+        # add arch. feature
+        _dataset = np.concatenate((_dataset, design_set[i - 1]))
+        soc_name = "Boom%dConfig" % i
+        project_name = "chipyard.TestHarness.Boom%dConfig-ChipTop" % i
+        vlsi_root = os.path.join(
+            MACROS["chipyard-vlsi-root"],
+            "build",
+            project_name
+        )
+        power_root = os.path.join(
+            MACROS["power-root"],
+            soc_name + "-power"
+        )
+        vlsi_sim_root = os.path.join(
+            vlsi_root,
+            "sim-syn-rundir"
+        )
+        vlsi_syn_root = os.path.join(
+            vlsi_root,
+            "syn-rundir"
+        )
+        # generate ipc
+        _dataset = np.concatenate((_dataset, generate_detail_ipc(configs, vlsi_sim_root)))
+        # generate power
+        _dataset = np.concatenate((_dataset, generate_detail_power(configs, power_root)))
+        # generate area
+        _dataset = np.concatenate((_dataset, [generate_area(configs, vlsi_syn_root)]))
+        dataset.append(_dataset)
+    dataset = np.array(dataset)
+    write_txt(configs["dataset-output-path"], dataset, fmt="%f")
