@@ -332,6 +332,4 @@ def evaluate_a3c(env, configs):
         msg = "[INFO]: evaluate using {}, {} episodes: mean IPC: {:.4f}, mean Power: {:.4f}, mean Area: {:.4f}".format(
             model, len(ppa["ipc"]), np.mean(ppa["ipc"]), np.mean(ppa["power"]), np.mean(ppa["area"])
         )
-        print(msg)
-        with open(log, 'a') as f:
-            f.write(msg + '\n')
+        configs["logger"].info(msg)
