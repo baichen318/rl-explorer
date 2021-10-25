@@ -102,7 +102,7 @@ class BoomDesignEnv(BasicEnv):
                 idx += 1
         self.state[idx] = self.action_list[action]
 
-        if self.design_space.validate(self.state.numpy().astype(int)):
+        if not self.design_space.validate(self.state.numpy().astype(int)):
             # invalid microarchitecture
             ipc, power, area = -1, -1, -1
             reward = torch.Tensor([-1, -1, -1])
