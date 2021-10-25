@@ -152,3 +152,11 @@ class Policy(nn.Module):
         value = self.mo_layout(value)
 
         return value, action_log_probs, dist_entropy
+
+    def load(self, path, logger=None):
+        self.load_state_dict(torch.load(path))
+        msg = "[INFO]: loading actor & critic from %s" % path
+        if logger:
+            logger.info(msg)
+        else:
+            print(msg)

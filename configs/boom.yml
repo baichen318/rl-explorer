@@ -115,8 +115,8 @@ benchmarks:
   # - dhrystone
   # - spmv
 
-# mode: sample-generate-design | generate-design | generate-dataset | rl
-mode: rl
+# mode: sample-generate-design | generate-design | generate-dataset | rl | evaluate
+mode: evaluate
 
 # design: boom | rocket | cva6
 design: boom
@@ -199,4 +199,4 @@ debug: False
 
 # Evaluate related
 model: models/a3c-boom-2021-10-21-22-57
-preference: [1.0, 2.0, 3.0]
+preference: [3.0, 2.0, 1.0]

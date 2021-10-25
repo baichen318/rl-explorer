@@ -14,7 +14,7 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), "vlsi")
 )
 import torch
-from dse.algo.a3c.a3c import a3c
+from dse.algo.a3c.a3c import a3c, evaluate_a3c
 from time import time
 from util import parse_args, get_configs, write_txt, if_exist, \
     mkdir, create_logger, execute
@@ -151,8 +151,6 @@ def rl_explorer():
 
     if configs["design"] == "boom":
         from dse.env.boom.design_env import BoomDesignEnv
-        # Notice: we should modify `self.configs["batch"]`
-        configs["batch"] = configs["batch"] * 5
         a3c(BoomDesignEnv, configs)
     elif configs["design"] == "rocket":
         from dse.env.rocket.design_env import RocketDesignEnv
@@ -162,6 +160,32 @@ def rl_explorer():
             "[ERROR]: deisng: %s not support." % configs["design"]
         from dse.env.cva6.design_env import CVA6DesignEnv
         a3c(CVA6DesignEnv, configs)
+
+
+def evaluate():
+    logger, time_str, log_file = create_logger(
+        os.path.dirname(configs["log"]),
+        "evaluate-" + os.path.basename(configs["log"])
+    )
+    configs["logger"] = logger
+    configs["model-path"] = os.path.join("models", "evaluate-%s-%s" % (
+        os.path.basename(configs["log"]),
+        time_str)
+    )
+    configs["log-file"] = log_file
+    mkdir(configs["model-path"])
+
+    if configs["design"] == "boom":
+        from dse.env.boom.design_env import BoomDesignEnv
+        evaluate_a3c(BoomDesignEnv, configs)
+    elif configs["design"] == "rocket":
+        from dse.env.rocket.design_env import RocketDesignEnv
+        evaluate_a3c(RocketDesignEnv, configs)
+    else:
+        assert configs["design"] == "cva6", \
+            "[ERROR]: deisng: %s not support." % configs["design"]
+        from dse.env.cva6.design_env import CVA6DesignEnv
+        evaluate_a3c(CVA6DesignEnv, configs)
 
 
 if __name__ == "__main__":
@@ -175,5 +199,7 @@ if __name__ == "__main__":
         generate_dataset()
     elif mode == "rl":
         rl_explorer()
+    elif mode == "evaluate":
+        evaluate()
     else:
         raise NotImplementedError()

@@ -78,7 +78,7 @@ benchmarks:
   # - dhrystone
   # - spmv
 
-# mode: sample-generate-design | generate-design | generate-dataset | rl
+# mode: sample-generate-design | generate-design | generate-dataset | rl | evaluate
 mode: rl
 
 # design: boom | rocket | cva6
@@ -158,3 +158,7 @@ batch-size: 16
 beta: 0.01
 log: logs/a3c-rocket
 debug: False
+
+# Evaluate related
+model: models/a3c-boom-2021-10-21-22-57
+preference: [3.0, 2.0, 1.0]

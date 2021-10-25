@@ -166,6 +166,8 @@ def a3c(env, configs):
         w = torch.randn(configs["num-process"], len(configs["metrics"]))
         w = torch.abs(w) / torch.sum(torch.abs(w))
         w = w.view(-1, configs["num-process"], len(configs["metrics"])).repeat(configs["n-step-td"], 1, 1)
+        msg = "[INFO]: preference vector: {}".format(w)
+        configs["logger"].info(w)
         for step in range(configs["n-step-td"]):
             with torch.no_grad():
                 value, action, action_log_prob = actor_critic.act(buffer.obs[step], w[step])
@@ -284,7 +286,7 @@ def a3c(env, configs):
                 win=3
             )
 
-def evaluate(env, configs):
+def evaluate_a3c(env, configs):
     device = torch.device("cuda:0" if configs["cuda"] else "cpu")
     envs = make_vec_envs(env, configs, device)
     actor_critic = Policy(
@@ -293,11 +295,16 @@ def evaluate(env, configs):
         envs.action_space
     )
 
-    preference = torch.Tensor(configs["preference"])
+    preference = torch.Tensor(configs["preference"]).unsqueeze(0)
     preference = torch.abs(preference) / torch.sum(torch.abs(preference))
 
     log = os.path.join(configs["model"], "evaluate.rpt")
-    for model in os.listdir(os.path.join(configs["model"])):
+    model_list = os.listdir(os.path.join(configs["model"]))
+    model_list.sort(key=lambda x: int(x[4:].strip(".pt")))
+    # NOTICE: we evaluate models with 15% - 75%
+    start = int(len(model_list) * 0.15)
+    end = int(len(model_list) * 0.75)
+    for model in model_list[start: end]:
         if model.endswith(".pt"):
             model = os.path.join(configs["model"], model)
         else:
