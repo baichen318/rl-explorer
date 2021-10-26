@@ -70,7 +70,7 @@ class BOOMDesignSpace(Space):
             self.dims
         )
 
-    def _sample(self, decodeWidth):
+    def _sample_v1(self, decodeWidth):
         def __filter(design, k, v):
             # Notice: Google sheet
             # validate w.r.t. `decodeWidth`
@@ -98,6 +98,47 @@ class BOOMDesignSpace(Space):
             design.append(__filter(design, k, v))
         return design
 
+
+    def _sample_v2(self, decodeWidth):
+        def __filter(design, k, v):
+            # Notice: Google sheet
+            # validate w.r.t. `decodeWidth`
+            if k == "fetchWidth":
+                if decodeWidth <= 2:
+                    return self.bounds["fetchWidth"][0]
+                else:
+                    return self.bounds["fetchWidth"][1]
+            elif k == "ifu-buffers":
+                def f(x):
+                    return (self.basic_component["ifu-buffers"][x][0] % decodeWidth == 0 \
+                        and self.basic_component["ifu-buffers"][x][0] > design[1])
+                return random.sample(list(filter(f, self.bounds["ifu-buffers"][7:])), 1)[0]
+            elif k == "decodeWidth":
+                return decodeWidth
+            elif k == "numRobEntries":
+                def f(x):
+                    return x % decodeWidth == 0
+                return random.sample(list(filter(
+                    f, [self.bounds["numRobEntries"][i] for i in [0, 2, 3, 5, 7, 9, 11, 12, 16]])
+                    ), 1
+                )[0]
+            elif k == "registers":
+                return random.sample([v[i] for i in range(7, 13)], 1)[0]
+            elif k == "issueEntries":
+                return random.sample([v[i] for i in range(7, 12)], 1)[0]
+            elif k == "lsuEntries":
+                return random.sample([v[i] for i in range(6, 10)], 1)[0]
+            elif k == "maxBrCount":
+                return random.sample([v[i] for i in range(0, len(self.bounds["maxBrCount"]), 2)], 1)[0]
+            else:
+                return random.sample(v, 1)[0]
+
+        design = []
+        for k, v in self.bounds.items():
+            design.append(__filter(design, k, v))
+        return design
+
+
     def sample_v1(self, batch, f=None):
         """
             V1: uniformly sample configs. w.r.t. `decodeWidth`
@@ -117,10 +158,10 @@ class BOOMDesignSpace(Space):
         while cnt < batch:
             # randomly sample designs w.r.t. decodeWidth
             for decodeWidth in self.bounds[self.features[4]][::-1]:
-                design = self._sample(decodeWidth)
+                design = self._sample_v1(decodeWidth)
                 point = self.knob2point(design)
                 while point in self.visited:
-                    design = self._sample(decodeWidth)
+                    design = self._sample_v1(decodeWidth)
                     point = self.knob2point(design)
                 self.visited.add(point)
                 samples.append(design)
@@ -147,10 +188,10 @@ class BOOMDesignSpace(Space):
         while cnt < batch:
             # randomly sample designs w.r.t. decodeWidth
             decodeWidth = random.sample(self.bounds["decodeWidth"], 1)[0]
-            design =self._sample(decodeWidth)
+            design =self._sample_v1(decodeWidth)
             point = self.knob2point(design)
             while point in self.visited:
-                design = self._sample(decodeWidth)
+                design = self._sample_v1(decodeWidth)
                 point = self.knob2point(design)
             self.visited.add(point)
             samples.append(design)
@@ -165,15 +206,45 @@ class BOOMDesignSpace(Space):
 
         cnt = 0
         while cnt < batch:
-            design = self._sample(decodeWidth)
+            design = self._sample_v1(decodeWidth)
             point = self.knob2point(design)
             while point in self.visited:
-                design = self._sample(decodeWidth)
+                design = self._sample_v1(decodeWidth)
                 point = self.knob2point(design)
             self.visited.add(point)
             samples.append(design)
             cnt += 1
         return torch.Tensor(samples).long()
+
+    def sample_v4(self, batch, f=None):
+        """
+            V4: based on V2, sample configs. w.r.t. random
+            `decodeWidth`, but not UNIFORMLY!
+        """
+        samples = []
+
+        # add already sampled dataset
+        def _insert(visited):
+            if isinstance(f, str) and if_exist(f):
+                design_set = load_txt(f)
+                for design in design_set:
+                    visited.add(self.knob2point(list(design)))
+
+        _insert(self.visited)
+
+        cnt = 0
+        while cnt < batch:
+            # randomly sample designs w.r.t. decodeWidth
+            decodeWidth = random.sample(self.bounds["decodeWidth"], 1)[0]
+            design =self._sample_v2(decodeWidth)
+            point = self.knob2point(design)
+            while point in self.visited:
+                design = self._sample_v2(decodeWidth)
+                point = self.knob2point(design)
+            self.visited.add(point)
+            samples.append(design)
+            cnt += 1
+        return torch.Tensor(samples).squeeze().long()
 
     def validate(self, configs):
         # validate w.r.t. `configs`
