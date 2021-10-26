@@ -1,0 +1,397 @@
+# Author: baichen318@gmail.com
+
+# Total constraints:
+#   1. isPow2(fetchWidth)
+#   2. decodeWidth <= fetchWidth
+#   3. icacheParams.nSets <= 64
+#   4. numIntPhysRegisters >= (32 + decodeWidth)
+#   5. numFpPhysRegisters >= (32 + decodeWidth)
+#   6. maxBrCount >= 2
+#   7. numRobEntries % decodeWidth == 0
+#   8. (numLdqEntries - 1) > decodeWidth
+#   9. (numStqEntries - 1) > decodeWidth
+#   10. numFetchBufferEntries > fetchWidth
+#   11. numFetchBufferEntries % decodeWidth == 0
+#   12. fetchWidth = 4, icacheParams.fetchBytes = 2
+#       fetchWidth = 8, icacheParams.fetchBytes = 4
+#   13. numIntPhysRegisters == numFpPhysRegisters
+#   14. numLdqEntries == numStqEntries
+#   15. mem_issueWidth == fp_issueWidth
+
+# Merged constraints (under this design space):
+#   1. decodeWidth <= fetchWidth
+#   2. numRobEntries % decodeWidth == 0
+#   3. numFetchBufferEntries > fetchWidth &&
+#      numFetchBufferEntries % decodeWidth == 0
+#   4. fetchWidth = 4, ICacheParams_fetchBytes = 2
+#      fetchWidth = 8, ICacheParams_fetchBytes = 4
+#   5. numIntPhysRegisters == numFpPhysRegisters
+#   6. numLdqEntries == numStqEntries
+#   7. mem_issueWidth == fp_issueWidth
+
+# Design space
+design-space:
+  fetchWidth:
+    candidates: [4, 8]
+  decodeWidth:
+    start: 1
+    end: 5
+    stride: 1
+  numFetchBufferEntries:
+    candidates: [8, 16, 24, 32, 35, 40]
+  numRobEntries:
+    candidates: [32, 64, 96, 128, 130]
+  numRasEntries:
+    candidates: [16, 24, 32]
+  numIntPhysRegisters:
+    candidates: [48, 64, 80, 96, 112]
+  numFpPhysRegisters:
+    candidates: [48, 64, 80, 96, 112]
+  numLdqEntries:
+    candidates: [8, 16, 24, 32]
+  numStqEntries:
+    candidates: [8, 16, 24, 32]
+  maxBrCount:
+    candidates: [8, 12, 16, 20]
+  mem_issueWidth:
+    candidates: [1, 2]
+  int_issueWidth:
+    start: 1
+    end: 5
+    stride: 1
+  fp_issueWidth:
+    candidates: [1, 2]
+  DCacheParams_nWays:
+    candidates: [2, 4, 8]
+  DCacheParams_nMSHRs:
+    candidates: [2, 4, 8]
+  DCacheParams_nTLBEntries:
+    candidates: [8, 16, 32]
+  ICacheParams_nWays:
+    candidates: [2, 4, 8]
+  ICacheParams_nTLBEntries:
+    candidates: [8, 16, 32]
+  ICacheParams_fetchBytes:
+    candidates: [2, 4]
+
+# Flow: initialize | search
+# search includes data collection
+# run VLSI flow manually!
+flow: search
+
+# Choose random | crted
+initialize-method: random
+
+# ClustringBootstrapTED:
+Nrted: 100
+mu: 0.1
+sig: 0.1
+# # Clustering random samples
+Batch: 5000
+# # RTED samples
+batch: 60
+
+# Size
+initialize-size: 200
+
+# Record samples
+initialize-output-path: data/supp/sample.txt
+
+# Index for the first config.
+idx: 301
+
+# Collect area & Latency
+vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
+
+# Output path for latency
+latency-output-path: data/supp/latency.csv
+
+# Output path for area
+area-output-path: data/supp/area.csv
+
+# Collect power
+pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
+
+# Output path for power
+power-output-path: data/supp/power.csv
+
+# Config. name
+config-name:
+  - chipyard.TestHarness.BOOMRANDOMConfig301Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig302Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig303Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig304Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig305Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig306Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig307Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig308Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig309Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig310Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig311Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig312Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig313Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig314Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig315Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig316Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig317Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig318Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig319Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig320Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig321Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig322Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig323Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig324Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig325Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig326Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig327Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig328Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig329Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig330Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig331Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig332Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig333Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig334Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig335Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig336Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig337Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig338Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig339Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig340Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig341Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig342Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig343Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig344Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig345Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig346Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig347Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig348Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig349Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig350Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig351Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig352Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig353Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig354Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig355Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig356Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig357Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig358Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig359Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig360Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig361Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig362Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig363Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig364Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig365Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig366Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig367Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig368Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig369Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig370Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig371Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig372Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig373Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig374Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig375Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig376Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig377Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig378Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig379Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig380Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig381Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig382Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig383Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig384Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig385Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig386Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig387Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig388Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig389Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig390Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig391Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig392Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig393Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig394Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig395Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig396Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig397Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig398Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig399Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig400Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig401Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig402Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig403Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig404Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig405Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig406Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig407Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig408Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig409Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig410Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig411Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig412Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig413Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig414Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig415Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig416Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig417Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig418Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig419Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig420Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig421Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig422Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig423Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig424Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig425Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig426Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig427Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig428Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig429Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig430Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig431Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig432Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig433Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig434Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig435Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig436Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig437Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig438Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig439Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig440Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig441Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig442Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig443Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig444Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig445Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig446Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig447Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig448Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig449Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig450Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig451Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig452Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig453Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig454Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig455Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig456Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig457Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig458Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig459Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig460Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig461Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig462Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig463Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig464Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig465Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig466Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig467Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig468Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig469Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig470Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig471Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig472Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig473Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig474Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig475Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig476Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig477Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig478Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig479Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig480Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig481Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig482Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig483Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig484Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig485Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig486Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig487Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig488Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig489Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig490Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig491Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig492Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig493Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig494Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig495Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig496Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig497Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig498Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig499Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig500Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig501Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig502Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig503Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig504Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig505Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig506Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig507Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig508Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig509Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig510Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig511Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig512Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig513Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig514Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig515Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig516Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig517Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig518Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig519Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig520Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig521Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig522Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig523Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig524Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig525Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig526Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig527Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig528Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig529Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig530Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig531Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig532Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig533Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig534Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig535Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig536Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig537Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig538Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig539Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig540Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig541Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig542Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig543Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig544Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig545Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig546Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig547Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig548Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig549Config-ChipTop
+  - chipyard.TestHarness.BOOMRANDOMConfig550Config-ChipTop
+
+# Output path for final training set
+dataset-output-path: data/supp/dataset.csv
+
+# Model: lr | lasso | ridge | svr | lsvr | xgb | rf | ab | gb | bg | ""
+model: ""
+
+# Learning rate for `dnn-gp`
+learning-rate: 0.001
+
+# Optimizer for `dnn-gp` Adam | SGD
+optimizer: Adam
+
+# Max iteration for `dnn-gp`
+max-epoch: 150
+
+# Max iteration for Bayesian Optimization
+max-bo-steps: 5
+
+# Output path for models
+model-output-path: model
+
+# Output path for results
+rpt-output-path: rpts
+
+# Output path for fig.
+fig-output-path: data/figs/random-design-space.pdf
+

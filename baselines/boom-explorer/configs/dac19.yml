@@ -1,0 +1,135 @@
+# Author: baichen318@gmail.com
+
+# Total constraints:
+#   1. isPow2(fetchWidth)
+#   2. decodeWidth <= fetchWidth
+#   3. icacheParams.nSets <= 64
+#   4. numIntPhysRegisters >= (32 + decodeWidth)
+#   5. numFpPhysRegisters >= (32 + decodeWidth)
+#   6. maxBrCount >= 2
+#   7. numRobEntries % decodeWidth == 0
+#   8. (numLdqEntries - 1) > decodeWidth
+#   9. (numStqEntries - 1) > decodeWidth
+#   10. numFetchBufferEntries > fetchWidth
+#   11. numFetchBufferEntries % decodeWidth == 0
+#   12. fetchWidth = 4, icacheParams.fetchBytes = 2
+#       fetchWidth = 8, icacheParams.fetchBytes = 4
+#   13. numIntPhysRegisters == numFpPhysRegisters
+#   14. numLdqEntries == numStqEntries
+#   15. mem_issueWidth == fp_issueWidth
+
+# Merged constraints (under this design space):
+#   1. decodeWidth <= fetchWidth
+#   2. numRobEntries % decodeWidth == 0
+#   3. numFetchBufferEntries > fetchWidth &&
+#      numFetchBufferEntries % decodeWidth == 0
+#   4. fetchWidth = 4, ICacheParams_fetchBytes = 2
+#      fetchWidth = 8, ICacheParams_fetchBytes = 4
+#   5. numIntPhysRegisters == numFpPhysRegisters
+#   6. numLdqEntries == numStqEntries
+#   7. mem_issueWidth == fp_issueWidth
+
+# Design space
+design-space:
+  fetchWidth:
+    candidates: [4, 8]
+  decodeWidth:
+    start: 1
+    end: 5
+    stride: 1
+  numFetchBufferEntries:
+    candidates: [8, 16, 24, 32, 35, 40]
+  numRobEntries:
+    candidates: [32, 64, 96, 128, 130]
+  numRasEntries:
+    candidates: [16, 24, 32]
+  numIntPhysRegisters:
+    candidates: [48, 64, 80, 96, 112]
+  numFpPhysRegisters:
+    candidates: [48, 64, 80, 96, 112]
+  numLdqEntries:
+    candidates: [8, 16, 24, 32]
+  numStqEntries:
+    candidates: [8, 16, 24, 32]
+  maxBrCount:
+    candidates: [8, 12, 16, 20]
+  mem_issueWidth:
+    candidates: [1, 2]
+  int_issueWidth:
+    start: 1
+    end: 5
+    stride: 1
+  fp_issueWidth:
+    candidates: [1, 2]
+  DCacheParams_nWays:
+    candidates: [2, 4, 8]
+  DCacheParams_nMSHRs:
+    candidates: [2, 4, 8]
+  DCacheParams_nTLBEntries:
+    candidates: [8, 16, 32]
+  ICacheParams_nWays:
+    candidates: [2, 4, 8]
+  ICacheParams_nTLBEntries:
+    candidates: [8, 16, 32]
+  ICacheParams_fetchBytes:
+    candidates: [2, 4]
+
+# Flow: initialize | search
+# search includes data collection
+# run VLSI flow manually!
+flow: search
+
+# Choose random | cbted
+initialize-method: random
+
+# ClustringBootstrapTED:
+Nrted: 59
+mu: 0.1
+sig: 0.1
+batch: 20
+
+# Size
+initialize-size: 200
+
+# Record samples
+initialize-output-path: data/sample
+
+# Index for the first config.
+idx: 1
+
+# Collect area & Latency
+vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
+
+# Output path for latency
+latency-output-path: data/latency.csv
+
+# Output path for area
+area-output-path: data/area.csv
+
+# Collect power
+pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
+
+# Output path for power
+power-output-path: data/power.csv
+
+# Config. name
+config-name:
+  - chipyard.TestHarness.BOOMConfig1Config-ChipTop
+  - chipyard.TestHarness.BOOMConfig2Config-ChipTop
+  - chipyard.TestHarness.BOOMConfig3Config-ChipTop
+
+# Output path for final training set
+dataset-output-path: data/dataset/dataset.csv
+
+# Initialize points
+initialize: 5
+
+# Output path for models
+model-output-path: model/dac19.mdl
+
+# Output path for results
+rpt-output-path: rpts/dac19.rpt
+
+# Output path for fig.
+fig-output-path: data/figs/dac19.pdf
+
