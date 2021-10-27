@@ -149,13 +149,13 @@ design: boom
 batch: 30
 
 # generate-design: design-output-path
-design-output-path: data/boom/boom-design-v2.txt
+design-output-path: data/boom/boom-design-v3.txt
 
 # sim: idx
 idx: 1102
 
 # generate-data: data-output-path
-dataset-output-path: data/boom/dataset-v2.txt
+dataset-output-path: data/boom/dataset-v3.txt
 
 # PPA related
 # performance model learning rate
@@ -219,7 +219,7 @@ batch-size: 16
 # intial beta for evelope A3C
 beta: 0.01
 log: logs/a3c-boom
-debug: True
+debug: False
 
 # Evaluate related
 model: models/a3c-boom-2021-10-21-22-57
