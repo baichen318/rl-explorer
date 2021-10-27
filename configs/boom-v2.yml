@@ -146,13 +146,13 @@ mode: sample-generate-design
 design: boom
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 40
+batch: 30
 
 # generate-design: design-output-path
 design-output-path: data/boom/boom-design-v2.txt
 
 # sim: idx
-idx: 1022
+idx: 1102
 
 # generate-data: data-output-path
 dataset-output-path: data/boom/dataset-v2.txt
@@ -219,7 +219,7 @@ batch-size: 16
 # intial beta for evelope A3C
 beta: 0.01
 log: logs/a3c-boom
-debug: False
+debug: True
 
 # Evaluate related
 model: models/a3c-boom-2021-10-21-22-57

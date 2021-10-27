@@ -127,7 +127,13 @@ class BOOMDesignSpace(Space):
             elif k == "issueEntries":
                 return random.sample([v[i] for i in range(7, 12)], 1)[0]
             elif k == "lsuEntries":
-                return random.sample([v[i] for i in range(6, 10)], 1)[0]
+                def f(x):
+                    return ((self.basic_component["lsu"][x][0] - 1) > decodeWidth \
+                        and (self.basic_component["lsu"][x][1] - 1) > decodeWidth)
+                return random.sample(
+                    list(filter(f, [v[i] for i in range(6, 10)])),
+                    1
+                )[0]
             elif k == "maxBrCount":
                 return random.sample([v[i] for i in range(0, len(self.bounds["maxBrCount"]), 2)], 1)[0]
             else:
