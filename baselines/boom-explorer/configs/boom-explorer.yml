@@ -30,49 +30,115 @@
 #   7. mem_issueWidth == fp_issueWidth
 
 # Design space
+basic-component:
+  registers: [
+      # numIntPhysRegisters numFpPhysRegisters
+      [52, 48],
+      [80, 64],
+      [100, 96],
+      [128, 128],
+      [96, 64],
+      [40, 40],
+      [64, 60],
+      [50, 46],
+      [48, 44],
+      [72, 68],
+      [90, 86],
+      [132, 132],
+      [46, 42]
+  ]
+  issue-unit: [
+      # IQT_MEM IQT_INT IQT_FP
+      [8, 8, 8],
+      [12, 20, 16],
+      [16, 32, 24],
+      [24, 40, 32],
+      [10, 14, 12],
+      [14, 26, 20],
+      [20, 36, 28],
+      [4, 4, 4],
+      [6, 6, 6],
+      [12, 28, 20],
+      [14, 30, 22],
+      [26, 42, 34]
+  ]
+  dcache: [
+      # nMSHRs, nTLBWays
+      [2, 8],
+      [4, 16],
+      [8, 32],
+      [16, 48],
+      [4, 8]
+  ]
+  lsu: [
+      # numLdqEntries numStqEntries
+      [8, 8],
+      [16, 16],
+      [24, 24],
+      [32, 32],
+      [40, 40],
+      [20, 20],
+      [6, 6],
+      [30, 30],
+      [34, 34],
+      [42, 42]
+  ]
+  ifu-buffers: [
+    # numFetchBufferEntries ftq.nEntries
+    [8, 16],
+    [16, 32],
+    [24, 32],
+    [32, 40],
+    [40, 32],
+    [30, 30],
+    [45, 40],
+    [4, 8],
+    [6, 14],
+    [14, 30],
+    [30, 38],
+    [36, 42],
+    [35, 40],
+    [32, 36]
+  ]
+
+# Design space
 design-space:
+  bpd:
+    start: 0
+    end: 2
+    stride: 1
   fetchWidth:
     candidates: [4, 8]
+  ifu-buffers:
+    start: 0
+    end: 13
+    stride: 1
+  maxBrCount:
+    start: 6
+    end: 22
+    stride: 2
   decodeWidth:
     start: 1
     end: 5
     stride: 1
-  numFetchBufferEntries:
-    candidates: [8, 16, 24, 32, 35, 40]
   numRobEntries:
-    candidates: [32, 64, 96, 128, 130]
-  numRasEntries:
-    candidates: [16, 24, 32]
-  numIntPhysRegisters:
-    candidates: [48, 64, 80, 96, 112]
-  numFpPhysRegisters:
-    candidates: [48, 64, 80, 96, 112]
-  numLdqEntries:
-    candidates: [8, 16, 24, 32]
-  numStqEntries:
-    candidates: [8, 16, 24, 32]
-  maxBrCount:
-    candidates: [8, 12, 16, 20]
-  mem_issueWidth:
-    candidates: [1, 2]
-  int_issueWidth:
-    start: 1
-    end: 5
+    candidates: [30, 32, 36, 52, 64, 80, 84, 92, 96, 100, 105, 110, 118, 120, 128, 130, 134]
+  registers:
+    start: 0
+    end: 12
     stride: 1
-  fp_issueWidth:
-    candidates: [1, 2]
-  DCacheParams_nWays:
-    candidates: [2, 4, 8]
-  DCacheParams_nMSHRs:
-    candidates: [2, 4, 8]
-  DCacheParams_nTLBEntries:
-    candidates: [8, 16, 32]
-  ICacheParams_nWays:
-    candidates: [2, 4, 8]
-  ICacheParams_nTLBEntries:
-    candidates: [8, 16, 32]
-  ICacheParams_fetchBytes:
-    candidates: [2, 4]
+  issueEntries:
+    start: 0
+    end: 11
+    stride: 1
+  lsuEntries:
+    start: 0
+    end: 9
+    stride: 1
+  dcache:
+    start: 0
+    end: 4
+    stride: 1
 
 # Flow: initialize | search
 # search includes data collection
@@ -150,3 +216,21 @@ fig-output-path: data/boom-explorer.pdf
 
 # Flag for `vis-crted`
 vis-crted: False
+
+# MOA3C YML interface
+seed: 2021
+# benchmarks
+benchmarks:
+  - median
+  # - mt-vvadd
+  # - mt-matmul
+  - towers
+  # - qsort
+  # - rsort
+  - vvadd
+  - multiply
+  # - dhrystone
+  # - spmv
+
+# design: boom | rocket | cva6
+design: boom

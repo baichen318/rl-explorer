@@ -1,9 +1,15 @@
 # Author: baichen318@gmail.com
+
 import torch
 import numpy as np
 from typing import Optional
 from botorch.test_functions.base import MultiObjectiveTestProblem
 from util import load_dataset, transform_dataset
+try:
+    from sklearn.externals import joblib
+except ImportError:
+    import joblib
+from dse.env.boom.design_space import parse_design_space
 
 
 class BOOMDesignProblem(MultiObjectiveTestProblem):
@@ -21,8 +27,51 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         self.x, self.y = torch.tensor(self.x), torch.tensor(self.y)
         self.n_dim = self.x.shape[-1]
         self.n_sample = self.x.shape[0]
+        self.design_space = self.load_design_space()
+        self.load_model()
+        self.idx = 1
 
         super().__init__(noise_std=noise_std, negate=negate)
+
+    def load_design_space(self):
+        design_space = parse_design_space(
+            self.configs["design-space"],
+            basic_component=self.configs["basic-component"],
+            random_state=self.configs["seed"]
+        )
+        return design_space
+
+    def load_model(self):
+        self.ipc_model = joblib.load(
+            os.path.join(
+                os.path.abspath(__file__),
+                os.path.pardir,
+                os.path.pardir,
+                "tools",
+                self.configs["ppa-model"],
+                self.configs["design"] + '-' + "ipc.pt"
+            )
+        )
+        self.power_model = joblib.load(
+            os.path.join(
+                os.path.abspath(__file__),
+                os.path.pardir,
+                os.path.pardir,
+                "tools",
+                self.configs["ppa-model"],
+                self.configs["design"] + '-' + "power.pt"
+            )
+        )
+        self.area_model = joblib.load(
+            os.path.join(
+                os.path.abspath(__file__),
+                os.path.pardir,
+                os.path.pardir,
+                "tools",
+                self.configs["ppa-model"],
+                self.configs["design"] + '-' + "area.pt"
+            )
+        )
 
     def evaluate_true(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -49,3 +98,35 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         self.x = self.x[mask[:] == False]
         self.y = self.y[mask[:] == False]
         self.n_sample = self.x.shape[0]
+
+    def evaluate_microarchitecture(self, x):
+        ipc, power, area = self.design_space.evaluate_microarchitecture(
+            self.configs,
+            x.astype(int),
+            self.idx
+        )
+        ipc = self.ipc_model.predict(
+            np.expand_dims(
+                np.concatenate((self.state.numpy(), [ipc])),
+                axis=0
+            )
+        )
+        power = self.power_model.predict(
+            np.expand_dims(
+                np.concatenate((self.state.numpy(), [power])),
+                axis=0
+            )
+        )
+        area = self.area_model.predict(
+            np.expand_dims(
+                np.concatenate((self.state.numpy(), [area])),
+                axis=0
+            )
+        )
+        msg = "[INFO]: microarchitecture: {}, IPC: {}, power: {}, area: {}".format(
+            x,
+            power,
+            area
+        )
+        print(msg)
+        return ipc, power, area
