@@ -4,16 +4,15 @@ import sys, os
 sys.path.insert(
     0,
     os.path.join(
-        os.path.abspath(os.path.dirname(__file__))
+        os.path.abspath(os.path.dirname(__file__)),
         os.path.pardir,
-        os.path.pardir,
-        "dse"
+        os.path.pardir
     )
 )
 sys.path.insert(
     0,
     os.path.join(
-        os.path.abspath(os.path.dirname(__file__))
+        os.path.abspath(os.path.dirname(__file__)),
         os.path.pardir,
         os.path.pardir,
         "util"
@@ -22,7 +21,7 @@ sys.path.insert(
 sys.path.insert(
     0,
     os.path.join(
-        os.path.abspath(os.path.dirname(__file__))
+        os.path.abspath(os.path.dirname(__file__)),
         os.path.pardir,
         os.path.pardir,
         "vlsi"
@@ -40,7 +39,7 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import Nondo
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
 from sample import crted_sample, random_sample_v2
 from boom_design_problem import BOOMDesignProblem
-from util import get_configs, parse_args, adrs_v2, detransform_dataset, write_txt
+from helper import get_configs, parse_args, adrs_v2, detransform_dataset, write_txt
 from vis import plot_pareto_set
 from exception import UnDefinedException
 
@@ -109,78 +108,6 @@ def define_problem():
     return BOOMDesignProblem(configs)
 
 
-def boom_explorer(problem):
-    hv = Hypervolume(ref_point=problem._ref_point)
-    adrs = []
-    # generate initial data
-    x, y = crted_sample(configs, problem)
-    # x, y = random_sample_v2(configs, problem, batch=5)
-    pareto_set = get_pareto_set(y)
-
-    adrs.append(
-        adrs_v2(
-            get_pareto_set(problem.total_y),
-            pareto_set
-        )
-    )
-    # initialize
-    model = initialize_dnn_gp(x, y)
-
-    # Bayesian optimization
-    search_x, search_acq_val = [], []
-    iterator = tqdm.tqdm(range(configs["max-bo-steps"]))
-    for step in iterator:
-        iterator.set_description("Iter %d" % (step + 1))
-        # train
-        model = fit_dnn_gp(x, y)
-        # sample by acquisition function
-        new_x, acq_val = ehvi_suggest(model, problem, y)
-        search_x.append(new_x)
-        search_acq_val.append(acq_val)
-        # add in to `x` and `y`
-        x = torch.cat((x, new_x), 0)
-        y = torch.cat((y, problem.evaluate_true(new_x).unsqueeze(0)), 0)
-
-    pareto_set = get_pareto_set(y)
-    adrs.append(
-        adrs_v2(
-            get_pareto_set(problem.total_y),
-            pareto_set
-        )
-    )
-    print("[INFO]: pareto set: %s, size: %d" % (str(pareto_set), len(pareto_set)))
-    plot_pareto_set(
-        detransform_dataset(pareto_set),
-        dataset_path=configs["dataset-output-path"],
-        output=configs["fig-output-path"]
-    )
-
-    # write results
-    # ADRS:
-    write_txt(
-        os.path.join(
-            os.path.dirname(configs["rpt-output-path"]),
-            "adrs.txt"
-        ),
-        np.array(adrs),
-        fmt="%f"
-    )
-    # pareto set
-    write_txt(
-        os.path.join(
-            configs["rpt-output-path"]
-        ),
-        np.array(pareto_set),
-        fmt="%f"
-    )
-    # model
-    model.save(
-        os.path.join(
-            configs["model-output-path"]
-        )
-    )
-
-
 def boom_explorer_as_baseline(problem):
     hv = Hypervolume(ref_point=problem._ref_point)
     adrs = []
@@ -197,7 +124,7 @@ def boom_explorer_as_baseline(problem):
     # initialize
     model = initialize_dnn_gp(x, y)
     path = os.path.join(
-        os.path.dirname(configs["rpt-output-path"])
+        os.path.dirname(configs["rpt-output-path"]),
         os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-baseline-detail.rpt"
     )
 
@@ -214,11 +141,11 @@ def boom_explorer_as_baseline(problem):
         search_acq_val.append(acq_val)
         # add in to `x` and `y`
         x = torch.cat((x, new_x), 0)
-        y = torch.cat((y, problem.evaluate_true(new_x).unsqueeze(0)), 0)
+        y = torch.cat((y, problem.evaluate_microarchitecture(new_x.numpy().squeeze(0))), 0)
         with open(path, 'a') as f:
             msg = "[INFO]: microarchitecture: {}, metric: {}".format(
                 new_x,
-                problem.evaluate_true(new_x).unsqueeze(0)
+                problem.evaluate_microarchitecture(new_x.numpy().squeeze(0))
             )
             print(msg)
             f.write(msg + '\n')
@@ -250,7 +177,7 @@ def boom_explorer_as_baseline(problem):
     # pareto set
     write_txt(
         os.path.join(
-            os.path.dirname(configs["rpt-output-path"])
+            os.path.dirname(configs["rpt-output-path"]),
             os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-baseline.rpt"
         ),
         np.array(pareto_set),
@@ -259,18 +186,14 @@ def boom_explorer_as_baseline(problem):
     # model
     model.save(
         os.path.join(
-            os.path.dirname(configs["model-output-path"])
+            os.path.dirname(configs["model-output-path"]),
             os.path.splitext(os.path.basename(configs["model-output-path"]))[0] + "-baseline.mdl"
         )
     )
-    # selected microarchitectures
-    # write_txt(
-
-    # )
 
 def main():
     problem = define_problem()
-    boom_explorer(problem)
+    boom_explorer_as_baseline(problem)
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)

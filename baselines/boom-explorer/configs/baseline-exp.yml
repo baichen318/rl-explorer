@@ -136,10 +136,10 @@ learning-rate: 0.001
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-max-epoch: 150
+max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 5
+max-bo-steps: 20
 
 # Output path for models
 model-output-path: model

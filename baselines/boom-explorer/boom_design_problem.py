@@ -1,10 +1,11 @@
 # Author: baichen318@gmail.com
 
+import os
 import torch
 import numpy as np
 from typing import Optional
 from botorch.test_functions.base import MultiObjectiveTestProblem
-from util import load_dataset, transform_dataset
+from helper import load_dataset, transform_dataset
 try:
     from sklearn.externals import joblib
 except ImportError:
@@ -44,7 +45,7 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
     def load_model(self):
         self.ipc_model = joblib.load(
             os.path.join(
-                os.path.abspath(__file__),
+                os.path.dirname(os.path.abspath(__file__)),
                 os.path.pardir,
                 os.path.pardir,
                 "tools",
@@ -54,7 +55,7 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         )
         self.power_model = joblib.load(
             os.path.join(
-                os.path.abspath(__file__),
+                os.path.dirname(os.path.abspath(__file__)),
                 os.path.pardir,
                 os.path.pardir,
                 "tools",
@@ -64,7 +65,7 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         )
         self.area_model = joblib.load(
             os.path.join(
-                os.path.abspath(__file__),
+                os.path.dirname(os.path.abspath(__file__)),
                 os.path.pardir,
                 os.path.pardir,
                 "tools",
@@ -107,26 +108,30 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         )
         ipc = self.ipc_model.predict(
             np.expand_dims(
-                np.concatenate((self.state.numpy(), [ipc])),
+                np.concatenate((x.astype(int), [ipc])),
                 axis=0
             )
         )
         power = self.power_model.predict(
             np.expand_dims(
-                np.concatenate((self.state.numpy(), [power])),
+                np.concatenate((x.astype(int), [power])),
                 axis=0
             )
         )
         area = self.area_model.predict(
             np.expand_dims(
-                np.concatenate((self.state.numpy(), [area])),
+                np.concatenate((x.astype(int), [area])),
                 axis=0
             )
         )
+        # trasfer area to mm^2
+        area = area * 1e-6
         msg = "[INFO]: microarchitecture: {}, IPC: {}, power: {}, area: {}".format(
             x,
+            ipc,
             power,
             area
         )
-        print(msg)
-        return ipc, power, area
+        metric = torch.Tensor(np.concatenate((ipc, power, area))).unsqueeze(0)
+        metric = transform_dataset(metric)
+        return metric

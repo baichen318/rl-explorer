@@ -194,10 +194,10 @@ learning-rate: 0.001
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-max-epoch: 100
+max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 9
+max-bo-steps: 20
 
 # MLP output dimension
 mlp-output-dim: 6
@@ -234,3 +234,4 @@ benchmarks:
 
 # design: boom | rocket | cva6
 design: boom
+ppa-model: calib-models

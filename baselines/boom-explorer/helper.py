@@ -1,4 +1,5 @@
 # Author: baichen318@gmail.com
+
 import os
 import argparse
 import yaml
@@ -12,6 +13,7 @@ from typing import Union
 from datetime import datetime
 from sklearn import metrics
 from exception import NotFoundException, UnDefinedException
+
 
 def parse_args():
 
@@ -91,7 +93,6 @@ def load_dataset(path):
         return dataset
 
     dataset = load_txt(path, fmt=float)
-    print(path)
     dataset = validate(dataset)
     return dataset[:, :-3].astype(int), dataset[:, -3:]
 
