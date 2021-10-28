@@ -94,6 +94,8 @@ class ClusteringRandomizedTED(RandomizedTED):
         self.configs = configs
         self.batch_per_cluster = self.configs["batch"] // self.configs["cluster"]
         # feature dimension
+        assert self.configs["design"] == "boom", \
+            "[ERROR]: %s is not supported." % self.configs["design"]
         self.n_dim = 10
 
     def distance(self, x, y, l=2):

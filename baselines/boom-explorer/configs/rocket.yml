@@ -1,0 +1,185 @@
+# Author: baichen318@gmail.com
+
+# Total constraints:
+#   1. isPow2(fetchWidth)
+#   2. decodeWidth <= fetchWidth
+#   3. icacheParams.nSets <= 64
+#   4. numIntPhysRegisters >= (32 + decodeWidth)
+#   5. numFpPhysRegisters >= (32 + decodeWidth)
+#   6. maxBrCount >= 2
+#   7. numRobEntries % decodeWidth == 0
+#   8. (numLdqEntries - 1) > decodeWidth
+#   9. (numStqEntries - 1) > decodeWidth
+#   10. numFetchBufferEntries > fetchWidth
+#   11. numFetchBufferEntries % decodeWidth == 0
+#   12. fetchWidth = 4, icacheParams.fetchBytes = 2
+#       fetchWidth = 8, icacheParams.fetchBytes = 4
+#   13. numIntPhysRegisters == numFpPhysRegisters
+#   14. numLdqEntries == numStqEntries
+#   15. mem_issueWidth == fp_issueWidth
+
+# Merged constraints (under this design space):
+#   1. decodeWidth <= fetchWidth
+#   2. numRobEntries % decodeWidth == 0
+#   3. numFetchBufferEntries > fetchWidth &&
+#      numFetchBufferEntries % decodeWidth == 0
+#   4. fetchWidth = 4, ICacheParams_fetchBytes = 2
+#      fetchWidth = 8, ICacheParams_fetchBytes = 4
+#   5. numIntPhysRegisters == numFpPhysRegisters
+#   6. numLdqEntries == numStqEntries
+#   7. mem_issueWidth == fp_issueWidth
+
+# Design space
+basic-component:
+  btb: [
+    # nRAS BTBParams.nEntries BHTParams.nEntries
+    # denote no btb
+    [0, 0, 0],
+    [6, 28, 512],
+    [3, 14, 256],
+    [12, 56, 1024],
+    [8, 32, 512]
+  ]
+  icache: [
+    # nWays nTLBWays
+    [4, 32],
+    [1, 4],
+    [2, 4],
+    [2, 16],
+    [2, 32],
+    [1, 16]
+  ]
+  mulDiv: [
+    # mulUnroll numEarlyOut divEarlyOut
+    [8, 1, 1],
+    [1, 0, 0],
+    [8, 0, 0],
+  ]
+  dcache: [
+    # nSets nWays nTLBWays nMSHRs
+    [64, 4, 32, 1],
+    [64, 1, 4, 0],
+    [32, 1, 4, 0],
+    [64, 2, 4, 0],
+    [64, 2, 16, 0],
+    [64, 2, 32, 1],
+    [64, 1, 16, 0],
+    [64, 4, 32, 2],
+    [64, 1, 4, 2],
+    [32, 4, 32, 2]
+  ]
+
+# Design space
+design-space:
+  btb:
+    start: 0
+    end: 4
+    stride: 1
+  icache:
+    start: 0
+    end: 5
+    stride: 1
+  fpu:
+    candidates: [0, 1]
+  mulDiv:
+    start: 0
+    end: 2
+    stride: 1
+  useVM:
+    candidates: [0, 1]
+  dcache:
+    start: 0
+    end: 9
+    stride: 1
+
+# Flow: initialize | search
+# search includes data collection
+# run VLSI flow manually!
+flow: search
+
+# Choose random | cbted
+initialize-method: random
+
+batch: 900
+
+# Size
+initialize-size: 200
+
+# Record samples
+initialize-output-path: data/sample
+
+# Index for the first config.
+idx: 1
+
+# Collect area & Latency
+vlsi-build-path: /research/dept8/gds/cbai/research/chipyard/vlsi/build
+
+# Output path for latency
+latency-output-path: data/latency.csv
+
+# Output path for area
+area-output-path: data/area.csv
+
+# Collect power
+pt-pwr-path: /research/dept8/gds/cbai/research/synopsys-flow/build/pt-pwr/
+
+# Output path for power
+power-output-path: data/power.csv
+
+# Config. name
+config-name:
+  - chipyard.TestHarness.BOOMConfig1Config-ChipTop
+  - chipyard.TestHarness.BOOMConfig2Config-ChipTop
+  - chipyard.TestHarness.BOOMConfig3Config-ChipTop
+
+# Output path for final training set
+dataset-output-path: ../../data/rocket/dataset-v1.txt
+
+# Learning rate for `dnn-gp`
+learning-rate: 0.001
+
+# Optimizer for `dnn-gp` Adam | SGD
+optimizer: Adam
+
+# Max iteration for `dnn-gp`
+max-epoch: 1000
+
+# Max iteration for Bayesian Optimization
+max-bo-steps: 20
+
+# MLP output dimension
+mlp-output-dim: 6
+
+# Number for clusters
+cluster: 5
+
+# Output path for models
+model-output-path: model/dnn.mdl
+
+# Output path for results
+rpt-output-path: rpts/boom-explorer.rpt
+
+# Output path for fig.
+fig-output-path: data/boom-explorer.pdf
+
+# Flag for `vis-crted`
+vis-crted: False
+
+# MOA3C YML interface
+seed: 2021
+# benchmarks
+benchmarks:
+  - median
+  # - mt-vvadd
+  # - mt-matmul
+  - towers
+  # - qsort
+  # - rsort
+  - vvadd
+  - multiply
+  # - dhrystone
+  # - spmv
+
+# design: boom | rocket | cva6
+design: rocket
+ppa-model: calib-models

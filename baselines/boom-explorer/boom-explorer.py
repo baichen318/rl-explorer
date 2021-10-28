@@ -112,7 +112,12 @@ def boom_explorer_as_baseline(problem):
     hv = Hypervolume(ref_point=problem._ref_point)
     adrs = []
     # generate initial data
-    x, y = crted_sample(configs, problem)
+    if configs["design"] == "rocket":
+        x, y = random_sample_v2(configs, problem, batch=configs["batch"])
+    else:
+        assert self.configs["design"] == "boom", \
+            "[ERROR]: %s is not supported." % self.configs["design"]
+        x, y = crted_sample(configs, problem)
     pareto_set = get_pareto_set(y)
 
     adrs.append(
@@ -125,7 +130,7 @@ def boom_explorer_as_baseline(problem):
     model = initialize_dnn_gp(x, y)
     path = os.path.join(
         os.path.dirname(configs["rpt-output-path"]),
-        os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-baseline-detail.rpt"
+        os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-%s-detail.rpt" % configs["design"]
     )
 
     # Bayesian optimization
@@ -169,7 +174,7 @@ def boom_explorer_as_baseline(problem):
     write_txt(
         os.path.join(
             os.path.dirname(configs["rpt-output-path"]),
-            "adrs-baseline.txt"
+            "adrs-%s.txt" % configs["design"]
         ),
         np.array(adrs),
         fmt="%f"
@@ -178,7 +183,7 @@ def boom_explorer_as_baseline(problem):
     write_txt(
         os.path.join(
             os.path.dirname(configs["rpt-output-path"]),
-            os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-baseline.rpt"
+            os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-%s.rpt" % configs["design"]
         ),
         np.array(pareto_set),
         fmt="%f"
@@ -187,7 +192,7 @@ def boom_explorer_as_baseline(problem):
     model.save(
         os.path.join(
             os.path.dirname(configs["model-output-path"]),
-            os.path.splitext(os.path.basename(configs["model-output-path"]))[0] + "-baseline.mdl"
+            os.path.splitext(os.path.basename(configs["model-output-path"]))[0] + "-%s.mdl" % configs["design"]
         )
     )
 

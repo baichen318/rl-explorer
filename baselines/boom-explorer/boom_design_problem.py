@@ -10,7 +10,6 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from dse.env.boom.design_space import parse_design_space
 
 
 class BOOMDesignProblem(MultiObjectiveTestProblem):
@@ -35,11 +34,23 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         super().__init__(noise_std=noise_std, negate=negate)
 
     def load_design_space(self):
-        design_space = parse_design_space(
-            self.configs["design-space"],
-            basic_component=self.configs["basic-component"],
-            random_state=self.configs["seed"]
-        )
+        if self.configs["design"] == "rocket":
+            from dse.env.rocket.design_space import parse_design_space
+            design_space = parse_design_space(
+                self.configs["design-space"],
+                basic_component=self.configs["basic-component"],
+                random_state=self.configs["seed"]
+            )
+        else:
+            assert self.configs["design"] == "boom", \
+                "[ERROR]: %s is not supported." % self.configs["design"]
+            from dse.env.boom.design_space import parse_design_space
+            design_space = parse_design_space(
+                self.configs["design-space"],
+                basic_component=self.configs["basic-component"],
+                random_state=self.configs["seed"]
+            )
+
         return design_space
 
     def load_model(self):
