@@ -140,22 +140,22 @@ benchmarks:
   # - spmv
 
 # mode: sample-generate-design | generate-design | generate-dataset | rl | evaluate
-mode: sample-generate-design
+mode: generate-dataset
 
 # design: boom | rocket | cva6
 design: boom
 
 # generate-design: for `sample_v2` in rl-explorer/dse/env/design_space.py
-batch: 30
+batch:  79
 
 # generate-design: design-output-path
-design-output-path: data/boom/boom-design-v3.txt
+design-output-path: data/boom/boom-design-v2.txt
 
 # sim: idx
-idx: 1102
+idx: 1103
 
 # generate-data: data-output-path
-dataset-output-path: data/boom/dataset-v3.txt
+dataset-output-path: data/boom/dataset-v2.txt
 
 # PPA related
 # performance model learning rate

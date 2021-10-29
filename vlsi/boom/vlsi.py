@@ -1112,10 +1112,10 @@ def generate_dataset(configs):
 
     dataset = []
     design_set = load_txt(configs["design-output-path"])
-    for i in range(1, configs["batch"] + 1):
+    for i in range(configs["idx"], configs["idx"] + configs["batch"]):
         _dataset = np.array([])
         # add arch. feature
-        _dataset = np.concatenate((_dataset, design_set[i - 1]))
+        _dataset = np.concatenate((_dataset, design_set[i - configs["idx"]]))
         soc_name = "Boom%dConfig" % i
         project_name = "chipyard.TestHarness.Boom%dConfig-ChipTop" % i
         vlsi_root = os.path.join(
