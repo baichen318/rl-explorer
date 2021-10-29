@@ -571,7 +571,7 @@ class Gem5Wrapper(BasicComponent):
 
         # numFetchBufferEntries
         # NOTICE: GEM5 requires `cache block size % fetch buffer == 0`
-        fetch_buffer_entries = [8, 16, 16, 32, 64, 32, 64]
+        fetch_buffer_entries = [8, 16, 16, 32, 64, 32, 64, 4, 8, 16, 32, 32, 32, 32]
         _modify_gem5(
             self.root_o3cpu,
             "fetchBufferSize\ =\ Param.Unsigned\(\d+,\ \"Fetch\ buffer\ size\ in\ bytes\"\)",

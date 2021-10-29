@@ -384,7 +384,7 @@ def post_handle_boom(root):
         name = param.attrib["name"]
         value = param.attrib["value"]
         if name == "fp_issue_width":
-            fp_issue_width = [8, 16, 24, 32, 12, 20, 28]
+            fp_issue_width = [8, 16, 24, 32, 12, 20, 28, 4, 6, 20, 22, 34]
             param.attrib["value"] = str(fp_issue_width[args.state[7]])
         if name in [
             "fp_issue_width"
