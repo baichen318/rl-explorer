@@ -100,7 +100,7 @@ flow: search
 # Choose random | cbted
 initialize-method: random
 
-batch: 900
+batch: 10
 
 # Size
 initialize-size: 200
