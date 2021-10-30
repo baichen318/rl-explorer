@@ -140,7 +140,7 @@ benchmarks:
   # - spmv
 
 # mode: sample-generate-design | generate-design | generate-dataset | rl | evaluate
-mode: generate-dataset
+mode: rl
 
 # design: boom | rocket | cva6
 design: boom

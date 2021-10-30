@@ -103,11 +103,11 @@ def init_xgb():
 
     return XGBRegressor(
         max_depth=3,
-        gamma=0.00001,
+        gamma=0.0000001,
         min_child_weight=1,
         subsample=1.0,
-        eta=0.3,
-        reg_alpha=0.1,
+        eta=0.25,
+        reg_alpha=0,
         reg_lambda=0.1,
         booster="gbtree",
         objective="reg:squarederror",

@@ -58,7 +58,7 @@ def load_model():
 def main():
     dataset = load_txt(
         os.path.join(
-            os.path.pardir, "data", "boom", "boom-design-baseline.txt"
+            os.path.pardir, "data", "boom", "misc", "boom-design-baseline.txt"
         )
     )
     design_space = load_design_space()
