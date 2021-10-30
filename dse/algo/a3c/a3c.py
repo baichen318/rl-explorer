@@ -201,6 +201,13 @@ def a3c(env, configs):
         value_loss, action_loss, dist_entropy = agent.update(buffer, w)
         agent.homotopy_optimization()
         buffer.after_update()
+        # NOTICE: we display VALID rewards
+        _ipc = np.array(sorted(episode_ppa["ipc"]))
+        j = _ipc[np.where(_ipc != -1)]
+        if j.shape[0] == 0:
+            j = -1
+        else:
+            j = j[0]
         if i % configs["save-interval"] == 0:
             total_num_steps = (i + 1) * configs["num-process"] * configs["n-step-td"]
             end = time.time()
@@ -244,7 +251,7 @@ def a3c(env, configs):
                 OrderedDict({
                         "mean episode IPC": np.mean(episode_ppa["ipc"]),
                         "median episode IPC": np.median(episode_ppa["ipc"]),
-                        "min. episode IPC": np.min(episode_ppa["ipc"]),
+                        "min. episode IPC": j,
                         "max. episode IPC": np.max(episode_ppa["ipc"]),
                         "mean episode power": np.mean(episode_ppa["power"]),
                         "median episode power": np.median(episode_ppa["power"]),
@@ -268,7 +275,7 @@ def a3c(env, configs):
                 OrderedDict({
                         "mean IPC": np.mean(ppa["ipc"]),
                         "median IPC": np.median(ppa["ipc"]),
-                        "min. IPC": np.min(ppa["ipc"]),
+                        "min. IPC": j,
                         "max. IPC": np.max(ppa["ipc"]),
                         "mean power": np.mean(ppa["power"]),
                         "median power": np.median(ppa["power"]),

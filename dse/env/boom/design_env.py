@@ -104,8 +104,8 @@ class BoomDesignEnv(BasicEnv):
 
         if not self.design_space.validate(self.state.numpy().astype(int)):
             # invalid microarchitecture
-            ipc, power, area = -1, -1, -1
-            reward = torch.Tensor([-1, -1, -1])
+            ipc, power, area = 0, -1, -1
+            reward = torch.Tensor([0, -1, -1])
             invalid = True
         else:
             ipc, power, area = self.design_space.evaluate_microarchitecture(
