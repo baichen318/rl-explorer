@@ -308,8 +308,8 @@ def evaluate_a3c(env, configs):
     model_list = os.listdir(os.path.join(configs["model"]))
     model_list.sort(key=lambda x: int(x[4:].strip(".pt")))
     # NOTICE: we evaluate models with 15% - 75%
-    start = int(len(model_list) * 0.15)
-    end = int(len(model_list) * 0.75)
+    start = int(len(model_list) * 0.75)
+    end = int(len(model_list) * 0.95)
     for model in model_list[start: end]:
         if model.endswith(".pt"):
             model = os.path.join(configs["model"], model)
