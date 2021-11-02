@@ -199,7 +199,8 @@ if __name__ == "__main__":
         generate_dataset()
     elif mode == "rl":
         rl_explorer()
-    elif mode == "evaluate":
+    elif mode == "evaluate" or \
+        mode == "explore":
         evaluate()
     else:
         raise NotImplementedError()

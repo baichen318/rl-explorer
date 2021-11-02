@@ -305,16 +305,23 @@ def evaluate_a3c(env, configs):
     preference = torch.Tensor(configs["preference"]).unsqueeze(0)
     preference = torch.abs(preference) / torch.sum(torch.abs(preference))
 
-    model_list = os.listdir(os.path.join(configs["model"]))
-    model_list.sort(key=lambda x: int(x[4:].strip(".pt")))
-    # NOTICE: we evaluate models with 15% - 75%
-    start = int(len(model_list) * 0.75)
-    end = int(len(model_list) * 0.95)
-    for model in model_list[start: end]:
-        if model.endswith(".pt"):
-            model = os.path.join(configs["model"], model)
-        else:
-            continue
+    if configs["mode"] == "evaluate":
+        model_list = os.listdir(os.path.join(configs["model"]))
+        model_list.sort(key=lambda x: int(x[4:].strip(".pt")))
+        # NOTICE: we evaluate models with 15% - 75%
+        start = int(len(model_list) * 0.75)
+        end = int(len(model_list) * 0.95)
+        models = model_list[start: end]
+    else:
+        assert configs["mode"] == "explore", \
+            "[ERROR]: %s is unsupported." % configs["mode"]
+        models = [configs["model"]]
+    for model in models:
+        if configs["mode"] == "evaluate":
+            if model.endswith(".pt"):
+                model = os.path.join(configs["model"], model)
+            else:
+                continue
         ppa = {
             "ipc": [],
             "power": [],
@@ -337,7 +344,7 @@ def evaluate_a3c(env, configs):
                     ppa["power"].append(-r[1])
                     ppa["area"].append(-r[2])
         e = time.time()
-        msg = "[INFO]: time: {}, evaluate using {}, {} episodes: mean IPC: {:.4f}, mean Power: {:.4f}, mean Area: {:.4f}".format(
+        msg = "[INFO]: time: {}, evaluate using {}, {} episodes: mean IPC: {:.4f}, mean Power: {:.4f}, mean Area: {:.4f}\n".format(
             e - s, model, len(ppa["ipc"]), np.mean(ppa["ipc"]), np.mean(ppa["power"]), np.mean(ppa["area"])
         )
         configs["logger"].info(msg)
