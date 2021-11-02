@@ -328,23 +328,24 @@ def evaluate_a3c(env, configs):
             "area": []
         }
         actor_critic.load(model)
-        obs = envs.reset()
-        s = time.time()
-        while len(ppa["ipc"]) < 20:
-            with torch.no_grad():
-                _, action, _ = actor_critic.act(
-                    obs,
-                    preference
-                )
-                obs, reward, done, info = envs.step(action)
+        for i in range(1, 10 + 1):
+            obs = envs.reset()
+            s = time.time()
+            while len(ppa["ipc"]) < 30:
+                with torch.no_grad():
+                    _, action, _ = actor_critic.act(
+                        obs,
+                        preference
+                    )
+                    obs, reward, done, info = envs.step(action)
 
-                for r in reward:
-                    assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
-                    ppa["ipc"].append(r[0])
-                    ppa["power"].append(-r[1])
-                    ppa["area"].append(-r[2])
-        e = time.time()
-        msg = "[INFO]: time: {}, evaluate using {}, {} episodes: mean IPC: {:.4f}, mean Power: {:.4f}, mean Area: {:.4f}\n".format(
-            e - s, model, len(ppa["ipc"]), np.mean(ppa["ipc"]), np.mean(ppa["power"]), np.mean(ppa["area"])
-        )
+                    for r in reward:
+                        assert len(r) == len(configs["metrics"]), "[ERROR]: metrics are unsupported."
+                        ppa["ipc"].append(r[0])
+                        ppa["power"].append(-r[1])
+                        ppa["area"].append(-r[2])
+            e = time.time()
+            msg = "[INFO]: round: {}, time: {}, evaluate using {}, {} episodes: mean IPC: {:.4f}, mean Power: {:.4f}, mean Area: {:.4f}\n".format(
+                i, e - s, model, len(ppa["ipc"]), np.mean(ppa["ipc"]), np.mean(ppa["power"]), np.mean(ppa["area"])
+            )
         configs["logger"].info(msg)
