@@ -167,7 +167,7 @@ def a3c(env, configs):
         w = torch.abs(w) / torch.sum(torch.abs(w))
         w = w.view(-1, configs["num-process"], len(configs["metrics"])).repeat(configs["n-step-td"], 1, 1)
         msg = "[INFO]: preference vector: {}".format(w)
-        configs["logger"].info(w)
+        configs["logger"].info(msg)
         for step in range(configs["n-step-td"]):
             with torch.no_grad():
                 value, action, action_log_prob = actor_critic.act(buffer.obs[step], w[step])
