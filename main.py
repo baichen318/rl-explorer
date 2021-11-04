@@ -117,8 +117,8 @@ def generate_dataset():
         generate_dataset(configs)
     elif configs["design"] == "rocket":
         from vlsi.rocket.vlsi import generate_dataset, generate_detail_dataset
-        # generate_dataset(configs)
-        generate_detail_dataset(configs)
+        generate_dataset(configs)
+        # generate_detail_dataset(configs)
     elif configs["design"] == "cva6":
         assert configs["design"] == "cva6", \
             "[ERROR]: design: %s not support." % configs["design"]

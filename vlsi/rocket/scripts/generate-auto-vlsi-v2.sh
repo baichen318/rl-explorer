@@ -41,9 +41,7 @@ function syn2sim() {
     make sim-syn \\
         MACROCOMPILER_MODE='-l /research/dept8/gds/cbai/research/chipyard/vlsi/hammer/src/hammer-vlsi/technology/asap7/sram-cache.json' \\
         CONFIG=\${soc_name} \\
-        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv &
-    # 600 sec. would be suitable
-    sleep 600
+        BINARY=/research/dept8/gds/cbai/research/chipyard/toolchains/riscv-tools/riscv-tests/build/benchmarks/towers.riscv
 }
 
 function sim() {
@@ -161,15 +159,18 @@ function check_power_report() {
     fi
 }
 
-# compile
+# syn2sim
 # verify all simv have been generated
 count=\`expr ${end} - ${start} + 1\`
 arr=\`seq ${start} ${end}\`
 for idx in \${arr[@]}
 do
     soc_name=Rocket\${idx}Config
-    compile \${soc_name}
+    syn2sim \${soc_name}
+    sleep 800
 done
+
+exit 0
 
 # re-check compile
 c=0

@@ -16,16 +16,26 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from dse.env.boom.design_space import parse_design_space
 from util import parse_args, get_configs, load_txt
 
 
-def load_design_space():
-    design_space = parse_design_space(
-        configs["design-space"],
-        basic_component=configs["basic-component"],
-        random_state=configs["seed"]
-    )
+def load_design_space(design):
+    if design == "boom":
+        from dse.env.boom.design_space import parse_design_space
+        design_space = parse_design_space(
+            configs["design-space"],
+            basic_component=configs["basic-component"],
+            random_state=configs["seed"]
+        )
+    else:
+        assert configs["design"] == "rocket", \
+            "[ERROR]: %s is not supported." % configs["design"]
+        from dse.env.rocket.design_space import parse_design_space
+        design_space = parse_design_space(
+            configs["design-space"],
+            basic_component=configs["basic-component"],
+            random_state=configs["seed"]
+        )
 
     return design_space
 
@@ -58,10 +68,16 @@ def load_model():
 def main():
     dataset = load_txt(
         os.path.join(
-            os.path.pardir, "data", "boom", "misc", "boom-design-baseline.txt"
+            os.path.pardir,
+            "data",
+            configs["design"],
+            "misc",
+            "%s-design-baseline.txt" % configs["design"]
         )
     )
-    design_space = load_design_space()
+    if len(dataset.shape) == 1:
+        dataset = dataset[np.newaxis, :]
+    design_space = load_design_space(configs["design"])
     ppa_models = load_model()
     pred_ipc, pred_power, pred_area = [], [], []
     ipc_reward, power_reward ,area_reward = [], [], []
@@ -92,10 +108,17 @@ def main():
                 axis=0
             )
         )
-        # NOTICE: Refer to `dse/env/boom/design_env.py`
-        ipc = 2 * ipc
-        power = 2 * 10 * power
-        area = 0.5 * 1e-6 * area
+        if configs["design"] == "boom":
+            # NOTICE: Refer to `dse/env/boom/design_env.py`
+            ipc = 2 * ipc
+            power = 2 * 10 * power
+            area = 0.5 * 1e-6 * area
+        else:
+            assert configs["design"] == "rocket", \
+                "[ERROR]: %s is not supported." % configs["design"]
+            ipc = 10 * ipc
+            power = 10 * power
+            area = 1e-6 * 10 * area
         ipc_reward.append(ipc)
         power_reward.append(-power)
         area_reward.append(-area)
