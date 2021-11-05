@@ -136,7 +136,16 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
             )
         )
         # trasfer area to mm^2
-        area = area * 1e-6
+        if self.configs["design"] == "rocket":
+            ipc = 10 * ipc
+            power = 10 * power
+            area = area * 1e-6 * 10
+        else:
+            assert self.configs["design"] == "boom", \
+                "[ERROR]: %s is not supported." % self.configs["design"]
+            ipc = 2 * ipc
+            power = 2 * 10 * power
+            area = 0.5 * 1e-6 * area
         msg = "[INFO]: microarchitecture: {}, IPC: {}, power: {}, area: {}".format(
             x,
             ipc,

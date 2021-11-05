@@ -152,7 +152,7 @@ initialize-method: random
 Nrted: 59
 mu: 0.1
 sig: 0.1
-batch: 5
+batch: 25
 
 # Size
 initialize-size: 200
@@ -185,7 +185,7 @@ config-name:
   - chipyard.TestHarness.BOOMConfig3Config-ChipTop
 
 # Output path for final training set
-dataset-output-path: ../../data/boom/dataset-v1.txt
+dataset-output-path: ../../data/boom/dataset.txt
 
 # Learning rate for `dnn-gp`
 learning-rate: 0.001

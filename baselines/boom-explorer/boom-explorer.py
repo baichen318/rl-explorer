@@ -115,8 +115,8 @@ def boom_explorer_as_baseline(problem):
     if configs["design"] == "rocket":
         x, y = random_sample_v2(configs, problem, batch=configs["batch"])
     else:
-        assert self.configs["design"] == "boom", \
-            "[ERROR]: %s is not supported." % self.configs["design"]
+        assert configs["design"] == "boom", \
+            "[ERROR]: %s is not supported." % configs["design"]
         x, y = crted_sample(configs, problem)
     pareto_set = get_pareto_set(y)
 
@@ -163,11 +163,11 @@ def boom_explorer_as_baseline(problem):
         )
     )
     print("[INFO]: pareto set: %s, size: %d" % (str(pareto_set), len(pareto_set)))
-    plot_pareto_set(
-        detransform_dataset(pareto_set),
-        dataset_path=configs["dataset-output-path"],
-        output=configs["fig-output-path"]
-    )
+    # plot_pareto_set(
+    #     detransform_dataset(pareto_set),
+    #     dataset_path=configs["dataset-output-path"],
+    #     output=configs["fig-output-path"]
+    # )
 
     # write results
     # ADRS:
