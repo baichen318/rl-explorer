@@ -97,26 +97,44 @@ def load_dataset(path):
     return dataset[:, :-3].astype(int), dataset[:, -3:]
 
 
-def transform_dataset(dataset):
+def transform_dataset(dataset, design):
     """
         dataset: <numpy.array>
         NOTICE: power and area needs to be transformed
     """
     assert dataset.shape[-1] == 3, "[ERROR]: PPA values."
-    # power
-    dataset[:, -2] = 0.2 - dataset[:, -2]
-    # area
-    dataset[:, -1] = 5.2 - dataset[:, -1]
+    if design == "rocket":
+        # power
+        dataset[:, -2] = 0.2 - dataset[:, -2]
+        # area
+        dataset[:, -1] = 5.2 - dataset[:, -1]
+    else:
+        assert design == "boom", \
+            "[ERROR]: %s is not supported." % design
+        # power
+        dataset[:, -2] = 5.0 - dataset[:, -2]
+        # area
+        dataset[:, -1] = 5.0 - dataset[:, -1]
     return dataset
 
 
-def detransform_dataset(dataset):
+def detransform_dataset(dataset, design):
     """
         dataset: <numpy.array>
     """
     assert dataset.shape[-1] == 3, "[ERROR]: PPA values."
-    dataset[:, -2] = 0.2 - dataset[:, -2]
-    dataset[:, -1] = 5.2 - dataset[:, -1]
+    if design == "rocket":
+        # power
+        dataset[:, -2] = 0.2 - dataset[:, -2]
+        # area
+        dataset[:, -1] = 5.2 - dataset[:, -1]
+    else:
+        assert design == "boom", \
+            "[ERROR]: %s is not supported." % design
+        # power
+        dataset[:, -2] = 5.0 - dataset[:, -2]
+        # area
+        dataset[:, -1] = 5.0 - dataset[:, -1]
     return dataset
 
 def split_dataset(dataset):

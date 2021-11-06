@@ -18,9 +18,14 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
     def __init__(self, configs, noise_std: Optional[float]=None, negate: bool=False):
         self.configs = configs
         self._ref_point = torch.tensor([0.0, 0.0, 0.0])
-        self._bounds = torch.tensor([(2.0, 0.2, 5.0)])
+        if self.configs["design"] == "rocket":
+            self._bounds = torch.tensor([(2.0, 0.2, 5.0)])
+        else:
+            assert self.configs["design"] == "boom", \
+                "[ERROR]: %s is not supported." % self.configs["design"]
+            self._bounds = torch.tensor([(5.0, 5.0, 5.0)])
         self.total_x, self.total_y = load_dataset(configs["dataset-output-path"])
-        self.total_y = transform_dataset(self.total_y)
+        self.total_y = transform_dataset(self.total_y, self.configs["design"])
         self.x = self.total_x.copy()
         self.y = self.total_y.copy()
         self.total_x, self.total_y = torch.tensor(self.total_x), torch.tensor(self.total_y)
@@ -139,19 +144,13 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         if self.configs["design"] == "rocket":
             ipc = 10 * ipc
             power = 10 * power
-            area = area * 1e-6 * 10
+            area = 10 * 1e-6 * area
         else:
             assert self.configs["design"] == "boom", \
                 "[ERROR]: %s is not supported." % self.configs["design"]
             ipc = 2 * ipc
             power = 2 * 10 * power
             area = 0.5 * 1e-6 * area
-        msg = "[INFO]: microarchitecture: {}, IPC: {}, power: {}, area: {}".format(
-            x,
-            ipc,
-            power,
-            area
-        )
         metric = torch.Tensor(np.concatenate((ipc, power, area))).unsqueeze(0)
-        metric = transform_dataset(metric)
+        metric = transform_dataset(metric, self.configs["design"])
         return metric

@@ -146,11 +146,13 @@ def boom_explorer_as_baseline(problem):
         search_acq_val.append(acq_val)
         # add in to `x` and `y`
         x = torch.cat((x, new_x), 0)
-        y = torch.cat((y, problem.evaluate_microarchitecture(new_x.numpy().squeeze(0))), 0)
+        metric = problem.evaluate_microarchitecture(new_x.numpy().squeeze(0))
+        y = torch.cat((y, metric), 0)
         with open(path, 'a') as f:
+            metric = detransform_dataset(metric, configs["design"])
             msg = "[INFO]: microarchitecture: {}, metric: {}".format(
                 new_x,
-                problem.evaluate_microarchitecture(new_x.numpy().squeeze(0))
+                metric
             )
             print(msg)
             f.write(msg + '\n')
@@ -164,7 +166,7 @@ def boom_explorer_as_baseline(problem):
     )
     print("[INFO]: pareto set: %s, size: %d" % (str(pareto_set), len(pareto_set)))
     # plot_pareto_set(
-    #     detransform_dataset(pareto_set),
+    #     detransform_dataset(pareto_set, configs["design"]),
     #     dataset_path=configs["dataset-output-path"],
     #     output=configs["fig-output-path"]
     # )
