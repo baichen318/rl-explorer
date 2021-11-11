@@ -276,12 +276,13 @@ def crted_sample(configs, problem, mode):
         sampler = ClusteringRandomizedTED(configs)
         x = torch.Tensor(
             sampler.crted(
-                problem.design_space.sample_v1(configs["batch"]).numpy()
+                problem.design_space.sample_v2(1).numpy()
             )
         )
         y = torch.Tensor([])
+        print(x, len(x), type(x))
         for _x in x:
-            _y = problem.evaluate_microarchitecture(_x.numpy().squeeze(0))
+            _y = problem.evaluate_microarchitecture(_x.numpy())
             y = torch.cat((y, _y), 0)
     else:
         assert mode == "offline"

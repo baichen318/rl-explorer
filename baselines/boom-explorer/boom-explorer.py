@@ -81,7 +81,7 @@ def ehvi_suggest(configs, model, problem, batch=1):
         model: <DNNGP>
         problem: <MultiObjectiveTestProblem>
     """
-    x, sampled_y = crted(configs, problem, mode="online")
+    x, sampled_y = crted_sample(configs, problem, mode="online")
     partitioning = NondominatedPartitioning(ref_point=problem._ref_point.to(model.device), Y=sampled_y.to(model.device))
 
     acq_func = ExpectedHypervolumeImprovement(
@@ -92,22 +92,22 @@ def ehvi_suggest(configs, model, problem, batch=1):
 
     acq_val = acq_func(
         model.forward_mlp(
-            problem.x.to(torch.float).to(model.device)
+            x.to(torch.float).to(model.device)
         ).unsqueeze(1).to(model.device)
     ).to(model.device)
     top_acq_val, indices = torch.topk(acq_val, k=batch)
-    new_x = problem.x[indices].to(torch.float32)
+    new_x = x[indices].to(torch.float32)
 
     # pick up y corresponding to `new_x`
     cnt = 0
     for _x in x:
-        if torch.equal(_x, new_x):
+        if torch.equal(_x, new_x.squeeze(0)):
             break
         cnt += 1
     sampled_y = sampled_y[cnt]
 
     del acq_val
-    return new_x.reshape(-1, problem.n_dim), sampled_y, torch.mean(top_acq_val)
+    return new_x.reshape(-1, problem.n_dim), sampled_y.unsqueeze(0), torch.mean(top_acq_val)
 
 
 def get_pareto_set(y: torch.Tensor):

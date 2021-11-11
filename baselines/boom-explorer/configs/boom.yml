@@ -152,8 +152,7 @@ initialize-method: random
 Nrted: 59
 mu: 0.1
 sig: 0.1
-# batch: 30
-batch: 5
+batch: 50
 
 # Size
 initialize-size: 200
@@ -195,12 +194,10 @@ learning-rate: 0.001
 optimizer: Adam
 
 # Max iteration for `dnn-gp`
-# max-epoch: 1000
-max-epoch: 10
+max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
-# max-bo-steps: 20
-max-bo-steps: 2
+max-bo-steps: 30
 
 # MLP output dimension
 mlp-output-dim: 6
