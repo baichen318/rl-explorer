@@ -112,9 +112,9 @@ def transform_dataset(dataset, design):
         assert design == "boom", \
             "[ERROR]: %s is not supported." % design
         # power
-        dataset[:, -2] = 5.0 - dataset[:, -2]
+        dataset[:, -2] = 0.5 - dataset[:, -2]
         # area
-        dataset[:, -1] = 5.0 - dataset[:, -1]
+        dataset[:, -1] = 5.5 - dataset[:, -1]
     return dataset
 
 
@@ -132,10 +132,24 @@ def detransform_dataset(dataset, design):
         assert design == "boom", \
             "[ERROR]: %s is not supported." % design
         # power
-        dataset[:, -2] = 5.0 - dataset[:, -2]
+        dataset[:, -2] = 0.5 - dataset[:, -2]
         # area
-        dataset[:, -1] = 5.0 - dataset[:, -1]
+        dataset[:, -1] = 5.5 - dataset[:, -1]
     return dataset
+
+def remove(path):
+    if if_exist(path):
+        if os.path.isfile(path):
+            os.remove(path)
+            print("[INFO]: remove %s" % path)
+        elif os.path.isdir(path):
+            for root, dirs, files in os.walk(path, topdown=False):
+                for name in files:
+                    os.remove(os.path.join(root, name))
+                for name in dirs:
+                    os.rmdir(os.path.join(root, name))
+            os.rmdir(path)
+            print("[INFO]: remove %s" % path)
 
 def split_dataset(dataset):
     # split dataset into x label & y label

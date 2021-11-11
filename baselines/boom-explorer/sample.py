@@ -102,7 +102,7 @@ class ClusteringRandomizedTED(RandomizedTED):
         """calculates distance between two points"""
         # NOTICE: `decodeWidth` should be assignd with larger weights
         weights = [1 for i in range(self.n_dim)]
-        weights[1] *= 3
+        weights[4] *= 5
 
         return np.sum((x - y)**l * weights).astype(float)
 
@@ -199,7 +199,7 @@ class ClusteringRandomizedTED(RandomizedTED):
         centroids, new_assignment, loss = self.clustering(
             dataset,
             self.configs["cluster"],
-            max_iter=100
+            max_iter=500
         )
         new_dataset = self.gather_groups(dataset, new_assignment)
 
@@ -266,15 +266,29 @@ class RandomSampler(Sampler):
         y = problem.evaluate_true(x)
         return x.to(torch.float32), y
 
-def crted_sample(configs, problem):
+def crted_sample(configs, problem, mode):
     """
         configs: <dict>
         problem: <MultiObjectiveTestProblem>
+        mode: <str>
     """
-    sampler = ClusteringRandomizedTED(configs)
-    x = torch.Tensor(sampler.crted(problem.x.numpy()))
-    y = problem.evaluate_true(x)
-    problem.remove_sampled_data(x)
+    if mode == "online":
+        sampler = ClusteringRandomizedTED(configs)
+        x = torch.Tensor(
+            sampler.crted(
+                problem.design_space.sample_v1(configs["batch"]).numpy()
+            )
+        )
+        y = torch.Tensor([])
+        for _x in x:
+            _y = problem.evaluate_microarchitecture(_x.numpy().squeeze(0))
+            y = torch.cat((y, _y), 0)
+    else:
+        assert mode == "offline"
+        sampler = ClusteringRandomizedTED(configs)
+        x = torch.Tensor(sampler.crted(problem.x.numpy()))
+        y = problem.evaluate_true(x)
+        problem.remove_sampled_data(x)
     return x, y
 
 def random_sample(configs, x, y, batch=1):

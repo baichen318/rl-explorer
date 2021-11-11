@@ -39,7 +39,7 @@ from botorch.utils.multi_objective.box_decompositions.non_dominated import Nondo
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
 from sample import crted_sample, random_sample_v2
 from boom_design_problem import BOOMDesignProblem
-from helper import get_configs, parse_args, adrs_v2, detransform_dataset, write_txt
+from helper import get_configs, parse_args, adrs_v2, detransform_dataset, write_txt, remove
 from vis import plot_pareto_set
 from exception import UnDefinedException
 
@@ -75,12 +75,13 @@ def fit_dnn_gp(x, y):
     return model
 
 
-def ehvi_suggest(model, problem, sampled_y, batch=1):
+def ehvi_suggest(configs, model, problem, batch=1):
     """
+        configs: <dict>
         model: <DNNGP>
         problem: <MultiObjectiveTestProblem>
-        sampled_y: <torch.Tensor>
     """
+    x, sampled_y = crted(configs, problem, mode="online")
     partitioning = NondominatedPartitioning(ref_point=problem._ref_point.to(model.device), Y=sampled_y.to(model.device))
 
     acq_func = ExpectedHypervolumeImprovement(
@@ -96,8 +97,17 @@ def ehvi_suggest(model, problem, sampled_y, batch=1):
     ).to(model.device)
     top_acq_val, indices = torch.topk(acq_val, k=batch)
     new_x = problem.x[indices].to(torch.float32)
+
+    # pick up y corresponding to `new_x`
+    cnt = 0
+    for _x in x:
+        if torch.equal(_x, new_x):
+            break
+        cnt += 1
+    sampled_y = sampled_y[cnt]
+
     del acq_val
-    return new_x.reshape(-1, problem.n_dim), torch.mean(top_acq_val)
+    return new_x.reshape(-1, problem.n_dim), sampled_y, torch.mean(top_acq_val)
 
 
 def get_pareto_set(y: torch.Tensor):
@@ -117,7 +127,7 @@ def boom_explorer_as_baseline(problem):
     else:
         assert configs["design"] == "boom", \
             "[ERROR]: %s is not supported." % configs["design"]
-        x, y = crted_sample(configs, problem)
+        x, y = crted_sample(configs, problem, mode="offline")
     pareto_set = get_pareto_set(y)
 
     adrs.append(
@@ -132,6 +142,7 @@ def boom_explorer_as_baseline(problem):
         os.path.dirname(configs["rpt-output-path"]),
         os.path.splitext(os.path.basename(configs["rpt-output-path"]))[0] + "-%s-detail.rpt" % configs["design"]
     )
+    remove(path)
 
     # Bayesian optimization
     search_x, search_acq_val = [], []
@@ -141,15 +152,14 @@ def boom_explorer_as_baseline(problem):
         # train
         model = fit_dnn_gp(x, y)
         # sample by acquisition function
-        new_x, acq_val = ehvi_suggest(model, problem, y)
+        new_x, sampled_y, acq_val = ehvi_suggest(configs, model, problem)
         search_x.append(new_x)
         search_acq_val.append(acq_val)
         # add in to `x` and `y`
         x = torch.cat((x, new_x), 0)
-        metric = problem.evaluate_microarchitecture(new_x.numpy().squeeze(0))
-        y = torch.cat((y, metric), 0)
+        y = torch.cat((y, sampled_y), 0)
         with open(path, 'a') as f:
-            metric = detransform_dataset(metric, configs["design"])
+            metric = detransform_dataset(sampled_y, configs["design"])
             msg = "[INFO]: microarchitecture: {}, metric: {}".format(
                 new_x,
                 metric
