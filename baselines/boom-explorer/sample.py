@@ -276,7 +276,7 @@ def crted_sample(configs, problem, mode):
         sampler = ClusteringRandomizedTED(configs)
         x = torch.Tensor(
             sampler.crted(
-                problem.design_space.sample_v2(1).numpy()
+                problem.design_space.sample_v1(1).numpy()
             )
         )
         y = torch.Tensor([])
