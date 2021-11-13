@@ -164,15 +164,15 @@ class BOOMDesignSpace(Space):
         while cnt < batch:
             # randomly sample designs w.r.t. decodeWidth
             for decodeWidth in self.bounds[self.features[4]][::-1]:
-                design = self._sample_v2(decodeWidth)
+                design = self._sample_v1(decodeWidth)
                 point = self.knob2point(design)
                 while point in self.visited:
-                    design = self._sample_v2(decodeWidth)
+                    design = self._sample_v1(decodeWidth)
                     point = self.knob2point(design)
                 self.visited.add(point)
                 samples.append(design)
             cnt += 1
-        return torch.Tensor(samples).long()
+        return torch.Tensor(samples).squeeze().long()
 
     def sample_v2(self, batch, f=None):
         """
@@ -220,7 +220,7 @@ class BOOMDesignSpace(Space):
             self.visited.add(point)
             samples.append(design)
             cnt += 1
-        return torch.Tensor(samples).long()
+        return torch.Tensor(samples).squeeze().long()
 
     def sample_v4(self, batch, f=None):
         """

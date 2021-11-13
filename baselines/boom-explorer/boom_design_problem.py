@@ -23,7 +23,7 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         else:
             assert self.configs["design"] == "boom", \
                 "[ERROR]: %s is not supported." % self.configs["design"]
-            self._bounds = torch.tensor([(5.0, 5.0, 5.0)])
+            self._bounds = torch.tensor([(2.0, 0.5, 5.5)])
         self.total_x, self.total_y = load_dataset(configs["dataset-output-path"])
         self.total_y = transform_dataset(self.total_y, self.configs["design"])
         self.x = self.total_x.copy()

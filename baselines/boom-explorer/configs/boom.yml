@@ -152,7 +152,7 @@ initialize-method: random
 Nrted: 59
 mu: 0.1
 sig: 0.1
-batch: 25
+batch: 50
 
 # Size
 initialize-size: 200
@@ -197,7 +197,7 @@ optimizer: Adam
 max-epoch: 1000
 
 # Max iteration for Bayesian Optimization
-max-bo-steps: 20
+max-bo-steps: 30
 
 # MLP output dimension
 mlp-output-dim: 6

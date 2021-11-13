@@ -1112,6 +1112,8 @@ def generate_dataset(configs):
 
     dataset = []
     design_set = load_txt(configs["design-output-path"])
+    if design_set.ndim == 1:
+        design_set = np.expand_dims(design_set, axis=0)
     for i in range(configs["idx"], configs["idx"] + design_set.shape[0]):
         _dataset = np.array([])
         # add arch. feature
