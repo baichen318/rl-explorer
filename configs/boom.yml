@@ -139,7 +139,7 @@ benchmarks:
   # - dhrystone
   # - spmv
 
-# mode: sample-generate-design | generate-design | generate-dataset | rl | evaluate
+# mode: sample-generate-design | generate-design | generate-dataset | rl | evaluate | explore
 mode: rl
 
 # design: boom | rocket | cva6
@@ -195,11 +195,13 @@ hidden-size:
 # no. of TD steps
 n-step-td: 5
 # no. of environment steps to train
-num-train-step: 1000
+num-train-step: 2000
 # no. of environment steps to train
 num-env-step: 20
 # value loss coefficient
 value-loss-weight: 0.1
+# preference vector sample interval
+preference-sample-interval: 20
 # entropy term coefficient
 entropy-weight: 0.01
 # learning rate
@@ -217,10 +219,11 @@ eval-interval: 500
 # TODO: these flags need to be verified
 batch-size: 16
 # intial beta for evelope A3C
-beta: 0.01
+# beta: 0.01
+beta: 0.2
 log: logs/a3c-boom
 debug: False
 
 # Evaluate related
-model: models/a3c-boom-2021-10-21-22-57
-preference: [3.0, 2.0, 1.0]
+model: models/a3c-boom-2021-11-03-17-01/a3c-393.pt
+preference: [3.0, 1.0, 1.0]

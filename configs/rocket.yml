@@ -138,6 +138,8 @@ num-train-step: 1000
 num-env-step: 20
 # value loss coefficient
 value-loss-weight: 0.1
+# preference vector sample interval
+preference-sample-interval: 20
 # entropy term coefficient
 entropy-weight: 0.01
 # learning rate

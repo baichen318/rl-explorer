@@ -163,7 +163,10 @@ def a3c(env, configs):
     num_updates = configs["num-train-step"] // configs["n-step-td"] // configs["num-process"]
     for i in range(num_updates):
         # NOTICE: Omega preference space on PPA metrics
-        w = torch.randn(configs["num-process"], len(configs["metrics"]))
+        if i % configs["preference-sample-interval"] == 0:
+            w = torch.randn(configs["num-process"], len(configs["metrics"]))
+        else:
+            w = torch.Tensor([1, 1, 1]).repeat(configs["num-process"], 1)
         w = torch.abs(w) / torch.sum(torch.abs(w))
         w = w.view(-1, configs["num-process"], len(configs["metrics"])).repeat(configs["n-step-td"], 1, 1)
         msg = "[INFO]: preference vector: {}".format(w)
@@ -203,9 +206,9 @@ def a3c(env, configs):
         buffer.after_update()
         # NOTICE: we display VALID rewards
         _ipc = np.array(sorted(episode_ppa["ipc"]))
-        j = _ipc[np.where(_ipc != -1)]
+        j = _ipc[np.where(_ipc != 0)]
         if j.shape[0] == 0:
-            j = -1
+            j = 0
         else:
             j = j[0]
         if i % configs["save-interval"] == 0:
@@ -308,9 +311,9 @@ def evaluate_a3c(env, configs):
     if configs["mode"] == "evaluate":
         model_list = os.listdir(os.path.join(configs["model"]))
         model_list.sort(key=lambda x: int(x[4:].strip(".pt")))
-        # NOTICE: we evaluate models with 15% - 75%
-        start = int(len(model_list) * 0.75)
-        end = int(len(model_list) * 0.95)
+        # NOTICE: we evaluate models with 95% - 100%
+        start = int(len(model_list) * 0.95)
+        end = int(len(model_list) * 1.0)
         models = model_list[start: end]
     else:
         assert configs["mode"] == "explore", \
@@ -322,16 +325,16 @@ def evaluate_a3c(env, configs):
                 model = os.path.join(configs["model"], model)
             else:
                 continue
-        ppa = {
-            "ipc": [],
-            "power": [],
-            "area": []
-        }
         actor_critic.load(model)
-        for i in range(1, 10 + 1):
-            obs = envs.reset()
+        for i in range(1, 50 + 1):
+            ppa = {
+                "ipc": [],
+                "power": [],
+                "area": []
+            }
             s = time.time()
-            while len(ppa["ipc"]) < 30:
+            obs = envs.reset()
+            while len(ppa["ipc"]) < 25:
                 with torch.no_grad():
                     _, action, _ = actor_critic.act(
                         obs,
