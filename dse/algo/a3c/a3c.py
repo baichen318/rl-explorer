@@ -211,6 +211,12 @@ def a3c(env, configs):
             j = 0
         else:
             j = j[0]
+        _ipc = np.array(sorted(ppa["ipc"]))
+        k = _ipc[np.where(_ipc != 0)]
+        if k.shape[0] == 0:
+            k = 0
+        else:
+            k = k[0]
         if i % configs["save-interval"] == 0:
             total_num_steps = (i + 1) * configs["num-process"] * configs["n-step-td"]
             end = time.time()
@@ -278,7 +284,7 @@ def a3c(env, configs):
                 OrderedDict({
                         "mean IPC": np.mean(ppa["ipc"]),
                         "median IPC": np.median(ppa["ipc"]),
-                        "min. IPC": j,
+                        "min. IPC": k,
                         "max. IPC": np.max(ppa["ipc"]),
                         "mean power": np.mean(ppa["power"]),
                         "median power": np.median(ppa["power"]),
