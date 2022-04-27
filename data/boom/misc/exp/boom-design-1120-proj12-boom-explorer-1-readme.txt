@@ -1,0 +1,10 @@
+boom-explorer-boom-detail-1120.rpt 30
+17 1555
+19 1556
+30 1557
+21 1558
+5 1559
+6 1560
+real    512m22.978s
+user    2146m38.277s
+sys     207m2.080s

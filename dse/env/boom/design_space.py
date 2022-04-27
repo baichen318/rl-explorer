@@ -1,308 +1,518 @@
 # Author: baichen318@gmail.com
 
+
 import os
-import sys
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.pardir, os.path.pardir, os.path.pardir, "util")
-    )
-)
-import random
-import torch
 import numpy as np
-from time import time
 from collections import OrderedDict
-from util import if_exist, load_txt
-from vlsi.boom.vlsi import Gem5Wrapper
+from utils import load_excel, if_exist
+from ..base_design_space import DesignSpace, Macros
 
 
-class Space(object):
-    def __init__(self, dims):
-        self.dims = dims
-        # calculated manually
-        self.size = 3528000
-        self.n_dim = len(self.dims)
+class BOOMMacros(Macros):
+	def __init__(self, root):
+		super(BOOMMacros, self).__init__()
+		self.macros["chipyard-research-root"] = root
+		self.macros["workstation-root"] = os.path.join(
+			self.macros["chipyard-research-root"],
+			"workstation"
+		)
+		self.macros["core-cfg"] = os.path.join(
+			self.macros["chipyard-research-root"],
+			"generators",
+			"boom",
+			"src",
+			"main",
+			"scala",
+			"common",
+			"config-mixins.scala"
+		)
+		self.macros["soc-cfg"] = os.path.join(
+			self.macros["chipyard-research-root"],
+		    "generators",
+			"chipyard",
+			"src",
+			"main",
+			"scala",
+			"config",
+			"BoomConfigs.scala"
+		)
+		self.validate_macros()
 
-    def point2knob(self, p, dims):
-        """convert point form (single integer) to knob form (vector)"""
-        knob = []
-        for dim in dims:
-            knob.append(p % dim)
-            p //= dim
+	def validate_macros(self):
+		if_exist(self.macros["core-cfg"], strict=True)
+		if_exist(self.macros["soc-cfg"], strict=True)
 
-        return knob
+	def get_mapping_params(self, vec, idx):
+		return self.components_mappings[self.components[idx]][vec[idx]]
 
-    def knob2point(self, knob, dims):
-        """convert knob form (vector) to point form (single integer)"""
-        p = 0
-        for j, k in enumerate(knob):
-            p += int(np.prod(dims[:j])) * k
+	def generate_branch_predictor(self, vec, idx):
+		bp = self.get_mapping_params(vec, idx)[0]
+		if bp == "TAGEL":
+			return "new WithTAGELBPD ++"
+		elif bp == "Gshare":
+			return "new WithBoom2BPD ++"
+		else:
+			return "new WithAlpha21264BPD ++"
 
-        return p
+	def generate_fetch_width(self, vec, idx):
+		return self.get_mapping_params(vec, idx)[0]
 
-class BOOMDesignSpace(Space):
-    def __init__(self, features, bounds, dims, **kwargs):
-        """
-            features: <list>
-            bounds: <OrderedDict>: <str> - <numpy.array>
-        """
-        self.features = features
-        self.bounds = bounds
-        super().__init__(dims)
-        self.set_random_state(kwargs["random_state"])
-        self.basic_component = kwargs["basic_component"]
-        self.visited = set()
+	def generate_fetch_buffer(self, vec, idx):
+		return self.get_mapping_params(vec, idx)[0]
 
-    def set_random_state(self, random_state):
-        random.seed(random_state)
-        np.random.seed(random_state)
-        torch.manual_seed(random_state)
-        torch.cuda.manual_seed(random_state)
+	def generate_ftq(self, vec, idx):
+		return self.get_mapping_params(vec, idx)[1]
 
-    def point2knob(self, point):
-        return [self.bounds[self.features[idx]][i] \
-            for idx, i in enumerate(super().point2knob(point, self.dims))]
+	def generate_max_br_count(self, vec, idx):
+		return self.get_mapping_params(vec, idx)[0]
 
-    def knob2point(self, design):
-        return super().knob2point(
-            [self.bounds[self.features[idx]].index(i) \
-                for idx, i in enumerate(design)],
-            self.dims
+	def generate_decode_width(self, vec, idx):
+		return self.get_mapping_params(vec, idx)[0]
+
+	def generate_rob_entries(self, vec, idx):
+		return self.get_mapping_params(vec, idx)[0]
+
+	def generate_issue_parames(self, vec, idx):
+		params = self.get_mapping_params(vec, idx)
+		return """Seq(
+		        		IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_MEM.litValue, dispatchWidth=%d),
+		        		IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_INT.litValue, dispatchWidth=%d),
+		        		IssueParams(issueWidth=%d, numEntries=%d, iqType=IQT_FP.litValue, dispatchWidth=%d)
+		      		)""" % (
+		        # IQT_MEM.issueWidth, IQT_MEM.numEntries, IQT_MEM.dispatchWidth
+		        params[0], params[1], params[2],
+		        # IQT_INT.issueWidth, IQT_INT.numEntries, IQT_INT.dispatchWidth
+		        params[3], params[4], params[5],
+		        # IQT_FP.issueWidth, IQT_FP.numEntries, IQT_FP.dispatchWidth
+		        params[6], params[7], params[8]
+		    )
+
+	def generate_phy_registers(self, vec, idx):
+		params = self.get_mapping_params(vec, idx)
+		return """numIntPhysRegisters = %d,
+		      		numFpPhysRegisters = %d""" % (
+		        params[0],
+		        params[1]
+		    )
+
+	def generate_lsu(self, vec, idx):
+		params = self.get_mapping_params(vec, idx)
+		return """numLdqEntries = %d,
+		      		numStqEntries = %d""" % (
+		        params[0],
+		        params[1]
+		    )
+
+	def generate_dcache_and_mmu(self, vec, idx):
+		params = self.get_mapping_params(vec, idx)
+		return """Some(
+		      		DCacheParams(
+			        	rowBits=site(SystemBusKey).beatBits,
+			        	nSets=64,
+			        	nWays=%d,
+			        	nMSHRs=%d,
+			        	nTLBWays=%d
+		      		)
+		    		)""" % (
+		        params[0],
+		        params[1],
+		        params[2]
+		    )
+
+	def generate_core_cfg_impl(self, name, vec):
+		codes = '''
+class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
+  %s
+  new Config((site, here, up) => {
+    case TilesLocated(InSubsystem) => {
+      val prev = up(TilesLocated(InSubsystem), site)
+      val idOffset = overrideIdOffset.getOrElse(prev.size)
+      (0 until n).map { i =>
+        BoomTileAttachParams(
+          tileParams = BoomTileParams(
+            core = BoomCoreParams(
+              fetchWidth = %d,
+              numFetchBufferEntries = %d,
+              ftq = FtqParameters(nEntries=%d),
+              maxBrCount = %d,
+              decodeWidth = %d,
+              numRobEntries = %d,
+              %s,
+              issueParams = %s,
+              %s,
+              fpu = Some(
+                freechips.rocketchip.tile.FPUParams(
+                  sfmaLatency=4, dfmaLatency=4, divSqrt=true
+                )
+              ),
+              enablePrefetching = true
+            ),
+            dcache = %s,
+            icache = Some(
+              ICacheParams(
+              	rowBits = site(SystemBusKey).beatBits,
+              	nSets=64,
+              	nWays=%d,
+              	fetchBytes=%d*4
+              )
+            ),
+            hartId = i + idOffset
+          ),
+          crossingParams = RocketCrossingParams()
         )
+      } ++ prev
+    }
+    case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = %d)
+    case XLen => 64
+  })
+)
+''' % (
+	name,
+	self.generate_branch_predictor(vec, 0),
+	self.generate_fetch_width(vec, 1),
+	self.generate_fetch_buffer(vec, 2),
+	self.generate_ftq(vec, 2),
+	self.generate_max_br_count(vec, 3),
+	self.generate_decode_width(vec, 4),
+	self.generate_rob_entries(vec, 5),
+	self.generate_phy_registers(vec, 6),
+	self.generate_issue_parames(vec, 7),
+	self.generate_lsu(vec, 8),
+	self.generate_dcache_and_mmu(vec, 9),
+	self.generate_fetch_width(vec, 1),
+	self.generate_fetch_width(vec, 1) >> 1,
+	self.generate_fetch_width(vec, 1) << 1
+)
+		return codes
 
-    def _sample_v1(self, decodeWidth):
-        def __filter(design, k, v):
-            # Notice: Google sheet
-            # validate w.r.t. `decodeWidth`
-            if k == "fetchWidth":
-                if decodeWidth <= 2:
-                    return self.bounds["fetchWidth"][0]
-                else:
-                    return self.bounds["fetchWidth"][1]
-            elif k == "ifu-buffers":
-                def f(x):
-                    return (self.basic_component["ifu-buffers"][x][0] % decodeWidth == 0 \
-                        and self.basic_component["ifu-buffers"][x][0] > design[1])
-                return random.sample(list(filter(f, self.bounds["ifu-buffers"])), 1)[0]
-            elif k == "decodeWidth":
-                return decodeWidth
-            elif k == "numRobEntries":
-                def f(x):
-                    return x % decodeWidth == 0
-                return random.sample(list(filter(f, self.bounds["numRobEntries"])), 1)[0]
-            else:
-                return random.sample(v, 1)[0]
+	def write_core_cfg_impl(self, codes):
+		with open(self.macros["core-cfg"], 'a') as f:
+			f.writelines(codes)
 
-        design = []
-        for k, v in self.bounds.items():
-            design.append(__filter(design, k, v))
-        return design
+	def generate_soc_cfg_impl(self, soc_name, core_name):
+		codes = '''
+class %s extends Config(
+  new boom.common.%s(1) ++
+  new chipyard.config.AbstractConfig)
+''' % (
+		soc_name,
+		core_name
+	)
+		return codes
 
+	def write_soc_cfg_impl(self, codes):
+		with open(self.macros["soc-cfg"], 'a') as f:
+			f.writelines(codes)
 
-    def _sample_v2(self, decodeWidth):
-        def __filter(design, k, v):
-            # Notice: Google sheet
-            # validate w.r.t. `decodeWidth`
-            if k == "fetchWidth":
-                if decodeWidth <= 2:
-                    return self.bounds["fetchWidth"][0]
-                else:
-                    return self.bounds["fetchWidth"][1]
-            elif k == "ifu-buffers":
-                def f(x):
-                    return (self.basic_component["ifu-buffers"][x][0] % decodeWidth == 0 \
-                        and self.basic_component["ifu-buffers"][x][0] > design[1])
-                return random.sample(list(filter(f, self.bounds["ifu-buffers"][7:])), 1)[0]
-            elif k == "decodeWidth":
-                return decodeWidth
-            elif k == "numRobEntries":
-                def f(x):
-                    return x % decodeWidth == 0
-                return random.sample(list(filter(
-                    f, [self.bounds["numRobEntries"][i] for i in [0, 2, 3, 5, 7, 9, 11, 12, 16]])
-                    ), 1
-                )[0]
-            elif k == "registers":
-                return random.sample([v[i] for i in range(7, 13)], 1)[0]
-            elif k == "issueEntries":
-                return random.sample([v[i] for i in range(7, 12)], 1)[0]
-            elif k == "lsuEntries":
-                def f(x):
-                    return ((self.basic_component["lsu"][x][0] - 1) > decodeWidth \
-                        and (self.basic_component["lsu"][x][1] - 1) > decodeWidth)
-                return random.sample(
-                    list(filter(f, [v[i] for i in range(6, 10)])),
-                    1
-                )[0]
-            elif k == "maxBrCount":
-                return random.sample([v[i] for i in range(0, len(self.bounds["maxBrCount"]), 2)], 1)[0]
-            else:
-                return random.sample(v, 1)[0]
+	def vec_to_microarchitecture_embedding(self, vec):
+		pass
 
-        design = []
-        for k, v in self.bounds.items():
-            design.append(__filter(design, k, v))
-        return design
+	def microarchitecture_embedding_to_vec(self, microarchitecture_embedding):
+		pass
 
 
-    def sample_v1(self, batch, f=None):
-        """
-            V1: uniformly sample configs. w.r.t. `decodeWidth`
-        """
-        samples = []
+class BOOMDesignSpace(DesignSpace, BOOMMacros):
+	def __init__(self, root, descriptions, components_mappings, size):
+		"""
+			descriptions: <class "collections.OrderedDict">
+			Example:
+			descriptions = {
+				"1-wide SonicBOOM": {
+					"fetchWidth": [4],
+					"decodeWidth": [1],
+					"enablePrefetching": [True],
+					"ISU": [1, 2, 3],
+					"IFU": [1, 2, 3],
+					"ROB": [1, 2, 3, 4],
+					"PRF": [1, 2, 3],
+					"LSU": [1, 2, 3],
+					"I-Cache/MMU": [1, 2, 3, 4],
+					"D-Cache/MMU": [1, 2, 3, 4]
+				}
+			}
 
-        # add already sampled dataset
-        def _insert(visited):
-            if isinstance(f, str) and if_exist(f):
-                design_set = load_txt(f)
-                for design in design_set:
-                    visited.add(self.knob2point(list(design)))
+			components_mappings: <class "collections.OrderedDict">
+			Example:
+			components_mappings = {
+				"ISU": {
+					"description": ["IQT_MEM.dispatchWidth", "IQT_MEM.issueWidth"
+						"IQT_MEM.numEntries", "IQT_INT.dispatchWidth",
+						"IQT_INT.issueWidth", "IQT_INT.numEntries",
+						"IQT_FP.dispatchWidth", "IQT_FP.issueWidth",
+						"IQT_FP.numEntries"
+					],
+					"1": [1, 1, 8, 1, 1, 8, 1, 1, 8],
+					"2": [1, 1, 6, 1, 1, 6, 1, 1, 6]
+				},
+				"IFU": {
+					"description": ["maxBrCount", "numFetchBufferEntries", "ftq.nEntries"]
+					"1": [8, 8, 16],
+					"2": [6, 6, 14]
+				}
+			}
 
-        _insert(self.visited)
+			size: <int> the size of the entire design space
+		"""
+		self.descriptions = descriptions
+		self.components_mappings = components_mappings
+		# construct look-up tables
+		# self.designs: <list>
+		# Example:
+		# 	["1-wide SonicBOOM", "2-wide SonicBOOM", "3-wide SonicBOOM"]
+		self.designs = list(self.descriptions.keys())
+		# self.components: <list>
+		# Example:
+		# 	["fetchWidth", "decodeWidth", "ISU", "IFU"]
+		self.components = list(self.descriptions[self.designs[0]].keys())
+		self.design_size = self.construct_design_size()
+		# self.acc_design_size: <list> list of accumulated sizes of each design
+		# Example:
+		#	self.design_size = [a, b, c, d, e] # accordingly
+		# 	self.acc_design_size = [a + b, a + b + c, a + b + c + d, a + b + c + d + e]
+		self.acc_design_size = list(map(
+				lambda x, idx: np.sum(x[:idx]),
+				[self.design_size for i in range(len(self.design_size))],
+				range(1, len(self.design_size) + 1)
+			)
+		)
+		self.component_dims = self.construct_component_dims()
+		self.type = [
+			# "fetchWidth" "decodeWidth"
+			[1, 1],
+			[2, 1],
+			[1, 2],
+			[2, 2],
+			[1, 3],
+			[2, 3],
+			[1, 4],
+			[2, 4],
+			[2, 5]
+		]
+		DesignSpace.__init__(self, size, len(self.components))
+		BOOMMacros.__init__(self, root)
 
-        cnt = 0
-        while cnt < batch:
-            # randomly sample designs w.r.t. decodeWidth
-            for decodeWidth in self.bounds[self.features[4]][::-1]:
-                design = self._sample_v1(decodeWidth)
-                point = self.knob2point(design)
-                while point in self.visited:
-                    design = self._sample_v1(decodeWidth)
-                    point = self.knob2point(design)
-                self.visited.add(point)
-                samples.append(design)
-            cnt += 1
-        return torch.Tensor(samples).squeeze().long()
+	def construct_design_size(self):
+		"""
+			design_size: <list> list of sizes of each design
+			Example:
+				[a, b, c, d, e] and np.sum([[a, b, c, d, e]]) = self.size
+		"""
+		design_size = []
+		for k, v in self.descriptions.items():
+			_design_size = []
+			for _k, _v in v.items():
+				_design_size.append(len(_v))
+			design_size.append(np.prod(_design_size))
+		return design_size
 
-    def sample_v2(self, batch, f=None):
-        """
-            V2: sample configs. w.r.t. random `decodeWidth`,
-            but not UNIFORMLY!
-        """
-        samples = []
+	def construct_component_dims(self):
+		"""
+			component_dims: <list> list of dimensions of each
+								   component w.r.t. each design
+			Example:
+				[
+					[a, b, c, d, e], # => dimensions of components of the 1st design
+				 	[f, g, h, i, j]  # => dimensions of components of the 2nd design
+				]
+		"""
+		component_dims = []
+		for k, v in self.descriptions.items():
+			_component_dims = []
+			for _k, _v in v.items():
+				_component_dims.append(len(_v))
+			component_dims.append(_component_dims)
+		return component_dims
 
-        # add already sampled dataset
-        def _insert(visited):
-            if isinstance(f, str) and if_exist(f):
-                design_set = load_txt(f)
-                for design in design_set:
-                    visited.add(self.knob2point(list(design)))
+	def idx_to_vec(self, idx):
+		"""
+			idx: <int> the index of a microarchitecture
+		"""
+		idx -= 1
+		assert idx >= 0, "[ERROR]: invalid index."
+		assert idx < self.size, "[ERROR]: index exceeds the search space."
+		vec = []
+		design = np.where(np.array(self.acc_design_size) > idx)[0][0]
+		if design >= 1:
+			# NOTICE: subtract the offset
+			idx -= self.acc_design_size[design - 1]
+		for dim in self.component_dims[design]:
+		    vec.append(idx % dim)
+		    idx //= dim
+		for i in range(len(vec)):
+			vec[i] = self.descriptions[self.designs[design]][self.components[i]][vec[i]]
+		# adjust "fetchWidth" and "decodeWidth"
+		vec[1] = self.type[design][0]
+		vec[4] = self.type[design][1]
+		return vec
 
-        _insert(self.visited)
+	def vec_to_idx(self, vec):
+		"""
+			vec: <list> the list of a microarchitecture encoding
+		"""
 
-        cnt = 0
-        while cnt < batch:
-            # randomly sample designs w.r.t. decodeWidth
-            decodeWidth = random.sample(self.bounds["decodeWidth"], 1)[0]
-            design =self._sample_v1(decodeWidth)
-            point = self.knob2point(design)
-            while point in self.visited:
-                design = self._sample_v1(decodeWidth)
-                point = self.knob2point(design)
-            self.visited.add(point)
-            samples.append(design)
-            cnt += 1
-        return torch.Tensor(samples).squeeze().long()
+		idx = 0
+		design = self.type.index([vec[1], vec[4]])
+		# reset "fetchWidth" and "decodeWidth"
+		for i in range(len(vec)):
+			vec[i] = self.descriptions[self.designs[design]][self.components[i]].index(vec[i])
+		vec[1], vec[4] = 0, 0
+		for j, k in enumerate(vec):
+		    idx += int(np.prod(self.component_dims[design][:j])) * k
+		if design >= 1:
+			# NOTICE: add the offset
+			idx += self.acc_design_size[design - 1]
+		assert idx >= 0, "[ERROR]: invalid index."
+		assert idx < self.size, "[ERROR]: index exceeds the search space."
+		idx += 1
+		return idx
 
-    def sample_v3(self, batch, decodeWidth):
-        """
-            V3: sample configs. w.r.t. pre-defined `decodeWidth`
-        """
-        samples = []
+	def idx_to_microarchitecture_embedding(self, idx):
+		vec = self.idx_to_vec(idx)
+		return self.vec_to_microarchitecture_embedding(vec)
 
-        cnt = 0
-        while cnt < batch:
-            design = self._sample_v1(decodeWidth)
-            point = self.knob2point(design)
-            while point in self.visited:
-                design = self._sample_v1(decodeWidth)
-                point = self.knob2point(design)
-            self.visited.add(point)
-            samples.append(design)
-            cnt += 1
-        return torch.Tensor(samples).squeeze().long()
+	def idx_to_microarchitecture_embedding_to_idx(self, microarchitecture_embedding):
+		vec = self.microarchitecture_embedding_to_vec(microarchitecture_embedding)
+		return self.vec_to_idx(vec)
 
-    def sample_v4(self, batch, f=None):
-        """
-            V4: based on V2, sample configs. w.r.t. random
-            `decodeWidth`, but not UNIFORMLY!
-        """
-        samples = []
+	def generate_core_cfg(self, batch):
+		"""
+			generate core configurations
+		"""
+		codes = []
+		for idx in batch:
+			codes.append(self.generate_core_cfg_impl(
+					"WithN{}Booms".format(idx),
+					self.idx_to_vec(idx)
+				)
+			)
+		return codes
 
-        # add already sampled dataset
-        def _insert(visited):
-            if isinstance(f, str) and if_exist(f):
-                design_set = load_txt(f)
-                for design in design_set:
-                    visited.add(self.knob2point(list(design)))
+	def write_core_cfg(self, codes):
+		self.write_core_cfg_impl(codes)
 
-        _insert(self.visited)
+	def generate_soc_cfg(self, batch):
+		"""
+			generate soc configurations
+		"""
+		codes = []
+		for idx in batch:
+			codes.append(self.generate_soc_cfg_impl(
+					"Boom{}Config".format(idx),
+					"WithN{}Booms".format(idx)
+				)
+			)
+		return codes
 
-        cnt = 0
-        while cnt < batch:
-            # randomly sample designs w.r.t. decodeWidth
-            decodeWidth = random.sample(self.bounds["decodeWidth"], 1)[0]
-            design =self._sample_v2(decodeWidth)
-            point = self.knob2point(design)
-            while point in self.visited:
-                design = self._sample_v2(decodeWidth)
-                point = self.knob2point(design)
-            self.visited.add(point)
-            samples.append(design)
-            cnt += 1
-        return torch.Tensor(samples).squeeze().long()
+	def generate_chisel_codes(self, batch):
+		codes = self.generate_core_cfg(batch)
+		self.write_core_cfg(codes)
+		codes = self.generate_soc_cfg(batch)
+		self.write_soc_cfg(codes)
 
-    def validate(self, configs):
-        # validate w.r.t. `configs`
-        # `fetchWidth` >= `decodeWidth`
-        if not (configs[1] >= configs[4]):
-            return False
-        # `numRobEntries` % `decodeWidth` = 0
-        if not (configs[5] % configs[4] == 0):
-            return False
-        # `numFetchBufferEntries` % `decodeWidth` = 0
-        if not (self.basic_component["ifu-buffers"][configs[2]][0] % configs[4] == 0):
-            return False
-        # `numFetchBufferEntries` > `fetchWidth`
-        if not (self.basic_component["ifu-buffers"][configs[2]][0] > configs[1]):
-            return False
-        # `fetchWidth` = 4 when `decodeWidth` <= 2
-        if configs[4] <= 2:
-            if not (configs[1] == 4):
-                return False
-        # `fetchWidth` = 8 when `decodeWidth` > 2
-        if configs[4] > 2:
-            if not (configs[1] == 8):
-                return False
-        return True
-
-    def evaluate_microarchitecture(self, configs, state, idx, test=False):
-        # NOTICE: we use light-weight white-box model
-        if test:
-            return torch.Tensor([random.random()]).squeeze(0)
-        manager = Gem5Wrapper(configs, state, idx)
-        ipc = manager.evaluate_perf()
-        power, area = manager.evaluate_power_and_area()
-        print("[INFO]: state:", state, "before calib, IPC: %f, Power: %f, Area: %f" % (ipc, power, area))
-        return ipc, power, area
+	def write_soc_cfg(self, codes):
+		self.write_soc_cfg_impl(codes)
 
 
-def parse_design_space(design_space, **kwargs):
-    bounds = OrderedDict()
-    dims = []
-    features = []
-    for k, v in design_space.items():
-        # add `features`
-        features.append(k)
-        if "candidates" in v.keys():
-            temp = v["candidates"]
-        else:
-            assert "start" in v.keys() and "end" in v.keys() and \
-                "stride" in v.keys(), "[ERROR]: assert failed. YAML includes errors."
-            temp = np.arange(v["start"], v["end"] + 1, v["stride"])
-        # generate bounds
-        bounds[k] = list(temp)
-        # generate dims
-        dims.append(len(temp))
+def parse_design_space_sheet(design_space_sheet):
+	descriptions = OrderedDict()
+	head = design_space_sheet.columns.tolist()
 
-    return BOOMDesignSpace(features, bounds, dims, **kwargs)
+	# parse design space
+	for row in design_space_sheet.values:
+		# extract designs
+		descriptions[row[0]] = OrderedDict()
+		# extract components
+		for col in range(1, len(head) - 1):
+			descriptions[row[0]][head[col]] = []
+		# extract candidate values
+		for col in range(1, len(head) - 1):
+			try:
+				# multiple candidate values
+				for item in list(map(lambda x: int(x), row[col].split(','))):
+					descriptions[row[0]][head[col]].append(item)
+			except AttributeError:
+				# single candidate value
+				descriptions[row[0]][head[col]].append(row[col])
+	return descriptions
+
+
+def parse_components_sheet(components_sheet):
+	components_mappings = OrderedDict()
+	head = components_sheet.columns.tolist()
+
+	# construct look-up tables
+	# mappings: <list> [name, width, idx]
+	# Example:
+	# 	mappings = [("ISU", 10, 0), ("IFU", 4, 10), ("ROB", 2, 14)]
+	mappings = []
+	for i in range(len(head)):
+		if not head[i].startswith("Unnamed"):
+			if i == 0:
+				name, width, idx = head[i], 1, i
+			else:
+				mappings.append((name, width, idx))
+				name, width, idx = head[i], 1, i
+		else:
+			width += 1
+	mappings.append((name, width, idx))
+
+	for name, width, idx in mappings:
+		# extract components
+		components_mappings[name] = OrderedDict()
+		# extract descriptions
+		components_mappings[name]["description"] = []
+		for i in range(idx + 1, idx + width):
+			components_mappings[name]["description"].append(components_sheet.values[0][i])
+		# extract candidate values
+		# get number of rows, a trick to test <class "float"> of nan
+		nrow = np.where(components_sheet[name].values == \
+			components_sheet[name].values)[0][-1]
+		for i in range(1, nrow + 1):
+			components_mappings[name][int(i)] = \
+				list(components_sheet.values[i][idx + 1: idx + width])
+	return components_mappings
+
+
+def parse_boom_design_space(root, design_space_sheet, components_sheet):
+	"""
+		design_space_sheet: <class "pandas.core.frame.DataFrame">
+		components_sheet: <class "pandas.core.frame.DataFrame">
+	"""
+	# parse design space
+	descriptions = parse_design_space_sheet(design_space_sheet)
+
+	# parse components
+	components_mappings = parse_components_sheet(components_sheet)
+
+	return BOOMDesignSpace(
+		root,
+		descriptions,
+		components_mappings,
+		int(design_space_sheet.values[0][-1])
+	)
+
+
+def parse_design_space(configs):
+	"""
+		configs: <dict>
+	"""
+	design_space_excel = os.path.abspath(
+		os.path.join(
+			configs["chipyard-research-root"],
+			"workstation",
+			"configs",
+			"design-space",
+			"design-space.xlsx"
+		)
+	)
+	boom_design_space_sheet = load_excel(
+		design_space_excel,
+		sheet_name="BOOM Design Space"
+	)
+	components_sheet = load_excel(design_space_excel, sheet_name="Components")
+	boom_design_space = parse_boom_design_space(
+		configs["chipyard-research-root"],
+		boom_design_space_sheet,
+		components_sheet
+	)
+	return boom_design_space

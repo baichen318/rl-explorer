@@ -154,3 +154,5 @@ temp/
 .DS_store
 tools/mcpat-riscv-7/Documents/
 *.PNG
+exp-bak/
+
