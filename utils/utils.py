@@ -113,7 +113,7 @@ def create_logger(path, name):
     console = logging.StreamHandler()
     logging.getLogger('').addHandler(console)
     logger.info("[INFO]: create logger: %s/%s" % (path, name))
-    logger.removeHandler(console)
+    # logger.removeHandler(console)
     return logger, log_file
 
 

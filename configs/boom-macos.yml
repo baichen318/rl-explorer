@@ -51,7 +51,7 @@ max-episode: 10000
 
 
 # maximal step specifications
-max-step-per-episode: 1000
+max-step-per-episode: 100
 
 
 # early stopping specifications in one episode
@@ -99,11 +99,11 @@ clip-grad-norm: 0.5
 
 
 # the step specifications begin to apply the envelope operator
-apply-envelope-operator-start: 1000
+apply-envelope-operator-start: 10
 
 
 # the step specifications to update the critic
-update-critic-step: 1000
+update-critic-step: 10
 
 
 # output path specifications

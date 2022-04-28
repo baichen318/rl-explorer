@@ -37,10 +37,12 @@ class BOOMAgent(object):
             self.configs["sample-size"]
         )
         self.training = self.set_mode()
+        self.lr = self.configs["learning-rate"]
         self.optimizer = optim.Adam(
             self.model.parameters(),
-            lr=self.configs["learning-rate"]
+            lr=self.lr
         )
+        self.temperature = self.configs["temperature"]
         self.mse = nn.MSELoss()
 
     def set_mode(self):
@@ -55,7 +57,7 @@ class BOOMAgent(object):
         policy, value = self.model(state, preference)
         if self.training:
             # TODO: this may cause unexpected behavior!
-            policy = F.softmax(policy / self.configs["temperature"], dim=-1)
+            policy = F.softmax(policy / self.temperature, dim=-1)
         else:
             policy = F.softmax(policy, dim=-1)
         # TODO: this may mis-align with the original design
@@ -67,6 +69,9 @@ class BOOMAgent(object):
         r = np.expand_dims(np.random.rand(policy.shape[1 - axis]), axis=axis)
         # TODO: np.cumsum: axis = ?
         return (policy.cumsum(axis=0) > r).argmax(axis=axis)
+
+    def anneal(self):
+        self.temperature = 0.01 + 0.99 * self.temperature
 
     def forward_transition(self, preference):
         buffer = self.buffer.batch_pool
@@ -125,7 +130,7 @@ class BOOMAgent(object):
                 total_discounted_reward.append(discounted_reward)
         return np.concatenate(total_discounted_reward).reshape(-1, self.envs.reward_space)
 
-    def calc_advantage(self, preference, discounted_reward, value, step):
+    def calc_advantage(self, preference, discounted_reward, value, episode):
         batch_size = self.configs["num-parallel"] * self.configs["num-step"]
 
         def apply_envelope_operator(discounted_reward, preference):
@@ -142,7 +147,7 @@ class BOOMAgent(object):
             discounted_reward = discounted_reward[mask]
             return discounted_reward
 
-        if step > self.configs["apply-envelope-operator-start"]:
+        if episode > self.configs["apply-envelope-operator-start"]:
             discounted_reward = apply_envelope_operator(
                 discounted_reward,
                 preference
@@ -184,39 +189,42 @@ class BOOMAgent(object):
         ).squeeze()
 
         # actor loss
-        actor_loss = -optimal_action.log_prob(action) * adv_w_preference
+        self.actor_loss = -optimal_action.log_prob(action) * adv_w_preference
+        self.actor_loss = self.actor_loss.mean()
 
         # entropy loss
-        entropy = optimal_action.entropy()
+        self.entropy = optimal_action.entropy().mean()
 
         # critic loss
         critic_loss_1 = self.mse(value_w_preference, reward_w_preference)
         critic_loss_2 = self.mse(value.view(-1), reward.view(-1))
 
         # total loss
-        loss = actor_loss.mean() + 0.5 * \
+        self.critic_loss = 0.5 * \
             (
                 self.configs["beta"] * critic_loss_1 + \
                 (1 - self.configs["beta"]) * critic_loss_2
-            ) - \
-            self.configs["alpha"] * entropy.mean()
+            )
+
+        self.loss = self.actor_loss.mean() + self.critic_loss - \
+            self.configs["alpha"] * self.entropy
 
         self.optimizer.zero_grad()
-        loss.backward()
+        self.loss.backward()
         nn.utils.clip_grad_norm_(
             self.model.parameters(),
             self.configs["clip-grad-norm"]
         )
         self.optimizer.step()
 
-    def schedule_lr(self, step):
-        lr = self.configs["learning-rate"] - \
-            (step / self.configs["max-episode"]) * self.configs["learning-rate"]
+    def schedule_lr(self, episode):
+        self.lr = self.configs["learning-rate"] - \
+            (episode / self.configs["max-episode"]) * self.configs["learning-rate"]
         for params in self.optimizer.param_groups:
-            params["lr"] = lr
-        self.configs["logger"].info("[INFO]: learning rate: {}.".format(lr))
+            params["lr"] = self.lr
+        self.configs["logger"].info("[INFO]: learning rate: {}.".format(self.lr))
 
-    def save(self, step):
+    def save(self, episode, step):
         if step % (
             self.configs["num-parallel"] * \
             self.configs["num-step"] * 100
@@ -234,9 +242,16 @@ class BOOMAgent(object):
                 self.model.state_dict(),
                 model_path
             )
-            self.configs["logger"].info("[INFO]: save model: {}.".format(model_path))
+            self.configs["logger"].info(
+                "[INFO]: save model: {} at episode: {}.".format(model_path, episode)
+            )
 
-    def sync_critic(self, step):
+    def sync_critic(self, episode, step):
         if step % self.configs["update-critic-step"] == 0:
             self._model.load_state_dict(self.model.state_dict())
-            self.configs["logger"].info("[INFO]: update the critic at {}.".format(step))
+            self.configs["logger"].info(
+                "[INFO]: update the critic at episode: {}, step: {}.".format(
+                    episode,
+                    step
+                )
+            )

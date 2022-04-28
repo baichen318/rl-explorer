@@ -167,8 +167,11 @@ class BOOMEnv(BasicEnv):
                 axis=0
             )
         )[0]
-        # TODO: adjust PPA values
-        return np.array([perf, power, area])
+        # NOTICE: power and area should be negated
+        perf *= 2
+        power *= 20
+        area *= 0.5e-6
+        return np.array([perf, -power, -area])
 
     def early_stopping(self, ppa):
         preference = np.ones(self.dims_of_reward)
@@ -184,8 +187,7 @@ class BOOMEnv(BasicEnv):
         s_idx, component = self.identify_component(action)
         # modify a component for the microarchitecture, given the action
         self.state[s_idx] = component
-        # reward = self.evaluate_microarchitecture(self.state)
-        reward = np.array([7.1683496e-01, 3.5276964e-02, 1.4481050e+06])
+        reward = self.evaluate_microarchitecture(self.state)
         self.steps += 1
         done = bool(
             self.steps > self.configs["max-step-per-episode"] or \

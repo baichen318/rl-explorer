@@ -1,18 +1,16 @@
-# design-explorer
-Design Explorer: Design Space Explorer focusing on the CPU design
+# rl-explorer
+Reinforcement Learning Solver For RISC-V Microarchitecture Design Space
 
 ## End-to-end Flow
 - Rocket@CUHK
 ```bash
-$ set_conda
-$ python main.py -c configs/rocket.yml
-```
-- Rocket@proj12
-```bash
 $ python3 main.py -c configs/rocket.yml
+```
+- Rocket@CUHK
+```bash
+$ python3 main.py -c configs/boom-macos.yml
 ```
 
 ## TODO
-- Multi-Objective A3C
-- BOOM PPA Models
-- BOOM Flow
+- ~~Loss visualization~~
+- Trajectory visualization
