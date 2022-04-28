@@ -33,6 +33,10 @@ benchmarks:
   - multiply
 
 
+# dataset specifications
+dataset: data/boom/dataset.txt
+
+
 # working mode specifications
 # train | explore
 mode: train

@@ -1,5 +1,6 @@
 # Author: baichen318@gmail.com
 
+
 import sys, os
 sys.path.insert(
     0,
@@ -11,11 +12,11 @@ sys.path.insert(
 )
 sys.path.insert(
     0,
-    os.path.join(os.path.dirname(__file__), os.path.pardir, "util")
+    os.path.join(os.path.dirname(__file__), os.path.pardir, "utils")
 )
 sys.path.insert(
     0,
-    os.path.join(os.path.dirname(__file__), os.path.pardir, "vlsi")
+    os.path.join(os.path.dirname(__file__), os.path.pardir, "simulation")
 )
 import torch
 import torch.nn as nn
@@ -32,8 +33,10 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from util import parse_args, get_configs, load_txt, write_txt, mkdir
 from xgboost import XGBRegressor
+from utils import parse_args, get_configs, load_txt, \
+    write_txt, mkdir, info
+from simulation.boom.simulation import Gem5Wrapper
 
 
 markers = [
@@ -63,35 +66,23 @@ def load_dataset(path):
         if area[i] == 0:
             remove_idx.append(i)
             continue
-    # dataset = np.delete(dataset, remove_idx, axis=0)
+    dataset = np.delete(dataset, remove_idx, axis=0)
     return dataset
 
 
 def load_design_space():
-    if configs["design"] == "rocket":
-        from dse.env.rocket.design_space import parse_design_space
-        design_space = parse_design_space(
-            configs["design-space"],
-            basic_component=configs["basic-component"],
-            random_state=configs["seed"],
-        )
-    elif configs["design"] == "boom":
+    if "BOOM" in configs["design"]:
         from dse.env.boom.design_space import parse_design_space
-        design_space = parse_design_space(
-            configs["design-space"],
-            basic_component=configs["basic-component"],
-            random_state=configs["seed"],
-        )
-    else:
-        assert configs["design"] == "cva6", \
-            "[ERROR]: %s is not support." % configs["design"]
-        exit(-1)
-    return design_space
+    # else:
+    #     assert configs["design"] == "rocket", \
+    #         "[ERROR]: {} is not supported.".format(configs["design"])
+    #     from dse.env.rocket.design_space import parse_design_space
+    return parse_design_space(configs)
 
 
 def split_dataset(dataset):
     # NOTICE: we omit the rest of groups
-    kfold = KFold(n_splits=10, shuffle=True, random_state=configs["seed"])
+    kfold = KFold(n_splits=10, shuffle=True, random_state=2022)
     for train, test in kfold.split(dataset):
         return train, test
 
@@ -214,7 +205,7 @@ class PPADatasetV1(BaseDataset):
 
     def __getitem__(self, index):
         return {
-            "ipc": [
+            "perf": [
                 self.train_ipc_feature[index],
                 self.train_ipc_gt[index]
             ],
@@ -227,7 +218,7 @@ class PPADatasetV1(BaseDataset):
                 self.train_area_gt[index]
             ]
         }, {
-            "ipc": [
+            "perf": [
                 self.test_ipc_feature[index],
                 self.test_ipc_gt[index]
             ],
@@ -333,12 +324,12 @@ def calib_mlp_test(design_space, dataset):
     L1 = nn.L1Loss()
     lims = {
         "rocket": {
-            "ipc": [0.630, 0.850],
+            "perf": [0.630, 0.850],
             "power": [0.002, 0.014],
             "area": [200000, 900000]
         },
         "boom": {
-            "ipc": [0.620, 1.760],
+            "perf": [0.620, 1.760],
             "power": [0.030, 0.14],
             "area": [1.20 * 1e6, 4.8 * 1e6]
         }
@@ -390,7 +381,7 @@ def calib_xgboost_train(dataset):
     for metric in metrics:
         print("[INFO]: train %s model." % metric)
         model = init_xgb()
-        if metric == "ipc":
+        if metric == "perf":
             model.fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
         elif metric == "power":
             model.fit(dataset.train_power_feature, dataset.train_power_gt)
@@ -410,12 +401,12 @@ def calib_xgboost_test(dataset):
     plt.rcParams['figure.dpi'] = 600
     lims = {
         "rocket": {
-            "ipc": [0.630, 0.850],
+            "perf": [0.630, 0.850],
             "power": [0.002, 0.014],
             "area": [200000, 900000]
         },
         "boom": {
-            "ipc": [0.620, 1.760],
+            "perf": [0.620, 1.760],
             "power": [0.030, 0.14],
             "area": [1.20 * 1e6, 4.8 * 1e6]
         }
@@ -425,7 +416,7 @@ def calib_xgboost_test(dataset):
         model = joblib.load(
             os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt")
         )
-        if metric == "ipc":
+        if metric == "perf":
             pred = model.predict(dataset.test_ipc_feature)
             mae = mean_absolute_error(dataset.test_ipc_gt, pred)
             mse = mean_squared_error(dataset.test_ipc_gt, pred)
@@ -492,8 +483,8 @@ def concat_dataset(design_space, dataset, supp):
                 write_txt(
                     os.path.join(
                         os.path.pardir,
-                        os.path.dirname(configs["dataset-output-path"]),
-                        os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+                        os.path.dirname(configs["dataset"]),
+                        os.path.splitext(os.path.basename(configs["dataset"]))[0] + "-E.txt"
                     ),
                     _new_dataset,
                     fmt="%f"
@@ -502,93 +493,185 @@ def concat_dataset(design_space, dataset, supp):
                 break
         if f:
             continue
-        ipc, power, area = design_space.evaluate_microarchitecture(
+        perf, power, area = design_space.evaluate_microarchitecture(
             configs,
             # architectural feature
             dataset[i][:-3].astype(int),
             1
         )
         new_dataset.append(
-            np.insert(dataset[i], len(dataset[i]), values=np.array([ipc, power, area * 1e6]), axis=0)
+            np.insert(dataset[i], len(dataset[i]), values=np.array([perf, power, area * 1e6]), axis=0)
         )
         _new_dataset = np.array(new_dataset)
         write_txt(
             os.path.join(
                 os.path.pardir,
-                os.path.dirname(configs["dataset-output-path"]),
-                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
+                os.path.dirname(configs["dataset"]),
+                os.path.splitext(os.path.basename(configs["dataset"]))[0] + "-E.txt"
             ),
             _new_dataset,
             fmt="%f"
         )
 
-def main():
-    dataset = load_dataset(os.path.join(os.path.pardir, configs["dataset-output-path"]))
+
+def adjust_data(design_space, data):
+    """
+        Re-cycle from DAC to ICCAD
+        branchPredictor: data[0],
+        fetchWidth: data[1],
+        IFU: data[2],
+        maxBrCount: data[3],
+        ROB: data[5],
+        PRF: data[6],
+        ISU: data[7],
+        LSU: data[8],
+        D-Cache: data[9]
+    """
+    def get_data_by_physical_val(i):
+        for k, v in design_space.components_mappings[
+                design_space.components[i]
+            ].items():
+            if len(v) == 1 and v[0] == data[i]:
+                return int(k)
+
+    isu = [
+        # numEntries of IQT_MEM IQT_INT IQT_FP
+        [8, 8, 8],
+        [12, 20, 16],
+        [16, 32, 24],
+        [24, 40, 32],
+        [10, 14, 12],
+        [14, 26, 20],
+        [20, 36, 28],
+        [4, 4, 4],
+        [6, 6, 6],
+        [12, 28, 20],
+        [14, 30, 22],
+        [26, 42, 34]
+    ]
+
+    dcache = [
+        # dcache.nMSHRs dcache.nTLBWays
+        [2, 8],
+        [4, 16],
+        [8, 32],
+        [16, 48],
+        [4, 8]
+    ]
+
+    data[0] +=1
+    data[1] = get_data_by_physical_val(1)
+    data[2] += 1
+    data[3] = get_data_by_physical_val(3)
+    data[5] = get_data_by_physical_val(5)
+    data[6] += 1
+    params = isu[int(data[7])]
+    for k, v in design_space.components_mappings[
+            design_space.components[7]
+        ].items():
+        if params[0] == v[1] and \
+            params[1] == v[4] and \
+            params[2] == v[7] and \
+            data[4] == v[3]:
+            data[7] = int(k)
+            break
+    data[8] += 1
+    params = dcache[int(data[9])]
+    for k, v in design_space.components_mappings[
+            design_space.components[9]
+        ].items():
+        if params[0] == v[1] and \
+            params[1] == v[2] and \
+            design_space.components_mappings[
+                design_space.components[1]
+            ][int(data[1])][0] == v[0]:
+            data[9] = int(k)
+            break
+    return data
+
+
+def generate_simulation_dataset():
+    dataset = load_dataset(
+        os.path.join(
+            rl_explorer_root,
+            configs["dataset"]
+        )
+    )
+    target_dataset = os.path.join(
+        rl_explorer_root,
+        os.path.dirname(configs["dataset"]),
+        os.path.splitext(
+            os.path.basename(configs["dataset"])
+        )[0] + "-extend.txt"
+    )
     design_space = load_design_space()
     # construct pre-generated dataset
     new_dataset = []
 
     for data in dataset:
-        print("[INFO]: evaluate microarchitecture:", data[:-3])
-        ipc, power, area = design_space.evaluate_microarchitecture(
-            configs,
-            # architectural feature
-            data[:-3].astype(int),
-            1
-        )
+        data = adjust_data(design_space, data)
+        manager = Gem5Wrapper(configs, design_space, np.int64(data[:-3]), 1)
+        perf = manager.evaluate_perf()
+        power, area = manager.evaluate_power_and_area()
         new_dataset.append(
-            np.insert(data, len(data), values=np.array([ipc, power, area * 1e6]), axis=0)
+            np.insert(
+                data,
+                len(data),
+                values=np.array([perf, power, area * 1e6]),
+                axis=0
+            )
         )
         _new_dataset = np.array(new_dataset)
         write_txt(
-            os.path.join(
-                os.path.pardir,
-                os.path.dirname(configs["dataset-output-path"]),
-                os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
-            ),
+            target_dataset,
             _new_dataset,
             fmt="%f"
         )
-    dataset = load_dataset(os.path.join(
-            os.path.pardir,
-            os.path.dirname(configs["dataset-output-path"]),
-            os.path.splitext(os.path.basename(configs["dataset-output-path"]))[0] + "-E.txt"
-        )
-    )
-    # concat_dataset(design_space, dataset, os.path.join(os.path.pardir, "data", "rocket", "misc", "dataset-v2-E.txt"))
-    train, test = split_dataset(dataset)
-    if opt == "mlp":
-        train_data = torch.Tensor(dataset[train])
-        test_data = torch.Tensor(dataset[test])
-        calib_mlp_train(
-            design_space,
-            PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
-        )
-        calib_mlp_test(
-            design_space,
-            PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
-        )
-    else:
-        assert opt == "xgboost", "[ERROR]: unsupported method"
-        calib_xgboost_train(
-            PPADatasetV2(
-                dataset[train],
-                dataset[test],
-                idx=design_space.n_dim
-            )
-        )
-        calib_xgboost_test(
-            PPADatasetV2(
-                dataset[train],
-                dataset[test],
-                idx=design_space.n_dim
-            )
-        )
+
+
+def main():
+    generate_simulation_dataset()
+    # dataset = load_dataset(target_dataset)
+    # # concat_dataset(design_space, dataset, os.path.join(os.path.pardir, "data", "rocket", "misc", "dataset-v2-E.txt"))
+    # train, test = split_dataset(dataset)
+    # if opt == "mlp":
+    #     train_data = torch.Tensor(dataset[train])
+    #     test_data = torch.Tensor(dataset[test])
+    #     calib_mlp_train(
+    #         design_space,
+    #         PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
+    #     )
+    #     calib_mlp_test(
+    #         design_space,
+    #         PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
+    #     )
+    # else:
+    #     assert opt == "xgboost", "[ERROR]: unsupported method."
+    #     calib_xgboost_train(
+    #         PPADatasetV2(
+    #             dataset[train],
+    #             dataset[test],
+    #             idx=design_space.n_dim
+    #         )
+    #     )
+    #     calib_xgboost_test(
+    #         PPADatasetV2(
+    #             dataset[train],
+    #             dataset[test],
+    #             idx=design_space.n_dim
+    #         )
+    #     )
 
 
 if __name__ == '__main__':
     configs = get_configs(parse_args().configs)
-    metrics = ["ipc", "power", "area"]
+    metrics = ["perf", "power", "area"]
     opt = "xgboost"
+    rl_explorer_root = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            os.path.pardir
+        )
+    )
     configs["logger"] = None
     main()

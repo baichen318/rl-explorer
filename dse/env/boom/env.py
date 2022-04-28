@@ -13,7 +13,7 @@ try:
 except ImportError:
     import joblib
 from dse.env.boom.design_space import parse_design_space
-from simulation.boom.simulation import Gem5Wrapper 
+from simulation.boom.simulation import Gem5Wrapper
 
 
 class BasicEnv(gym.Env):
