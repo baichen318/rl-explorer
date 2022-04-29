@@ -608,7 +608,7 @@ def generate_simulation_dataset():
     # construct pre-generated dataset
     new_dataset = []
 
-    for data in dataset[:400]:
+    for data in dataset:
         data = adjust_data(design_space, data)
         manager = Gem5Wrapper(configs, design_space, np.int64(data[:-3]), 1)
         perf = manager.evaluate_perf()
