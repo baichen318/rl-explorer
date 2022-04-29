@@ -1,14 +1,47 @@
 # baichen318@gmail.py
-# Python2
 
+
+import sys, os
+sys.path.insert(
+    1,
+    os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir
+    )
+)
+sys.path.insert(
+    1,
+    os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        "dse"
+    )
+)
+sys.path.insert(
+    1,
+    os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        "utils"
+    )
+)
+sys.path.insert(
+    1,
+    os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        "simulation"
+    )
+)
 import argparse
-import sys
+import yaml
 import json
 import re
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
 import copy
 import types
+from utils import get_configs, info, warn, error, load_excel
 
 
 def create_parser():
@@ -17,22 +50,38 @@ def create_parser():
         description = "Gem5 to McPAT parser")
 
     parser.add_argument(
-        "-d", "--design", type=str, required=True,
-        help="input a design name"
+        "-y",
+        "--yaml",
+        type=str,
+        required=True,
+        metavar="PATH",
+        help="input a yaml config."
     )
     parser.add_argument(
-        "--config", "-c", type=str, required=True,
+        "-c",
+        "--config",
+        type=str,
+        required=True,
         metavar="PATH",
-        help="input config.json from Gem5 output.")
+        help="input config.json from Gem5 output."
+    )
     parser.add_argument(
-        "--stats", "-s", type=str, required=True,
+        "-s",
+        "--stats",
+        type=str,
+        required=True,
         metavar="PATH",
-        help="input stats.txt from Gem5 output.")
+        help="input stats.txt from Gem5 output."
+    )
     parser.add_argument(
-        "--template", "-t", type=str, required=True,
+        "-t",
+        "--template",
+        type=str, required=True,
         metavar="PATH",
-        help="template XML file")
+        help="template XML file"
+    )
     parser.add_argument(
+        "-x",
         "--state",
         nargs='+',
         type=int,
@@ -40,54 +89,26 @@ def create_parser():
         help="input the state"
     )
     parser.add_argument(
-        "--output", "-o", type=argparse.FileType('w'), default="mcpat-in.xml",
+        "-o",
+        "--output",
+        type=str,
+        default="mcpat-in.xml",
         metavar="PATH",
-        help="Output file for McPAT input in XML format (default: mcpat-in.xml)")
+        help="Output file for McPAT input in XML format (default: mcpat-in.xml)"
+    )
 
     return parser
 
 
-def prettify(elem):
-    """Return a pretty-printed XML string for the Element.
-    """
-    rough_string = ET.tostring(elem, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml(indent="  ")
-
-
-class PIParser(ET.XMLTreeBuilder):
-   def __init__(self):
-       ET.XMLTreeBuilder.__init__(self)
-       # assumes ElementTree 1.2.X
-       self._parser.CommentHandler = self.handle_comment
-       self._parser.ProcessingInstructionHandler = self.handle_pi
-       self._target.start("document", {})
-
-   def close(self):
-       self._target.end("document")
-       return ET.XMLTreeBuilder.close(self)
-
-   def handle_comment(self, data):
-       self._target.start(ET.Comment, {})
-       self._target.data(data)
-       self._target.end(ET.Comment)
-
-   def handle_pi(self, target, data):
-       self._target.start(ET.PI, {})
-       self._target.data(target + " " + data)
-       self._target.end(ET.PI)
-
-
 def parse_xml(source):
-    return ET.parse(source, PIParser())
+    return ET.parse(source)
 
 
 def read_stats(stats_file):
     global stats
-    stats = {}
     with open(stats_file, 'r') as f:
-        ignores = re.compile(r'^---|^$')
-        stat_line = re.compile(r'([a-zA-Z0-9_\.:-]+)\s+([-+]?[0-9]+\.[0-9]+|[-+]?[0-9]+|nan|inf)')
+        ignores = re.compile(r"^---|^$")
+        stat_line = re.compile(r"([a-zA-Z0-9_\.:-]+)\s+([-+]?[0-9]+\.[0-9]+|[-+]?[0-9]+|nan|inf)")
         count = 0
         for line in f:
             # ignore empty lines and lines starting with "---"
@@ -95,8 +116,8 @@ def read_stats(stats_file):
                 count += 1
                 stat_kind = stat_line.match(line).group(1)
                 stat_value = stat_line.match(line).group(2)
-                if stat_value == 'nan':
-                    print "[WARN]: %s is nan. Setting it to 0." % stat_kind
+                if stat_value == "nan":
+                    warn("%s is \"nan\". set it to 0." % stat_kind)
                     stat_value = '0'
                 stats[stat_kind] = stat_value
 
@@ -112,139 +133,176 @@ def read_mcpat_template(template):
     mcpat_template = parse_xml(template)
 
 
-def generate_template(output):
-    num_cores = len(config["system"]["cpu"])
-    private_l2 = config["system"]["cpu"][0].has_key("l2cache")
-    shared_l2 = config["system"].has_key("l2")
-    if private_l2:
-        num_l2 = num_cores
-    elif shared_l2:
-        num_l2 = 1
+def get_num_cores():
+    return len(config["system"]["cpu"])
+
+
+def get_private_l2():
+    return "l2cache" in config["system"]["cpu"][0]
+
+
+def get_shared_l2():
+    return "l2" in config["system"]
+
+
+def get_num_of_l2s():
+    if get_private_l2():
+        return get_num_cores()
+    # NOTICE: McPAT assumes that a core must has a L2C
+    # return '1' if get_shared_l2() else '0'
+    return '1'
+
+
+def get_private_l2_flag():
+    if get_shared_l2():
+        return '0'
     else:
-        num_l2 = 0
-    elem_counter = 0
-    root = mcpat_template.getroot()
-    for child in root[0][0]:
-        # print(child.attrib.get("name"), child.attrib.get("value"))
-        # continue
-        # to add elements in correct sequence
-        elem_counter += 1
-        if child.attrib.get("name") == "number_of_cores":
-            child.attrib["value"] = str(num_cores)
-        if child.attrib.get("name") == "number_of_L2s":
-            child.attrib["value"] = str(num_l2)
-        if child.attrib.get("name") == "Private_L2":
-            if shared_l2:
-                Private_L2 = str(0)
-            else:
-                Private_L2 = str(1)
-            child.attrib["value"] = Private_L2
-        temp = child.attrib.get("value")
-        # to consider all the cpus in total cycle calculation
-        if num_cores > 1 and isinstance(temp, basestring) and "cpu." in temp and temp.split('.')[0] == "stats":
-            value = "(" + temp.replace("cpu.", "cpu0.") + ")"
+        if get_private_l2():
+            return '1'
+        else:
+            return '0'
+
+
+def if_cpu_stats_from_template(child):
+    value = child.attrib.get("value")
+    if value is not None and \
+        "cpu." in value and \
+        value.split('.')[0] == "stats":
+        return child
+    return None
+
+
+def if_cpu_config_from_template(child):
+    value = child.attrib.get("value")
+    if value is not None and \
+        "cpu." in value and \
+        "config" in value.split('.')[0]:
+        return child
+    return None
+
+
+def get_isa(idx):
+    return '1' \
+        if config["system"]["cpu"][idx]["isa"][0]["type"] == "X86ISA" else '0'
+
+
+def extend_to_all_cpu(core):
+    # it is tricky and clumpy
+    # it cannot handle multi-core cofigurations
+    num_cores = get_num_cores()
+    for idx in range(num_cores):
+        core.attrib["name"] = "core{}".format(idx)
+        core.attrib["id"] = "system.core{}".format(idx)
+        for child in core:
+            _id = child.attrib.get("id")
+            name = child.attrib.get("name")
+            value = child.attrib.get("value")
+            if name == "x86":
+                value = get_isa(idx)
+            if _id and "core" in _id:
+                _id = _id.replace(
+                    "core",
+                    "core{}".format(idx)
+                )
+            if num_cores > 1 and if_cpu_stats_from_template(child) is not None:
+                value = value.replace("cpu.", "cpu{}.".format(idx))
+            if if_cpu_config_from_template(child) is not None:
+                value = value.replace("cpu.", "cpu.{}.".format(idx))
+            if len(list(child)) != 0:
+                for _child in child:
+                    _value = _child.attrib.get("value")
+                    if num_cores > 1 and if_cpu_stats_from_template(_child) is not None:
+                        _value = _value.replace(
+                            "cpu.",
+                            "cpu{}.".format(idx)
+                        )
+                    if num_cores > 1 and if_cpu_config_from_template(_child) is not None:
+                        _value = _value.replace(
+                            "cpu.",
+                            "cpu.{}.".format(idx)
+                        )
+                    _child.attrib["value"] = _value
+            if _id:
+                child.attrib["id"] = _id
+            if value:
+                child.attrib["value"] = value
+
+
+def extend_to_all_l2(l2):
+    # it is tricky and clumpy
+    # it cannot handle multi-core cofigurations
+    num_cores = get_num_cores()
+    for idx in range(num_cores):
+        l2.attrib["id"] = "system.L2{}".format(idx)
+        l2.attrib["name"] = "L2{}".format(idx)
+        for child in l2:
+            value = child.attrib.get("value")
+            if if_cpu_stats_from_template(child) is not None:
+                value = value.replace(
+                    "cpu.",
+                    "cpu{}.".format(idx)
+                )
+            if if_cpu_config_from_template(child) is not None:
+                value = value.replace(
+                    "cpu.",
+                    "cpu.{}.".format(idx)
+                )
+            if value:
+                child.attrib["value"] = value
+
+
+def extend_misc_components_to_all_cpu(child):
+    num_cores = get_num_cores()
+    if num_cores > 1:
+        child = if_cpu_stats_from_template(child)
+        if child is not None:
+            value = child.attrib.get("value")
+            value = "({})".format(
+                value.replace("cpu.", "cpu0.")
+            )
             for i in range(1, num_cores):
-                value = value + " + (" + temp.replace("cpu.", "cpu"+str(i)+".") +")"
-            child.attrib['value'] = value
-        # remove a core template element and replace it with number of cores template elements
-        if child.attrib.get("name") == "core":
-            core_elem = copy.deepcopy(child)
-            core_elem_bak = copy.deepcopy(core_elem)
-            for core_counter in range(num_cores):
-                core_elem.attrib["name"] = "core" + str(core_counter)
-                core_elem.attrib["id"] = "system.core" + str(core_counter)
-                for core_child in core_elem:
-                    child_id = core_child.attrib.get("id")
-                    child_value = core_child.attrib.get("value")
-                    child_name = core_child.attrib.get("name")
-                    if isinstance(child_name, basestring) and child_name == "x86":
-                        if config["system"]["cpu"][core_counter]["isa"][0]["type"] == "X86ISA":
-                            child_value = "1"
-                        else:
-                            child_value = "0"
-                    if isinstance(child_id, basestring) and "core" in child_id:
-                        # component@core
-                        child_id = child_id.replace("core", "core" + str(core_counter))
-                    if num_cores > 1 and isinstance(child_value, basestring) and \
-                        "cpu." in child_value and "stats" in child_value.split('.')[0]:
-                        # stat@core
-                        child_value = child_value.replace("cpu.", "cpu" + str(core_counter) + ".")
-                    if isinstance(child_value, basestring) and "cpu." in child_value and \
-                        "config" in child_value.split('.')[0]:
-                        # param@core
-                        child_value = child_value.replace("cpu.", "cpu." + str(core_counter) + ".")
-                    if len(list(core_child)) != 0:
-                        # component@core
-                        for core_sub_child in core_child:
-                            continue
-                            core_sub_child_value = core_sub_child.attrib.get("value")
-                            if num_cores > 1 and isinstance(core_sub_child_value, basestring) and \
-                                "cpu." in core_sub_child_value and "stats" in core_sub_child_value.split('.')[0]:
-                            # stats@component@core
-                                core_sub_child_value = core_sub_child_value.replace(
-                                    "cpu.",
-                                    "cpu" + str(core_counter)+ "."
-                                )
-                            if isinstance(core_sub_child_value, basestring) and "cpu." in core_sub_child_value and \
-                                "config" in core_sub_child_value.split('.')[0]:
-                            # config@component@core
-                                core_sub_child_value = core_sub_child_value.replace(
-                                    "cpu.",
-                                    "cpu." + str(core_counter)+ "."
-                                )
-                            core_sub_child.attrib["value"] = core_sub_child_value
-                    if isinstance(child_id, basestring):
-                        core_child.attrib["id"] = child_id
-                    if isinstance(child_value, basestring):
-                        core_child.attrib["value"] = child_value
-                root[0][0].insert(elem_counter, core_elem)
-                core_elem = copy.deepcopy(core_elem_bak)
-                elem_counter += 1
-            root[0][0].remove(child)
-            elem_counter -= 1
-        # remove a L2 template element and replace it with number of L2 template elements
-        if child.attrib.get("name") == "L2":
-            if private_l2:
-                l2_elem = copy.deepcopy(child)
-                l2_elem_bak = copy.deepcopy(l2_elem)
-                for l2_counter in range(num_l2):
-                    l2_elem.attrib["name"] = "L2" + str(l2_counter)
-                    l2_elem.attrib["id"] = "system.L2" + str(l2_counter)
-                    for l2_child in l2_elem:
-                        child_value = l2_child.attrib.get("value")
-                        if isinstance(child_value, basestring) and \
-                            "cpu." in child_value and "stats" in child_value.split('.')[0]:
-                            child_value = child_value.replace("cpu." , "cpu" + str(l2_counter)+ ".")
-                        if isinstance(child_value, basestring) and \
-                            "cpu." in child_value and "config" in child_value.split('.')[0]:
-                            child_value = child_value.replace("cpu." , "cpu." + str(l2_counter)+ ".")
-                        if isinstance(child_value, basestring):
-                            l2_child.attrib["value"] = child_value
-                    root[0][0].insert(elem_counter, l2_elem)
-                    l2_elem = copy.deepcopy(l2_elem_bak)
-                    elem_counter += 1
-                root[0][0].remove(child)
-            # else:
-            #     child.attrib["name"] = "L20"
-            #     child.attrib["id"] = "system.L20"
-            #     for l2_child in child:
-            #         child_value = l2_child.attrib.get("value")
-            #         if isinstance(child_value, basestring) and "cpu.l2cache." in child_value:
-            #             child_value = child_value.replace("cpu.l2cache.", "l2.")
-    prettify(root)
+                value = "{} + ({})".format(
+                    value,
+                    value.replace("cpu.", "cpu{}.".format(i))
+                )
+            child.attrib["value"] = value
+
+
+def generate_mcpat_xml():
+    def format_xml(root):
+        rough_string = ET.tostring(root, "utf-8")
+        reparsed = minidom.parseString(rough_string)
+        reparsed.toprettyxml(indent='\t')
+
+    root = mcpat_template.getroot()
+    num_cores = get_num_cores()
+    for child in root[0]:
+        name = child.attrib.get("name")
+        if name == "number_of_cores":
+            child.attrib["value"] = str(num_cores)
+        if name == "number_of_L2s":
+            child.attrib["value"] = get_num_of_l2s()
+        if name == "Private_L2":
+            child.attrib["value"] = get_private_l2_flag()
+        if name == "core":
+            extend_to_all_cpu(child)
+        if name == "L2":
+            if get_private_l2_flag():
+                extend_to_all_l2(child)
+        extend_misc_components_to_all_cpu(child)
+    format_xml(root)
 
 
 def get_config(conf):
     split_conf = re.split(r"\.", conf)
     curr_conf = config
-    curr_hierarchy = ""
     for x in split_conf:
-        curr_hierarchy += x
         if x.isdigit():
-            curr_conf = curr_conf[int(x)] 
+            curr_conf = curr_conf[int(x)]
         elif x in curr_conf:
             curr_conf = curr_conf[x]
     return curr_conf if curr_conf != None else 0
+
 
 
 def post_handle_rocket(root):
@@ -380,18 +438,38 @@ def post_handle_rocket(root):
 
 
 def post_handle_boom(root):
+    from dse.env.boom.design_space import parse_design_space
+
+    design_space = parse_design_space(configs)
     for param in root.iter("param"):
         name = param.attrib["name"]
         value = param.attrib["value"]
         if name == "fp_issue_width":
-            fp_issue_width = [8, 16, 24, 32, 12, 20, 28, 4, 6, 20, 22, 34]
-            param.attrib["value"] = str(fp_issue_width[args.state[7]])
+            param.attrib["value"] = str(
+                design_space.components_mappings[
+                    design_space.components[7]
+                ][args.state[7]][6]
+            )
         if name in [
             "fp_issue_width"
         ]:
-            param.attrib["value"] = str(1)
-        elif name in ["phy_Regs_IRF_size", "phy_Regs_FRF_size"]:
-            param.attrib["value"] = str(32)
+            param.attrib["value"] = str(
+                design_space.components_mappings[
+                    design_space.components[7]
+                ][args.state[7]][6]
+            )
+        elif name in ["phy_Regs_IRF_size"]:
+            param.attrib["value"] = str(
+                design_space.components_mappings[
+                    design_space.components[6]
+                ][args.state[6]][0]
+            )
+        elif name in ["phy_Regs_FRF_size"]:
+            param.attrib["value"] = str(
+                design_space.components_mappings[
+                    design_space.components[6]
+                ][args.state[6]][1]
+            )
         elif name in ["rename_writes", "fp_rename_writes"]:
             param.attrib["value"] = str(0)
     for component in root.iter("component"):
@@ -407,9 +485,15 @@ def post_handle_boom(root):
                 name = param.attrib["name"]
                 if name == "icache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        int(args.state[1]) * 64 * 64,
+                        (
+                            design_space.components_mappings[
+                                design_space.components[1]
+                            ][args.state[1]][0] >> 1
+                        ) * 64 * 64,
                         64,
-                        args.state[1],
+                        design_space.components_mappings[
+                            design_space.components[1]
+                        ][args.state[1]][0] >> 1,
                         1,
                         1,
                         3,
@@ -424,15 +508,23 @@ def post_handle_boom(root):
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "number_entries":
-                    param.attrib["value"] = str(32)
+                    param.attrib["value"] = str(
+                        design_space.components_mappings[
+                            design_space.components[9]
+                        ][args.state[9]][2]
+                    )
         if name == "dcache":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "dcache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        int(args.state[1]) * 64 * 64,
+                        design_space.components_mappings[
+                            design_space.components[9]
+                        ][args.state[9]][0] * 64 * 64,
                         64,
-                        args.state[1],
+                        design_space.components_mappings[
+                            design_space.components[9]
+                        ][args.state[9]][0],
                         1,
                         1,
                         3,
@@ -440,28 +532,37 @@ def post_handle_boom(root):
                         1
                     )
                 if name == "buffer_sizes":
-                    mshr = [2, 4 ,8, 16, 4]
+                    mshr = design_space.components_mappings[
+                        design_space.components[9]
+                    ][args.state[9]][1]
                     param.attrib["value"] = "%s,%s,%s,%s" % (
-                        mshr[args.state[9]],
-                        mshr[args.state[9]],
-                        mshr[args.state[9]],
-                        mshr[args.state[9]]
+                        mshr,
+                        mshr,
+                        mshr,
+                        mshr
                     )
+        if name == "L20":
+            for param in component.iter("param"):
+                name = param.attrib["name"]
+                if name == "L2_config":
+                    param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
+                        4294967296, 64, 8, 1, 1, 5, 64, 1
+                    )
+                if name == "buffer_sizes":
+                    param.attrib["value"] = "8,8,8,8"
 
 
 def post_handle(root):
-    if args.design == "rocket":
-        post_handle_rocket(root)
-    elif args.design == "boom":
+    if "BOOM" in configs["design"]:
         post_handle_boom(root)
     else:
-        assert args.design == "cva6", \
-            "[ERROR]: unsupported design: %s" % args.design
+        assert configs["design"] == "rocket", \
+            "[ERROR]: unsupported design: {}".format(args.design)
+        post_handle_rocket(root)
 
 
 def write_mcpat_xml(output_path):
     root = mcpat_template.getroot()
-    # boom_root = boomParams.getroot()
     pattern = re.compile(r"config\.([][a-zA-Z0-9_:\.]+)")
     # replace params with values from the GEM5 config file
     for param in root.iter("param"):
@@ -474,9 +575,9 @@ def write_mcpat_xml(output_path):
                 conf_value = get_config(conf)
                 if type(conf_value) == dict or type(conf_value) == list:
                     conf_value = 0
-                    print("[WARN]: %s does not exist in gem5 config." % conf)
-                value = re.sub("config."+ conf, str(conf_value), value)
-            if "," in value:
+                    warn("%s does not exist in gem5 config." % conf)
+                value = re.sub("config." + conf, str(conf_value), value)
+            if ',' in value:
                 # e.g., pipelines_per_core, pipeline_depth
                 exprs = re.split(',', value)
                 for i in range(len(exprs)):
@@ -497,27 +598,33 @@ def write_mcpat_xml(output_path):
                     expr = re.sub("stats.%s" % all_stats[i], stats[all_stats[i]], expr)
                 else:
                     expr = re.sub('stats.%s' % all_stats[i], str(0), expr)
-                    print("[WARN]: %s does not exist in gem5 stats." % all_stats[i])
+                    warn("%s does not exist in gem5 stats." % all_stats[i])
             if "config" not in expr and "stats" not in expr:
                 try:
                     stat.attrib["value"] = str(eval(expr))
                 except ZeroDivisionError as e:
-                    print("[ERROR]: %s" % e)
+                    error("{}".format(e))
 
     post_handle(root)
 
     # Write out the xml file
-    mcpat_template.write(output_path)
+    with open(output_path, 'wb') as f:
+        mcpat_template.write(f)
+    info("create McPAT input xml: {}.".format(output_path))
 
 
 def main():
     read_stats(args.stats)
     read_config(args.config)
     read_mcpat_template(args.template)
-    generate_template(args.output)
+    generate_mcpat_xml()
     write_mcpat_xml(args.output)
 
 
 if __name__ == '__main__':
     args = create_parser().parse_args()
+    configs = get_configs(args.yaml)
+    stats = {}
+    config = None
+    mcpat_template = None
     main()

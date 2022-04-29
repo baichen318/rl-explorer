@@ -61,4 +61,5 @@ def main():
 
 if __name__ == "__main__":
     configs = get_configs(parse_args().configs)
+    configs["configs"] = parse_args().configs
     main()

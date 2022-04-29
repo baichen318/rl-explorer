@@ -6,9 +6,9 @@
     <param name="number_of_L1Directories" value="0"/>
     <param name="number_of_L2Directories" value="0"/>
     <!-- This number means how many L2 clusters in each cluster, there can be multiple banks/ports -->
-    <param name="number_of_L2s" value="1"/>
+    <param name="number_of_L2s" value="0"/>
     <!--1 Private, 0 shared/coherent -->
-    <param name="Private_L2" value="1"/>
+    <param name="Private_L2" value="0"/>
     <!-- This number means how many L3 clusters -->
     <param name="number_of_L3s" value="0"/>
     <param name="number_of_NoCs" value="0"/>
@@ -27,7 +27,7 @@
     <param name="target_core_clockrate" value="1e-6/config.system.cpu_clk_domain.clock.0*1e12"/>
     <!-- Kelvin -->
     <param name="temperature" value="310"/>
-    <param name="number_cache_levels" value="2"/>
+    <param name="number_cache_levels" value="1"/>
     <!--0: aggressive wire technology; 1: conservative wire technology -->
     <param name="interconnect_projection_type" value="1"/>
     <!--0: HP(High Performance Type); 1: LSTP(Low standby power) 2: LOP (Low Operating Power)  -->
@@ -283,7 +283,7 @@
       <param name="L2_config" value="config.system.l2.size,config.system.l2.tags.block_size,config.system.l2.assoc,1,1,config.system.l2.data_latency,config.system.l2.tags.block_size,1"/>
       <!-- cache controller buffer sizes: miss_buffer_size(MSHR), fill_buffer_size, prefetch_buffer_size, wb_buffer_size -->
       <param name="buffer_sizes" value="config.system.l2.mshrs,config.system.l2.mshrs,config.system.l2.mshrs,config.system.l2.write_buffers"/>
-      <param name="clockrate" value="1e-6/( config.system.clk_domain.clock.0 * 1e-12)"/>
+      <param name="clockrate" value="100"/>
       <!-- 0 means using ITRS default vdd -->
       <param name="vdd" value="0"/>
       <!-- "-1" means using default power gating virtual power supply voltage constrained by technology and computed automatically -->

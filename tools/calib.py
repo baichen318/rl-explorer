@@ -608,7 +608,7 @@ def generate_simulation_dataset():
     # construct pre-generated dataset
     new_dataset = []
 
-    for data in dataset:
+    for data in dataset[:400]:
         data = adjust_data(design_space, data)
         manager = Gem5Wrapper(configs, design_space, np.int64(data[:-3]), 1)
         perf = manager.evaluate_perf()
@@ -665,6 +665,7 @@ def main():
 
 if __name__ == '__main__':
     configs = get_configs(parse_args().configs)
+    configs["configs"] = parse_args().configs
     metrics = ["perf", "power", "area"]
     opt = "xgboost"
     rl_explorer_root = os.path.abspath(

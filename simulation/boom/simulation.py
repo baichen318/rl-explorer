@@ -1,5 +1,7 @@
 # Author: baichen318@gmail.com
 
+
+import sys
 import os
 import re
 import time
@@ -315,9 +317,9 @@ class Gem5Wrapper(Simulation):
             cmd += "--sys-clock=2000000000Hz "
             cmd += "--cpu-clock=2000000000Hz "
             cmd += "--sys-voltage=6.3V "
-            cmd += "--l2cache "
-            cmd += "--l2_size=64MB "
-            cmd += "--l2_assoc=8 "
+            # cmd += "--l2cache "
+            # cmd += "--l2_size=64MB "
+            # cmd += "--l2_assoc=8 "
             cmd += "--mem-size=4096MB "
             cmd += "--mem-type=LPDDR3_1600_1x32 "
             cmd += "--mem-channels=1 "
@@ -402,12 +404,14 @@ class Gem5Wrapper(Simulation):
                 "%s-%s.rpt" % ("BOOM", self.idx)
             )
             execute(
-                "python2 %s -d boom -c %s -s %s -t %s --state %s -o %s" % (
+                "%s %s -y %s -c %s -s %s -t %s --state %s -o %s" % (
+                    sys.executable,
                     os.path.join(
                         self.macros["rl-explorer-root"],
                         "tools",
                         "gem5-mcpat-parser.py"
                     ),
+                    self.configs["configs"],
                     os.path.join(self.temp_root, "m5out-%s" % bmark, "config.json"),
                     os.path.join(self.temp_root, "m5out-%s" % bmark, "stats.txt"),
                     os.path.join(
