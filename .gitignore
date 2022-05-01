@@ -131,7 +131,8 @@ dmypy.json
 *.sw*
 *.jpg
 *.png
-models/
+calib-models/
+# models/
 .tags_sorted_by_file
 .tags
 tags

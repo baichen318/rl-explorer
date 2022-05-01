@@ -43,7 +43,7 @@ mode: train
 
 
 # PPA models specifications
-ppa-model: tools/calib-models
+ppa-model: tools/models
 
 
 # the number of processes specifications
