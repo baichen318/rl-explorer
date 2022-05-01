@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -45,7 +46,11 @@ class A2CVecEnvWrapper(VecEnvWrapper):
 
 def make_vec_envs(configs, device, env):
     envs = [
-        make_env(env, configs, i + 1) \
+        make_env(
+            env,
+            configs,
+            int(os.path.basename(configs["gem5-research-root"]))
+        ) \
             for i in range(configs["num-parallel"])
     ]
 
