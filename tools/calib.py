@@ -18,23 +18,23 @@ sys.path.insert(
     0,
     os.path.join(os.path.dirname(__file__), os.path.pardir, "simulation")
 )
+import argparse
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-from abc import ABC, abstractmethod
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
+from collections import OrderedDict
 from sklearn.model_selection import KFold
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import GridSearchCV
-from scipy.stats import stats
+from sklearn.metrics import mean_absolute_error, mean_squared_error, \
+    mean_absolute_percentage_error
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
 from xgboost import XGBRegressor
-from utils import parse_args, get_configs, load_txt, \
+from utils import get_configs, load_txt, \
     write_txt, mkdir, info
 from simulation.boom.simulation import Gem5Wrapper
 
@@ -47,6 +47,197 @@ markers = [
 colors = [
     'c', 'b', 'g', 'r', 'm', 'y', 'k', # 'w'
 ]
+
+
+class Dataset(object):
+
+    metrics = ["perf", "power", "area"]
+
+    def __init__(self, dataset, dims_of_state):
+        super(Dataset, self).__init__()
+        self.perf_feature = dataset[
+            :, [i for i in range(dims_of_state)] + [-3]
+        ]
+        self.perf_gt = dataset[
+            :, dims_of_state
+        ]
+        self.power_feature = dataset[
+            :, [i for i in range(dims_of_state)] + [-2]
+        ]
+        self.power_gt = dataset[
+            :, dims_of_state + 1
+        ]
+        self.area_feature = dataset[
+            :, [i for i in range(dims_of_state)] + [-1]
+        ]
+        self.area_gt = dataset[
+            :, dims_of_state + 2
+        ]
+
+    def get_perf_dataset(self):
+        return self.perf_feature, self.perf_gt
+
+    def get_power_dataset(self):
+        return self.power_feature, self.power_gt
+
+    def get_area_dataset(self):
+        return self.area_feature, self.area_gt
+
+
+class CalibModel(object):
+    def __init__(self, metric):
+        super(CalibModel, self).__init__()
+        self.metric = metric
+        self.model = self.init_xgb()
+        self.mae = None
+        self.mse = None
+        self.mape = None
+        self.kendall_tau = None
+
+    def init_xgb(self):
+        if self.metric == "perf":
+            return XGBRegressor(
+                max_depth=5,
+                gamma=0.0000001,
+                min_child_weight=1,
+                subsample=1.0,
+                eta=0.25,
+                reg_alpha=0,
+                reg_lambda=0.1,
+                booster="gbtree",
+                objective="reg:squarederror",
+                eval_metric="mae",
+                n_jobs=-1
+            )
+        elif self.metric == "power":
+            return XGBRegressor(
+                max_depth=3,
+                gamma=0.0000001,
+                min_child_weight=1,
+                subsample=1.0,
+                eta=0.25,
+                reg_alpha=0,
+                reg_lambda=0.1,
+                booster="gbtree",
+                objective="reg:squarederror",
+                eval_metric="mae",
+                n_jobs=-1
+            )
+        else:
+            assert self.metric == "area", \
+                "[ERROR]: {} is not supported.".format(metric)
+            return XGBRegressor(
+                max_depth=3,
+                gamma=0.0000001,
+                min_child_weight=1,
+                subsample=1.0,
+                eta=0.25,
+                reg_alpha=0,
+                reg_lambda=0.1,
+                booster="gbtree",
+                objective="reg:squarederror",
+                eval_metric="mae",
+                n_jobs=-1
+            )
+
+    def fit(self, train_feature, train_gt):
+        self.model.fit(train_feature, train_gt)
+
+    def predict(self, test_feature, test_gt):
+        pred = self.model.predict(test_feature)
+        self.mae = mean_absolute_error(test_gt, pred)
+        self.mse = mean_squared_error(test_gt, pred)
+        self.mape = mean_absolute_percentage_error(test_gt, pred)
+        self.kendall_tau, _ = stats.kendalltau(pred, test_gt)
+        return pred
+
+    def save(self):
+        output_path = os.path.join(
+            rl_explorer_root,
+            configs["ppa-model"]
+        )
+        mkdir(output_path)
+        if "BOOM" in configs["design"]:
+            name = "boom"
+        else:
+            assert "rocket" == configs["design"], \
+                    "[ERROR]: {} is not supported.".format(configs["design"])
+            name = "rocket"
+        output_path = os.path.join(
+            output_path,
+            name + '-' + self.metric + ".pt"
+        )
+        joblib.dump(
+            self.model,
+            output_path
+        )
+        info("save {}.".format(output_path))
+
+
+class Stats(object):
+    def __init__(self, metrics):
+        super(Stats, self).__init__()
+        self.metrics = metrics
+        self.index = ["mae", "mse", "mape", "kendall_tau"]
+        self.stats = self.init_stats()
+
+    def init_stats(self):
+        stats = OrderedDict()
+        for metric in self.metrics:
+            stats[metric] = OrderedDict()
+            for idx in self.index:
+                stats[metric][idx] = []
+        return stats
+
+    def update(self, model):
+        """
+            model: <class "CalibModel">
+        """
+        for idx in self.index:
+            self.stats[model.metric][idx].append(
+                getattr(model, "{}".format(idx))
+            )
+
+    def summary(self):
+        for metric in self.metrics:
+            avg = []
+            for idx in self.index:
+                avg.append(np.average(self.stats[metric][idx]))
+            info("{} mae: {}, mse: {}, mape: {}, kendall tau: {}".format(
+                    metric, avg[0], avg[1], avg[2], avg[3]
+                )
+            )
+
+
+def parse_args():
+    def initialize_parser(parser):
+        parser.add_argument(
+            "-c",
+            "--configs",
+            required=True,
+            type=str,
+            default="configs.yml",
+            help="YAML file to be handled")
+        parser.add_argument(
+            "-m",
+            "--mode",
+            required=True,
+            type=str,
+            default="simulation",
+            choices=["simulation", "calib"],
+            help="working mode specification"
+        )
+        parser.add_argument(
+            "-s",
+            "--save",
+            action="store_true",
+            help="model saving specification"
+        )
+        return parser
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = initialize_parser(parser)
+    return parser.parse_args()
 
 
 def load_dataset(path):
@@ -82,436 +273,80 @@ def load_design_space():
 
 def split_dataset(dataset):
     # NOTICE: we omit the rest of groups
-    kfold = KFold(n_splits=10, shuffle=True, random_state=2022)
+    kfold = KFold(n_splits=5, shuffle=True, random_state=2022)
     for train, test in kfold.split(dataset):
-        return train, test
+        yield train, test
 
 
-def init_xgb():
-    """
-        NOTICE: a checkpoint
-    """
-
-    return XGBRegressor(
-        max_depth=3,
-        gamma=0.0000001,
-        min_child_weight=1,
-        subsample=1.0,
-        eta=0.25,
-        reg_alpha=0,
-        reg_lambda=0.1,
-        booster="gbtree",
-        objective="reg:squarederror",
-        eval_metric="mae",
-        n_jobs=-1
+def visualize(metric, dataset, model):
+    feature, gt = getattr(
+        dataset,
+        "get_{}_dataset".format(metric)
+    )()
+    pred = model.predict(feature, gt)
+    plt.scatter(
+        np.array(pred),
+        np.array(gt),
+        s=2,
+        c=colors[1],
+        marker=markers[2],
     )
-    # return GridSearchCV(
-    #     estimator=XGBRegressor(
-    #         subsample=1.0,
-    #         booster="gbtree",
-    #         objective="reg:squarederror",
-    #         n_jobs=-1
-    #     ),
-    #     param_grid={
-    #         "max_depth": [i for i in range(3, 8)],
-    #         "gamma": [0.0001, 0.00001, 0.000001, 0.0000001],
-    #         "min_child_weight": [1, 2],
-    #         "eta": [i for i in np.arange(0.05, 0.4, 0.01)],
-    #         "reg_alpha": [i for i in np.arange(1.0, 3.0, 0.1)],
-    #         "reg_lambda": [i for i in np.arange(0.1, 1, 0.01)],
-    #     },
-    #     cv=5
-    # )
-
-def init_lr():
-    from sklearn.linear_model import LinearRegression
-    return LinearRegression(n_jobs=-1)
+    plt.axline(
+        (0, 0),
+        slope=1,
+        color=colors[3],
+        transform=plt.gca().transAxes
+    )
+    plt.grid()
+    plt.xlabel("prediction")
+    plt.ylabel("gt")
+    plt.title("{} mape = {} kendall tau = {}".format(
+        metric, model.mape, model.kendall_tau)
+    )
+    plt.show()
 
 
-class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(MLP, self).__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(input_dim, 100),
-            nn.ReLU(),
-            nn.Linear(100, 80),
-            nn.ReLU(),
-            nn.Linear(80, 60),
-            nn.ReLU(),
-            nn.Linear(60, output_dim)
+def calib_xgboost(design_space, dataset):
+    stats = Stats(Dataset.metrics)
+    for train, test in split_dataset(dataset):
+        train_dataset = Dataset(
+            dataset[train],
+            len(design_space.descriptions[configs["design"]].keys())
         )
-
-    def forward(self, x):
-        return self.mlp(x)
-
-    def save(self, path):
-        torch.save(self.state_dict(), path)
-        print("[INFO]: save model to %s." % path)
-
-    def load(self, path):
-        self.load_state_dict(torch.load(path))
-        print("[INFO]: load model from %s." % path)
-
-
-class BaseDataset(data.Dataset, ABC):
-    def __init__(self):
-        pass
-
-    @abstractmethod
-    def __len__(self):
-        return 0
-
-    @abstractmethod
-    def __getitem__(self, index):
-        pass
-
-
-class PPADatasetV1(BaseDataset):
-    def __init__(self, train, test, idx, batch=16):
-        """
-            train: <torch.Tensor>
-            test: <torch.Tensor>
-        """
-        BaseDataset.__init__(self)
-        self.train_ipc_feature = train[:, [i for i in range(idx)] + [-3]]
-        self.train_ipc_gt = train[:, idx]
-        self.train_power_feature = train[:, [i for i in range(idx)] + [-2]]
-        self.train_power_gt = train[:, idx + 1]
-        self.train_area_feature = train[:, [i for i in range(idx)] + [-1]]
-        self.train_area_gt = train[:, idx + 2]
-        self.test_ipc_feature = test[:, [i for i in range(idx)] + [-3]]
-        self.test_ipc_gt = test[:, idx]
-        self.test_power_feature = test[:, [i for i in range(idx)] + [-2]]
-        self.test_power_gt = test[:, idx + 1]
-        self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
-        self.test_area_gt = test[:, idx + 2]
-        self.batch = batch
-
-        # remove zero elements from the test set
-        remove_idx = []
-        for i in range(self.test_ipc_gt.shape[0]):
-            if np.equal(self.test_ipc_gt[i], 0):
-                remove_idx.append(i)
-            if np.equal(self.test_power_gt[i], 0):
-                remove_idx.append(i)
-            if np.equal(self.test_area_gt[i], 0):
-                remove_idx.append(i)
-        self.test_ipc_feature = np.delete(self.test_ipc_feature, remove_idx, axis=0)
-        self.test_ipc_gt = np.delete(self.test_ipc_gt, remove_idx, axis=0)
-        self.test_power_feature = np.delete(self.test_power_feature, remove_idx, axis=0)
-        self.test_power_gt = np.delete(self.test_power_gt, remove_idx, axis=0)
-        self.test_area_feature = np.delete(self.test_area_feature, remove_idx, axis=0)
-        self.test_area_gt = np.delete(self.test_area_gt, remove_idx, axis=0)
-
-    def __getitem__(self, index):
-        return {
-            "perf": [
-                self.train_ipc_feature[index],
-                self.train_ipc_gt[index]
-            ],
-            "power": [
-                self.train_power_feature[index],
-                self.train_power_gt[index]
-            ],
-            "area": [
-                self.train_area_feature[index],
-                self.train_area_gt[index]
-            ]
-        }, {
-            "perf": [
-                self.test_ipc_feature[index],
-                self.test_ipc_gt[index]
-            ],
-            "power": [
-                self.test_power_feature[index],
-                self.test_power_gt[index]
-            ],
-            "area": [
-                self.test_area_feature[index],
-                self.test_area_gt[index]
-            ]
-        }
-
-    def __len__(self):
-        return len(self.train_ipc_feature)
-
-    def get_test_data_size(self):
-        return len(self.test_ipc_feature)
-
-
-class PPADatasetV2(object):
-    def __init__(self, train, test, idx):
-        super(PPADatasetV2, self).__init__()
-        self.train_ipc_feature = train[:, [i for i in range(idx)] + [-3]]
-        self.train_ipc_gt = train[:, idx]
-        self.train_power_feature = train[:, [i for i in range(idx)] + [-2]]
-        self.train_power_gt = train[:, idx + 1]
-        self.train_area_feature = train[:, [i for i in range(idx)] + [-1]]
-        self.train_area_gt = train[:, idx + 2]
-        self.test_ipc_feature = test[:, [i for i in range(idx)] + [-3]]
-        self.test_ipc_gt = test[:, idx]
-        self.test_power_feature = test[:, [i for i in range(idx)] + [-2]]
-        self.test_power_gt = test[:, idx + 1]
-        self.test_area_feature = test[:, [i for i in range(idx)] + [-1]]
-        self.test_area_gt = test[:, idx + 2]
-
-        # remove zero elements from the train set
-        remove_idx = []
-        for i in range(self.train_ipc_gt.shape[0]):
-            if np.equal(self.train_ipc_gt[i], 0):
-                remove_idx.append(i)
-            if np.equal(self.train_power_gt[i], 0):
-                remove_idx.append(i)
-            if np.equal(self.train_area_gt[i], 0):
-                remove_idx.append(i)
-        self.train_ipc_feature = np.delete(self.train_ipc_feature, remove_idx, axis=0)
-        self.train_ipc_gt = np.delete(self.train_ipc_gt, remove_idx, axis=0)
-        self.train_power_feature = np.delete(self.train_power_feature, remove_idx, axis=0)
-        self.train_power_gt = np.delete(self.train_power_gt, remove_idx, axis=0)
-        self.train_area_feature = np.delete(self.train_area_feature, remove_idx, axis=0)
-        self.train_area_gt = np.delete(self.train_area_gt, remove_idx, axis=0)
-
-        # remove zero elements from the test set
-        remove_idx = []
-        for i in range(self.test_ipc_gt.shape[0]):
-            if np.equal(self.test_ipc_gt[i], 0):
-                remove_idx.append(i)
-            if np.equal(self.test_power_gt[i], 0):
-                remove_idx.append(i)
-            if np.equal(self.test_area_gt[i], 0):
-                remove_idx.append(i)
-        self.test_ipc_feature = np.delete(self.test_ipc_feature, remove_idx, axis=0)
-        self.test_ipc_gt = np.delete(self.test_ipc_gt, remove_idx, axis=0)
-        self.test_power_feature = np.delete(self.test_power_feature, remove_idx, axis=0)
-        self.test_power_gt = np.delete(self.test_power_gt, remove_idx, axis=0)
-        self.test_area_feature = np.delete(self.test_area_feature, remove_idx, axis=0)
-        self.test_area_gt = np.delete(self.test_area_gt, remove_idx, axis=0)
-
-
-def calib_mlp_train(design_space, dataset):
-    criterion = nn.MSELoss()
-    for metric in metrics:
-        print("[INFO]: train %s model." % metric)
-        model = MLP(design_space.n_dim + 1, 1)
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=configs[metric + "-model-lr"]
+        test_dataset = Dataset(
+            dataset[test],
+            len(design_space.descriptions[configs["design"]].keys())
         )
-        for epoch in range(configs["ppa-epoch"]):
-            total_loss = 0
-            for i, (train, _) in enumerate(dataset):
-                pred = model(train[metric][0])
-                loss = criterion(pred, train[metric][1])
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-            if (epoch + 1 ) % 100 == 0:
-                print("[INFO]: Epoch[{}/{}], Loss: {:.8f}".format(
-                        epoch + 1,
-                        configs["ppa-epoch"],
-                        loss.item()
-                    )
-                )
-        mkdir(os.path.join(configs["ppa-model"]))
-        model.save(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + "-torch.pt"))
-
-
-def calib_mlp_test(design_space, dataset):
-    plt.rcParams['savefig.dpi'] = 600
-    plt.rcParams['figure.dpi'] = 600
-    L2 = nn.MSELoss()
-    L1 = nn.L1Loss()
-    lims = {
-        "rocket": {
-            "perf": [0.630, 0.850],
-            "power": [0.002, 0.014],
-            "area": [200000, 900000]
-        },
-        "boom": {
-            "perf": [0.620, 1.760],
-            "power": [0.030, 0.14],
-            "area": [1.20 * 1e6, 4.8 * 1e6]
-        }
-    }
-    for metric in metrics:
-        print("[INFO]: test %s model." % metric)
-        model = MLP(design_space.n_dim + 1, 1)
-        model.load(os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + "-torch.pt"))
-        model.eval()
-        error, l1, l2 = 0, 0, 0
-        x, y = [], []
-        with torch.no_grad():
-            for i, (_, test) in enumerate(dataset):
-                pred = model(test[metric][0])
-                x.append(float(pred))
-                y.append(float(test[metric][1]))
-                error += abs(float(pred) - float(test[metric][1])) / float(test[metric][1])
-                _l1 = L1(pred, test[metric][1])
-                _l2 = L2(pred, test[metric][1])
-                l1 += _l1
-                l2 += _l2
-            print("[INFO]: {} model, error: {:.8f}, L1: {:.8f}, L2: {:.8f}".format(
-                    metric,
-                    error / dataset.get_test_data_size(),
-                    l1,
-                    l2
-                )
-            )
-            plt.scatter(x, y, s=2, marker=markers[2], c=colors[1])
-            plt.plot(
-                np.linspace([lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]], 1000),
-                np.linspace([lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]], 1000),
-                c=colors[3],
-                linewidth=1,
-                ls='--'
-            )
-            plt.xlabel("Predicton")
-            plt.ylabel("GT")
-            plt.xlim(lims[configs["design"]][metric])
-            plt.ylim(lims[configs["design"]][metric])
-            plt.grid()
-            plt.title("%s-%s" % (configs["design"], metric))
-            plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
-            print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
-            plt.close()
-
-
-def calib_xgboost_train(dataset):
-    for metric in metrics:
-        print("[INFO]: train %s model." % metric)
-        model = init_xgb()
-        if metric == "perf":
-            model.fit(dataset.train_ipc_feature, dataset.train_ipc_gt)
-        elif metric == "power":
-            model.fit(dataset.train_power_feature, dataset.train_power_gt)
-        else:
-            assert metric == "area", "[ERROR]: unsupported metric."
-            model.fit(dataset.train_area_feature, dataset.train_area_gt)
-        if isinstance(model, GridSearchCV):
-            print("[INFO]", type(model), model.best_estimator_, model.best_params_)
-        joblib.dump(
-            model,
-            os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt")
+        for metric in Dataset.metrics:
+            model = CalibModel(metric)
+            train_feature, train_gt = getattr(
+                train_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            test_feature, test_gt = getattr(
+                test_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            model.fit(train_feature, train_gt)
+            model.predict(test_feature, test_gt)
+            stats.update(model)
+    stats.summary()
+    if args.save:
+        all_dataset = Dataset(
+            dataset[range(dataset.shape[0])],
+            len(design_space.descriptions[configs["design"]].keys())
         )
-
-
-def calib_xgboost_test(dataset):
-    plt.rcParams['savefig.dpi'] = 600
-    plt.rcParams['figure.dpi'] = 600
-    lims = {
-        "rocket": {
-            "perf": [0.630, 0.850],
-            "power": [0.002, 0.014],
-            "area": [200000, 900000]
-        },
-        "boom": {
-            "perf": [0.620, 1.760],
-            "power": [0.030, 0.14],
-            "area": [1.20 * 1e6, 4.8 * 1e6]
-        }
-    }
-    for metric in metrics:
-        print("[INFO]: test %s model." % metric)
-        model = joblib.load(
-            os.path.join(configs["ppa-model"], configs["design"] + '-' + metric + ".pt")
-        )
-        if metric == "perf":
-            pred = model.predict(dataset.test_ipc_feature)
-            mae = mean_absolute_error(dataset.test_ipc_gt, pred)
-            mse = mean_squared_error(dataset.test_ipc_gt, pred)
-            error = np.mean((abs(pred - dataset.test_ipc_gt) / dataset.test_ipc_gt)) * 1e2
-            kendall_tau, _ = stats.kendalltau(pred, dataset.test_ipc_gt)
-            plt.scatter(pred, dataset.test_ipc_gt, s=2, marker=markers[2], c=colors[1])
-        elif metric == "power":
-            pred = model.predict(dataset.test_power_feature)
-            mae = mean_absolute_error(dataset.test_power_gt, pred)
-            mse = mean_squared_error(dataset.test_power_gt, pred)
-            error = np.mean((abs(pred - dataset.test_power_gt) / dataset.test_power_gt)) * 1e2
-            kendall_tau, _ = stats.kendalltau(pred, dataset.test_power_gt)
-            plt.scatter(pred, dataset.test_power_gt, s=2, marker=markers[2], c=colors[1])
-        else:
-            assert metric == "area", "[ERROR]: unsupported metric."
-            pred = model.predict(dataset.test_area_feature)
-            mae = mean_absolute_error(dataset.test_area_gt, pred)
-            mse = mean_squared_error(dataset.test_area_gt, pred)
-            error = np.mean((abs(pred - dataset.test_area_gt) / dataset.test_area_gt)) * 1e2
-            kendall_tau, _ = stats.kendalltau(pred, dataset.test_area_gt)
-            plt.scatter(pred, dataset.test_area_gt, s=2, marker=markers[2], c=colors[1])
-        print("[INFO] MAE: {:.8f}, MSE: {:.8f}, Error: {:.4f}%, Kendall Tau: {:.4f}".format(
-                mae, mse, error, kendall_tau
-            )
-        )
-        plt.plot(
-            np.linspace(
-                [lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]],
-                1000
-            ),
-            np.linspace(
-                [lims[configs["design"]][metric][0], lims[configs["design"]][metric][1]],
-                1000
-            ),
-            c=colors[3],
-            linewidth=1,
-            ls='--'
-        )
-        plt.xlabel("Predicton")
-        plt.ylabel("GT")
-        plt.xlim(lims[configs["design"]][metric])
-        plt.ylim(lims[configs["design"]][metric])
-        plt.grid()
-        plt.title("{}-{} \n MAE: {:.8f} MSE: {:.8f} Error: {:.4f}% \n Kendall Tau: {:.4f}".format(
-                configs["design"], metric, mae, mse, error, kendall_tau
-            )
-        )
-        plt.savefig(os.path.join("%s-%s.png" % (configs["design"], metric)))
-        print("[INFO]: save figure to %s." % os.path.join("%s-%s.png" % (configs["design"], metric)))
-        plt.close()
-
-
-def concat_dataset(design_space, dataset, supp):
-    supp = load_txt(supp, fmt=float)
-    new_dataset = []
-    for i in range(1, dataset.shape[0]):
-        f = False
-        for _supp in supp:
-            if all(np.equal(dataset[i][:6], _supp[:6])):
-                new_dataset.append(
-                    np.insert(dataset[i], len(dataset[i]), values=_supp[-3:], axis=0)
-                )
-                _new_dataset = np.array(new_dataset)
-                write_txt(
-                    os.path.join(
-                        os.path.pardir,
-                        os.path.dirname(configs["dataset"]),
-                        os.path.splitext(os.path.basename(configs["dataset"]))[0] + "-E.txt"
-                    ),
-                    _new_dataset,
-                    fmt="%f"
-                )
-                f = True
-                break
-        if f:
-            continue
-        perf, power, area = design_space.evaluate_microarchitecture(
-            configs,
-            # architectural feature
-            dataset[i][:-3].astype(int),
-            1
-        )
-        new_dataset.append(
-            np.insert(dataset[i], len(dataset[i]), values=np.array([perf, power, area * 1e6]), axis=0)
-        )
-        _new_dataset = np.array(new_dataset)
-        write_txt(
-            os.path.join(
-                os.path.pardir,
-                os.path.dirname(configs["dataset"]),
-                os.path.splitext(os.path.basename(configs["dataset"]))[0] + "-E.txt"
-            ),
-            _new_dataset,
-            fmt="%f"
-        )
+        for metric in Dataset.metrics:
+            model = CalibModel(metric)
+            all_feature, all_gt = getattr(
+                all_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            model.fit(all_feature, all_gt)
+            model.predict(all_feature, all_gt)
+            model.save()
+            stats.summary()
+            visualize(metric, all_dataset, model)
 
 
 def adjust_data(design_space, data):
@@ -629,45 +464,34 @@ def generate_simulation_dataset():
         )
 
 
+def calib_dataset():
+    """
+        we use xgboost to calibrate the model
+    """
+    design_space = load_design_space()
+    dataset = load_txt(
+        os.path.join(
+            rl_explorer_root,
+            configs["dataset"]
+        ),
+        fmt=float
+    )
+    calib_xgboost(design_space, dataset)
+
+
 def main():
-    generate_simulation_dataset()
-    # dataset = load_dataset(target_dataset)
-    # # concat_dataset(design_space, dataset, os.path.join(os.path.pardir, "data", "rocket", "misc", "dataset-v2-E.txt"))
-    # train, test = split_dataset(dataset)
-    # if opt == "mlp":
-    #     train_data = torch.Tensor(dataset[train])
-    #     test_data = torch.Tensor(dataset[test])
-    #     calib_mlp_train(
-    #         design_space,
-    #         PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
-    #     )
-    #     calib_mlp_test(
-    #         design_space,
-    #         PPADatasetV1(train_data, test_data, idx=design_space.n_dim)
-    #     )
-    # else:
-    #     assert opt == "xgboost", "[ERROR]: unsupported method."
-    #     calib_xgboost_train(
-    #         PPADatasetV2(
-    #             dataset[train],
-    #             dataset[test],
-    #             idx=design_space.n_dim
-    #         )
-    #     )
-    #     calib_xgboost_test(
-    #         PPADatasetV2(
-    #             dataset[train],
-    #             dataset[test],
-    #             idx=design_space.n_dim
-    #         )
-    #     )
+    if args.mode == "simulation":
+        generate_simulation_dataset()
+    else:
+        assert args.mode == "calib", \
+            "[ERROR]: {} is not supported.".format(args.mode)
+        calib_dataset()
 
 
 if __name__ == '__main__':
-    configs = get_configs(parse_args().configs)
-    configs["configs"] = parse_args().configs
-    metrics = ["perf", "power", "area"]
-    opt = "xgboost"
+    args = parse_args()
+    configs = get_configs(args.configs)
+    configs["configs"] = args.configs
     rl_explorer_root = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
