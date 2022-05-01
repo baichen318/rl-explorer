@@ -546,7 +546,7 @@ def post_handle_boom(root):
                 name = param.attrib["name"]
                 if name == "L2_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        4294967296, 64, 8, 1, 1, 5, 64, 1
+                        134217728, 64, 8, 1, 1, 5, 64, 1
                     )
                 if name == "buffer_sizes":
                     param.attrib["value"] = "8,8,8,8"
