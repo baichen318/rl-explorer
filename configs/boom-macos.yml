@@ -9,7 +9,7 @@ chipyard-research-root: /Volumes/Research/repo/chipyard-research/
 
 # gem5 research root path specifications
 # it is an absolute path
-gem5-research-root: /Volumes/Research/repo/gem5-repo
+gem5-research-root: /Volumes/Research/repo/gem5-repo/1
 
 
 # design specifications

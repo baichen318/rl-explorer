@@ -22,7 +22,6 @@ class Gem5Wrapper(Simulation):
         self.macros["gem5-research-root"] = os.path.abspath(
             os.path.join(
                 self.configs["gem5-research-root"],
-                str(self.idx),
                 "gem5-research"
             ),
         )
