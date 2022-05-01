@@ -14,7 +14,7 @@ class Status(object):
     """ Status """
     def __init__(self, writer):
         super(Status, self).__init__()
-        self.writer = writer
+        self.writer = SummaryWriter(writer)
         self.perf_per_episode = deque(maxlen=100)
         self.power_per_episode = deque(maxlen=100)
         self.area_per_episode = deque(maxlen=100)
