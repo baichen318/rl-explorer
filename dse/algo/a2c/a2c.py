@@ -1,27 +1,31 @@
 # Author: baichen318@gmail.com
 
 
+from collections import deque
 from dse.env.boom.env import BOOMEnv
 from dse.algo.a2c.agent import BOOMAgent
 # from dse.env.rocket.env import RocketEnv
-from visualizer import Visualizer
+from torch.utils.tensorboard import SummaryWriter
+# we do not use visdom for visualization
+# from visualizer import Visualizer
 
 
 class Status(object):
     """ Status """
-    def __init__(self):
+    def __init__(self, writer):
         super(Status, self).__init__()
-        self.perf_per_episode = []
-        self.power_per_episode = []
-        self.area_per_episode = []
-        self.step = []
-        self.episode = []
-        self.temperature = []
-        self.learning_rate = []
-        self.actor_loss_per_step = []
-        self.critic_loss_per_step = []
-        self.entropy_per_step = []
-        self.loss_per_step = []
+        self.writer = writer
+        self.perf_per_episode = deque(maxlen=100)
+        self.power_per_episode = deque(maxlen=100)
+        self.area_per_episode = deque(maxlen=100)
+        self.step = deque(maxlen=100)
+        self.episode = deque(maxlen=100)
+        self.temperature = deque(maxlen=100)
+        self.learning_rate = deque(maxlen=100)
+        self.actor_loss_per_step = deque(maxlen=100)
+        self.critic_loss_per_step = deque(maxlen=100)
+        self.entropy_per_step = deque(maxlen=100)
+        self.loss_per_step = deque(maxlen=100)
 
     def reset(self):
         self.perf_per_episode = []
@@ -49,6 +53,10 @@ class Status(object):
         self.critic_loss_per_step.append(critic_loss)
         self.entropy_per_step.append(entropy)
         self.loss_per_step.append(loss)
+        self.writer.add_scalar("actor-loss", actor_loss, step)
+        self.writer.add_scalar("critic-loss", critic_loss, step)
+        self.writer.add_scalar("entropy", entropy, step)
+        self.writer.add_scalar("loss", loss, step)
 
     def update_per_episode(
         self,
@@ -74,6 +82,15 @@ class Status(object):
         self.critic_loss_per_step.append(critic_loss)
         self.entropy_per_step.append(entropy)
         self.loss_per_step.append(loss)
+        self.writer.add_scalar("perf", reward[0], episode)
+        self.writer.add_scalar("power", reward[1], episode)
+        self.writer.add_scalar("area", reward[2], episode)
+        self.writer.add_scalar("stats/temperature", temperature, episode)
+        self.writer.add_scalar("stats/learning-rate", learning_rate, episode)
+        self.writer.add_scalar("actor-loss", actor_loss, step)
+        self.writer.add_scalar("critic-loss", critic_loss, step)
+        self.writer.add_scalar("entropy", entropy, step)
+        self.writer.add_scalar("loss", entropy, step)
 
 
 def train_a2c(configs, agent, fixed_preference, episode, step):
@@ -116,8 +133,7 @@ def a2c(env, configs):
         fixed_preference
     )
 
-    status = Status()
-    visualizer = Visualizer(configs)
+    status = Status(configs["summary-writer"])
 
     while episode < configs["max-episode"]:
         agent.buffer.reset()
@@ -147,7 +163,6 @@ def a2c(env, configs):
                     agent.entropy.detach().numpy(),
                     agent.loss.detach().numpy()
                 )
-                visualizer.plot_current_status_per_step(status)
             except AttributeError as e:
                 pass
 
@@ -166,7 +181,6 @@ def a2c(env, configs):
                     agent.entropy.detach().numpy(),
                     agent.loss.detach().numpy()
                 )
-                visualizer.plot_current_status_per_episode(status)
                 for i in range(1, configs["num-parallel"]):
                     explored_preference = agent.preference.renew_preference(
                         explored_preference,

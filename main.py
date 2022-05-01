@@ -37,6 +37,10 @@ def pre_requisite():
         configs["output-path"],
         log_file
     )
+    configs["summary-writer"] = os.path.join(
+        configs["output-path"],
+        "summary-{}".format(log_file)
+    )
     configs["model-path"] = os.path.join(
         configs["output-path"],
         "models",
