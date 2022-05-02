@@ -203,8 +203,15 @@ class BOOMEnv(BasicEnv):
         self.steps = 0
         self.best_reward_w_preference = 0
         self.last_update = 0
-        # TODO: why `self.state` cannot be changed in `self.step`
-        self.state = np.array(self.design_space.idx_to_vec(2022))
+        idx = self.design_space.designs.index(self.configs["design"])
+        start = self.design_space.acc_design_size[idx - 1] \
+            if idx > 0 \
+            else 0
+        end = self.design_space.acc_design_size[idx]
+        self.state = np.array(self.design_space.idx_to_vec(
+                range(start, end + 1)
+            )
+        )
         return self.state
 
     def render(self):

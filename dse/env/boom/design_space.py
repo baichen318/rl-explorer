@@ -268,7 +268,7 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
 		# self.acc_design_size: <list> list of accumulated sizes of each design
 		# Example:
 		#	self.design_size = [a, b, c, d, e] # accordingly
-		# 	self.acc_design_size = [a + b, a + b + c, a + b + c + d, a + b + c + d + e]
+		# 	self.acc_design_size = [a, a + b, a + b + c, a + b + c + d, a + b + c + d + e]
 		self.acc_design_size = list(map(
 				lambda x, idx: np.sum(x[:idx]),
 				[self.design_size for i in range(len(self.design_size))],

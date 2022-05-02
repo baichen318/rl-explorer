@@ -227,7 +227,7 @@ class BOOMAgent(object):
     def save(self, episode, step):
         if step % (
             self.configs["num-parallel"] * \
-            self.configs["num-step"] * 100
+            self.configs["num-step"]
         ) == 0:
             model_path = os.path.join(
                 self.configs["model-path"],
@@ -243,7 +243,9 @@ class BOOMAgent(object):
                 model_path
             )
             self.configs["logger"].info(
-                "[INFO]: save model: {} at episode: {}.".format(model_path, episode)
+                "[INFO]: save model: {} at episode: {}, step: {}.".format(
+                    model_path, episode, step
+                )
             )
 
     def sync_critic(self, episode, step):
