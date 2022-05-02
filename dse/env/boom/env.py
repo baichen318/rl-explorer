@@ -209,7 +209,7 @@ class BOOMEnv(BasicEnv):
             else 0
         end = self.design_space.acc_design_size[idx]
         self.state = np.array(self.design_space.idx_to_vec(
-                range(start, end + 1)
+                random.choice(range(start, end + 1))
             )
         )
         return self.state
