@@ -173,6 +173,19 @@ class BOOMEnv(BasicEnv):
         area *= 0.5e-6
         return np.array([perf, -power, -area])
 
+    def calc_reward(self, ppa):
+        def negate_ppa():
+            return np.array(
+                [
+                    self.ppa_baseline[0],
+                    abs(self.ppa_baseline[1]),
+                    abs(self.ppa_baseline[2])
+                ]
+            )
+
+        return (ppa - self.ppa_baseline) / \
+            (negate_ppa() + np.array([1e-5, 1e-5, 1e-5]))
+
     def early_stopping(self, ppa):
         preference = np.ones(self.dims_of_reward)
         preference /= np.sum(preference)
@@ -187,7 +200,9 @@ class BOOMEnv(BasicEnv):
         s_idx, component = self.identify_component(action)
         # modify a component for the microarchitecture, given the action
         self.state[s_idx] = component
-        reward = self.evaluate_microarchitecture(self.state)
+        reward = self.calc_reward(
+            self.evaluate_microarchitecture(self.state)
+        )
         self.steps += 1
         done = bool(
             self.steps > self.configs["max-step-per-episode"] or \
@@ -212,6 +227,8 @@ class BOOMEnv(BasicEnv):
                 random.choice(range(start, end + 1))
             )
         )
+        # construct reward baseline
+        self.ppa_baseline = self.evaluate_microarchitecture(self.state)
         return self.state
 
     def render(self):
