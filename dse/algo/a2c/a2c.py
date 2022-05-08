@@ -132,7 +132,6 @@ def a2c(env, configs):
         configs["num-parallel"],
         fixed_preference
     )
-
     status = Status(configs["summary-writer"])
 
     while episode < configs["max-episode"]:

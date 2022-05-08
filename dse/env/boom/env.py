@@ -143,6 +143,19 @@ class BOOMEnv(BasicEnv):
         # NOTICE: `+ 1` is aligned with the design space specification
         return k, v.index(action) + 1
 
+    def scale_ppa(self, ppa):
+        """
+            scale PPA values can help to converge
+            ppa: <list>
+        """
+        # performance
+        ppa[0] *= 2
+        # power
+        ppa[1] *= 20
+        # area
+        ppa[2] *= 0.5e-6
+        return ppa
+
     def evaluate_microarchitecture(self, state):
         manager = Gem5Wrapper(
             self.configs,
@@ -167,10 +180,8 @@ class BOOMEnv(BasicEnv):
                 axis=0
             )
         )[0]
+        perf, power, area = self.scale_ppa([perf, power, area])
         # NOTICE: power and area should be negated
-        perf *= 2
-        power *= 20
-        area *= 0.5e-6
         return np.array([perf, -power, -area])
 
     def calc_reward(self, ppa):
@@ -208,13 +219,39 @@ class BOOMEnv(BasicEnv):
             self.steps > self.configs["max-step-per-episode"] or \
             self.early_stopping(reward)
         )
-        return self.state, reward, done, {
+        info = {
             "perf": reward[0],
             "power": reward[1],
             "area": reward[2]
         }
+        self.configs["logger"].info("[INFO]: {}".format(info))
+        return self.state, reward, done, info
 
     def reset(self):
+        def get_human_baseline():
+            ppa = {
+                # ipc power area
+                # Small SonicBOOM
+                "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
+                "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
+                # Medium SonicBOOM
+                "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
+                "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
+                # Large SonicBOOM
+                "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
+                "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
+                # Mega SonicBOOM
+                "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
+                "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
+                # Giga SonicBOOM
+                "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
+            }
+            # scale & negate
+            baseline = self.scale_ppa(ppa[self.configs["design"]])
+            baseline[1] = -baseline[1]
+            baseline[2] = -baseline[2]
+            return np.array(baseline)
+
         self.steps = 0
         self.best_reward_w_preference = 0
         self.last_update = 0
@@ -228,7 +265,7 @@ class BOOMEnv(BasicEnv):
             )
         )
         # construct reward baseline
-        self.ppa_baseline = self.evaluate_microarchitecture(self.state)
+        self.ppa_baseline = get_human_baseline()
         return self.state
 
     def render(self):
