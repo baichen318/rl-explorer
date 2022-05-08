@@ -253,7 +253,8 @@ class Gem5Wrapper(Simulation):
                 self.macros["simulator"]
             )
             cmd += "cd -;"
-        elif machine == "MacBook-Pro.local":
+        elif machine == "MacBook-Pro.local" or \
+            machine == "MacBook-Pro.lan":
             cmd = "cd %s; " % self.macros["gem5-research-root"]
             cmd += "scons "
             cmd += "build/RISCV/gem5.opt "

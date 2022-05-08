@@ -107,42 +107,42 @@ class BOOMAgent(object):
         total_discounted_reward = []
         total_adv = []
         for idx in range(self.configs["sample-size"]):
-            batch_size = self.configs["num-parallel"] * self.configs["num-step"]
+            n_step = self.configs["num-parallel"] * self.configs["num-step"]
             for worker in range(self.configs["num-parallel"]):
                 discounted_reward = _calc_discounted_reward(
                     buffer["reward"][
-                        worker * self.configs["num-step"] + idx * batch_size : \
-                            (worker + 1) * self.configs["num-step"] + idx * batch_size
+                        worker * self.configs["num-step"] + idx * n_step : \
+                            (worker + 1) * self.configs["num-step"] + idx * n_step
                     ],
                     buffer["done"][
-                        worker * self.configs["num-step"] + idx * batch_size : \
-                            (worker + 1) * self.configs["num-step"] + idx * batch_size
+                        worker * self.configs["num-step"] + idx * n_step : \
+                            (worker + 1) * self.configs["num-step"] + idx * n_step
                     ],
                     value[
-                        worker * self.configs["num-step"] + idx * batch_size : \
-                            (worker + 1) * self.configs["num-step"] + idx * batch_size
+                        worker * self.configs["num-step"] + idx * n_step : \
+                            (worker + 1) * self.configs["num-step"] + idx * n_step
                     ],
                     next_value[
-                        worker * self.configs["num-step"] + idx * batch_size : \
-                            (worker + 1) * self.configs["num-step"] + idx * batch_size
+                        worker * self.configs["num-step"] + idx * n_step : \
+                            (worker + 1) * self.configs["num-step"] + idx * n_step
                     ]
                 )
                 total_discounted_reward.append(discounted_reward)
         return np.concatenate(total_discounted_reward).reshape(-1, self.envs.reward_space)
 
     def calc_advantage(self, preference, discounted_reward, value, episode):
-        batch_size = self.configs["num-parallel"] * self.configs["num-step"]
+        n_step = self.configs["num-parallel"] * self.configs["num-step"]
 
         def apply_envelope_operator(discounted_reward, preference):
             prod = np.inner(discounted_reward, preference)
             mask = prod.transpose().reshape(
                 self.configs["sample-size"],
                 -1,
-                batch_size
+                n_step
             ).argmax(axis=1)
-            mask = mask.reshape(-1) * batch_size + \
+            mask = mask.reshape(-1) * n_step + \
                 np.array(
-                    list(range(batch_size)) * self.configs["sample-size"]
+                    list(range(n_step)) * self.configs["sample-size"]
                 )
             discounted_reward = discounted_reward[mask]
             return discounted_reward
