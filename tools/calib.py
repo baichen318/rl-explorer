@@ -224,14 +224,14 @@ def parse_args():
             required=True,
             type=str,
             default="simulation",
-            choices=["simulation", "calib"],
+            choices=["simulation", "calib", "validate"],
             help="working mode specification"
         )
         parser.add_argument(
             "-s",
             "--save",
             action="store_true",
-            help="model saving specification"
+            help="model saving specification (used when mode = calib)"
         )
         return parser
 
@@ -479,13 +479,63 @@ def calib_dataset():
     calib_xgboost(design_space, dataset)
 
 
+def load_calibrate_ppa_models():
+    ppa_model_root = os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        configs["ppa-model"],
+    )
+    perf_root = os.path.join(
+        ppa_model_root,
+        "boom-perf.pt"
+    )
+    power_root = os.path.join(
+        ppa_model_root,
+        "boom-power.pt"
+    )
+    area_root = os.path.join(
+        ppa_model_root,
+        "boom-area.pt"
+    )
+    perf_model = joblib.load(perf_root)
+    power_model = joblib.load(power_root)
+    area_model = joblib.load(area_root)
+    return perf_model, power_model, area_model
+
+
+def validate():
+    design_space = load_design_space()
+    dataset = load_txt(
+        os.path.join(
+            rl_explorer_root,
+            configs["dataset"]
+        ),
+        fmt=float
+    )
+    all_dataset = Dataset(
+        dataset[range(dataset.shape[0])],
+        len(design_space.descriptions[configs["design"]].keys())
+    )
+    lightweight_ppa_models = list(load_calibrate_ppa_models())
+    for metric in Dataset.metrics:
+        all_feature, all_gt = getattr(
+            all_dataset,
+            "get_{}_dataset".format(metric)
+        )()
+        pred = lightweight_ppa_models[Dataset.metrics.index(metric)].predict(all_feature)
+        print(pred, pred.shape)
+        np.savetxt("validate-{}.csv".format(metric), pred)
+
+
 def main():
     if args.mode == "simulation":
         generate_simulation_dataset()
-    else:
-        assert args.mode == "calib", \
-            "[ERROR]: {} is not supported.".format(args.mode)
+    elif args.mode == "calib":
         calib_dataset()
+    else:
+        assert args.mode == "validate", \
+            "[ERROR]: {} is not supported.".format(args.mode)
+        validate()
 
 
 if __name__ == '__main__':

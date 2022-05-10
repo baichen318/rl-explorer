@@ -26,7 +26,8 @@ from utils import parse_args, get_configs, write_txt, if_exist, \
 def pre_requisite():
     logger, log_file = create_logger(
         configs["output-path"],
-        "{}-{}-{}".format(
+        "{}-{}-{}-{}".format(
+            configs["mode"],
             configs["design"].replace(' ', '-'),
             getpass.getuser(),
             socket.gethostname()

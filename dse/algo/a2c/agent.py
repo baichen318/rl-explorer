@@ -13,7 +13,7 @@ from dse.algo.a2c.functions import make_vec_envs, array_to_tensor, tensor_to_arr
 from dse.algo.a2c.model import BOOMActorCriticNetwork
 from dse.algo.a2c.preference import Preference
 from dse.algo.a2c.buffer import Buffer
-from utils import remove_suffix
+from utils import remove_suffix, if_exist
 
 
 class BOOMAgent(object):
@@ -49,6 +49,13 @@ class BOOMAgent(object):
         if self.configs["mode"] != "train":
             self.model.eval()
             self._model.eval()
+            self.load(
+                os.path.join(
+                    self.configs["output-path"],
+                    "models",
+                    self.configs["rl-model"]
+                )
+            )
         return True if self.configs["mode"] == "train" else False
 
     def get_action(self, state, preference):
@@ -247,6 +254,18 @@ class BOOMAgent(object):
                     model_path, episode, step
                 )
             )
+
+    def load(self, path):
+        if_exist(path, strict=True)
+        if self.device.type == "cpu":
+            self.model.load_state_dict(torch.load(path, map_location="cpu"))
+        else:
+            self.model.load_state_dict(torch.load(path))
+        self._model = copy.deepcopy(self.model)
+        self.configs["logger"].info(
+            "load the RL model from {}".format(path)
+        )
+
 
     def sync_critic(self, episode, step):
         if step % self.configs["update-critic-step"] == 0:

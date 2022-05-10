@@ -77,9 +77,6 @@ class BasicEnv(gym.Env):
         random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
-        self.configs["logger"].info(
-            "[INFO]: set the random seed: {}.".format(seed)
-        )
 
 
 class BOOMEnv(BasicEnv):
@@ -89,10 +86,6 @@ class BOOMEnv(BasicEnv):
         self.observation_space = self.dims_of_state
         self.action_space = self.dims_of_action
         self.reward_space = self.dims_of_reward
-        # self.state = None
-        # self.n_step = 0
-        # self.last_update = 0
-        # self.best_reward = 0
         self.load_ppa_model()
         self.state = np.zeros(self.dims_of_state)
         self.reset()
@@ -120,15 +113,6 @@ class BOOMEnv(BasicEnv):
         self.perf_model = joblib.load(perf_root)
         self.power_model = joblib.load(power_root)
         self.area_model = joblib.load(area_root)
-        self.configs["logger"].info(
-            "[INFO]: load the performance model: {}".format(perf_root)
-        )
-        self.configs["logger"].info(
-            "[INFO]: load the power model: {}".format(power_root)
-        )
-        self.configs["logger"].info(
-            "[INFO]: load the area model: {}".format(area_root)
-        )
 
     def identify_component(self, action):
         """
@@ -224,10 +208,23 @@ class BOOMEnv(BasicEnv):
             "power": reward[1],
             "area": reward[2]
         }
-        self.configs["logger"].info("[INFO]: {}".format(info))
         return self.state, reward, done, info
 
     def reset(self):
+        def get_idx_of_human_baseline(start, end):
+            idx = {
+                "1-wide 4-fetch SonicBOOM": 391,
+                "1-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
+                "2-wide 4-fetch SonicBOOM": 86733931,
+                "2-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
+                "3-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
+                "3-wide 8-fetch SonicBOOM": 168415972,
+                "4-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
+                "4-wide 8-fetch SonicBOOM": 202143214,
+                "5-wide SonicBOOM": 215111986
+            }
+            return idx[self.configs["design"]]
+
         def get_human_baseline():
             ppa = {
                 # ipc power area
@@ -264,6 +261,10 @@ class BOOMEnv(BasicEnv):
                 random.choice(range(start, end + 1))
             )
         )
+        # self.state = np.array(self.design_space.idx_to_vec(
+        #         get_idx_of_human_baseline(start, end + 1)
+        #     )
+        # )
         # construct reward baseline
         self.ppa_baseline = get_human_baseline()
         return self.state

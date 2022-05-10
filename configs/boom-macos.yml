@@ -39,7 +39,11 @@ dataset: data/boom/dataset.txt
 
 # working mode specifications
 # train | explore
-mode: train
+mode: explore
+
+
+# RL model specifications
+rl-model: 1-wide-4-fetch-SonicBOOM-baichen-MacBook-Pro.lan-2022-05-09-18-11.pt
 
 
 # PPA models specifications

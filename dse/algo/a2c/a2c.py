@@ -152,38 +152,56 @@ def a2c(env, configs):
                 reward,
                 done
             )
+
+            # a tricky part to output the best state
+            if done:
+                configs["logger"].info(
+                    "episode: {}, " \
+                    "state: {}, " \
+                    "next_state: {}, " \
+                    "reward: {} .".format(
+                        episode,
+                        state,
+                        next_state,
+                        info
+                    )
+                )
+
             state = next_state
 
-            try:
-                status.update_per_step(
-                    step,
-                    agent.actor_loss.detach().numpy(),
-                    agent.critic_loss.detach().numpy(),
-                    agent.entropy.detach().numpy(),
-                    agent.loss.detach().numpy()
-                )
-            except AttributeError as e:
-                pass
+            if agent.training:
+                try:
+                    status.update_per_step(
+                        step,
+                        agent.actor_loss.detach().numpy(),
+                        agent.critic_loss.detach().numpy(),
+                        agent.entropy.detach().numpy(),
+                        agent.loss.detach().numpy()
+                    )
+                except AttributeError as e:
+                    pass
 
             if done:
                 state = agent.envs.reset()
-                episode += 1
-                agent.anneal()
-                status.update_per_episode(
-                    reward,
-                    step,
-                    episode,
-                    agent.temperature,
-                    agent.lr,
-                    agent.actor_loss.detach().numpy(),
-                    agent.critic_loss.detach().numpy(),
-                    agent.entropy.detach().numpy(),
-                    agent.loss.detach().numpy()
-                )
-                for i in range(1, configs["num-parallel"]):
-                    explored_preference = agent.preference.renew_preference(
-                        explored_preference,
-                        i
+                if agent.training:
+                    agent.anneal()
+                    status.update_per_episode(
+                        reward,
+                        step,
+                        episode,
+                        agent.temperature,
+                        agent.lr,
+                        agent.actor_loss.detach().numpy(),
+                        agent.critic_loss.detach().numpy(),
+                        agent.entropy.detach().numpy(),
+                        agent.loss.detach().numpy()
                     )
+                    for i in range(1, configs["num-parallel"]):
+                        explored_preference = agent.preference.renew_preference(
+                            explored_preference,
+                            i
+                        )
+                episode += 1
 
-        train_a2c(configs, agent, fixed_preference, episode, step)
+        if agent.training:
+            train_a2c(configs, agent, fixed_preference, episode, step)
