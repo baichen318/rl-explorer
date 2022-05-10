@@ -159,7 +159,7 @@ def a2c(env, configs):
                     "episode: {}, " \
                     "state: {}, " \
                     "next_state: {}, " \
-                    "reward: {} .".format(
+                    "reward: {}.".format(
                         episode,
                         state,
                         next_state,
@@ -185,17 +185,20 @@ def a2c(env, configs):
                 state = agent.envs.reset()
                 if agent.training:
                     agent.anneal()
-                    status.update_per_episode(
-                        reward,
-                        step,
-                        episode,
-                        agent.temperature,
-                        agent.lr,
-                        agent.actor_loss.detach().numpy(),
-                        agent.critic_loss.detach().numpy(),
-                        agent.entropy.detach().numpy(),
-                        agent.loss.detach().numpy()
-                    )
+                    try:
+                        status.update_per_episode(
+                            reward,
+                            step,
+                            episode,
+                            agent.temperature,
+                            agent.lr,
+                            agent.actor_loss.detach().numpy(),
+                            agent.critic_loss.detach().numpy(),
+                            agent.entropy.detach().numpy(),
+                            agent.loss.detach().numpy()
+                        )
+                    except AttributeError as e:
+                        pass
                     for i in range(1, configs["num-parallel"]):
                         explored_preference = agent.preference.renew_preference(
                             explored_preference,

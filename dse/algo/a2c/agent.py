@@ -2,6 +2,8 @@
 
 
 import os
+import time
+import random
 import copy
 import torch
 import torch.optim as optim
@@ -44,6 +46,13 @@ class BOOMAgent(object):
         )
         self.temperature = self.configs["temperature"]
         self.mse = nn.MSELoss()
+        self.set_random_state(round(time.time()))
+
+    def set_random_state(self, seed):
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
 
     def set_mode(self):
         if self.configs["mode"] != "train":
@@ -63,19 +72,16 @@ class BOOMAgent(object):
         preference = array_to_tensor(preference)
         policy, value = self.model(state, preference)
         if self.training:
-            # TODO: this may cause unexpected behavior!
             policy = F.softmax(policy / self.temperature, dim=-1)
         else:
             policy = F.softmax(policy, dim=-1)
-        # TODO: this may mis-align with the original design
         action = self.random_choice_prob_index(policy)
         return action
 
     def random_choice_prob_index(self, policy, axis=1):
         policy = tensor_to_array(policy)
         r = np.expand_dims(np.random.rand(policy.shape[1 - axis]), axis=axis)
-        # TODO: np.cumsum: axis = ?
-        return (policy.cumsum(axis=0) > r).argmax(axis=axis)
+        return (policy.cumsum(axis=axis) > r).argmax(axis=axis)
 
     def anneal(self):
         self.temperature = 0.01 + 0.99 * self.temperature

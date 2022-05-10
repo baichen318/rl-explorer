@@ -6,6 +6,7 @@ import os
 import re
 import time
 import multiprocessing
+from multiprocessing.pool import ThreadPool
 import numpy as np
 from utils import execute, if_exist, remove, mkdir, \
     round_power_of_two, error
@@ -392,6 +393,7 @@ class Gem5Wrapper(Simulation):
             return area
 
         power, area = 0, 0
+        pool = ThreadPool(len(self.configs["benchmarks"]))
         for bmark in self.configs["benchmarks"]:
             mcpat_xml = os.path.join(
                 self.temp_root,
@@ -403,39 +405,54 @@ class Gem5Wrapper(Simulation):
                 "m5out-%s" % bmark,
                 "%s-%s.rpt" % ("BOOM", self.idx)
             )
-            execute(
-                "%s %s -y %s -c %s -s %s -t %s --state %s -o %s" % (
-                    sys.executable,
-                    os.path.join(
-                        self.macros["rl-explorer-root"],
-                        "tools",
-                        "gem5-mcpat-parser.py"
+            pool.apply_async(
+                execute,
+                (
+                    "{} {} " \
+                    "-y {} " \
+                    "-c {} " \
+                    "-s {} " \
+                    "-t {} " \
+                    "--state {} " \
+                    "-o {}; " \
+                    "{} " \
+                    "-infile {} " \
+                    "-print_level 5 > {}" \
+                    .format(
+                        sys.executable, os.path.join(
+                            self.macros["rl-explorer-root"],
+                            "tools",
+                            "gem5-mcpat-parser.py"
+                        ),
+                        self.configs["configs"],
+                        os.path.join(self.temp_root, "m5out-{}".format(bmark), "config.json"),
+                        os.path.join(self.temp_root, "m5out-{}".format(bmark), "stats.txt"),
+                        os.path.join(
+                            self.macros["rl-explorer-root"],
+                            "tools",
+                            "template",
+                            "boom.xml"
+                        ),
+                        ' '.join([str(s) for s in self.state]),
+                        mcpat_xml,
+                        os.path.join(
+                            self.macros["rl-explorer-root"],
+                            "tools",
+                            "mcpat-riscv-7",
+                            "mcpat"
+                        ),
+                        mcpat_xml,
+                        mcpat_report
                     ),
-                    self.configs["configs"],
-                    os.path.join(self.temp_root, "m5out-%s" % bmark, "config.json"),
-                    os.path.join(self.temp_root, "m5out-%s" % bmark, "stats.txt"),
-                    os.path.join(
-                        self.macros["rl-explorer-root"],
-                        "tools",
-                        "template",
-                        "boom.xml"
-                    ),
-                    ' '.join([str(s) for s in self.state]),
-                    mcpat_xml
-                ),
-                logger=self.configs["logger"]
-            )
-            execute(
-                "%s -infile %s -print_level 5 > %s" % (
-                    os.path.join(
-                        self.macros["rl-explorer-root"],
-                        "tools",
-                        "mcpat-riscv-7",
-                        "mcpat"
-                    ),
-                    mcpat_xml,
-                    mcpat_report
                 )
+            )
+        pool.close()
+        pool.join()
+        for bmark in self.configs["benchmarks"]:
+            mcpat_report = os.path.join(
+                self.temp_root,
+                "m5out-%s" % bmark,
+                "%s-%s.rpt" % ("BOOM", self.idx)
             )
             power += extract_power(mcpat_report)
             area += extract_area(mcpat_report)

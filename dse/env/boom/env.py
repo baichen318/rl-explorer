@@ -34,7 +34,6 @@ class BasicEnv(gym.Env):
         self.dims_of_action = len(self.candidate_actions)
         # PPA metrics
         self.dims_of_reward = 3
-        self.set_random_state(seed)
 
     def generate_actions_lut(self, design):
         """
@@ -71,12 +70,6 @@ class BasicEnv(gym.Env):
 
     def generate_dims_of_state(self, design):
         return len(self.design_space.descriptions[design].keys())
-
-    def set_random_state(self, seed):
-        np.random.seed(seed)
-        random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
 
 
 class BOOMEnv(BasicEnv):
@@ -131,6 +124,9 @@ class BOOMEnv(BasicEnv):
         """
             scale PPA values can help to converge
             ppa: <list>
+
+            Example:
+                ppa = self.scale_ppa([perf, power, area])
         """
         # performance
         ppa[0] *= 2
@@ -164,7 +160,6 @@ class BOOMEnv(BasicEnv):
                 axis=0
             )
         )[0]
-        perf, power, area = self.scale_ppa([perf, power, area])
         # NOTICE: power and area should be negated
         return np.array([perf, -power, -area])
 
@@ -179,7 +174,7 @@ class BOOMEnv(BasicEnv):
             )
 
         return (ppa - self.ppa_baseline) / \
-            (negate_ppa() + np.array([1e-5, 1e-5, 1e-5]))
+            (negate_ppa() + np.array([1e-8, 1e-8, 1e-8]))
 
     def early_stopping(self, ppa):
         preference = np.ones(self.dims_of_reward)
@@ -243,30 +238,34 @@ class BOOMEnv(BasicEnv):
                 # Giga SonicBOOM
                 "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
             }
-            # scale & negate
-            baseline = self.scale_ppa(ppa[self.configs["design"]])
+            # negate
+            baseline = ppa[self.configs["design"]]
             baseline[1] = -baseline[1]
             baseline[2] = -baseline[2]
             return np.array(baseline)
 
         self.steps = 0
-        self.best_reward_w_preference = 0
+        self.best_reward_w_preference = -float("inf")
         self.last_update = 0
         idx = self.design_space.designs.index(self.configs["design"])
         start = self.design_space.acc_design_size[idx - 1] \
             if idx > 0 \
             else 0
         end = self.design_space.acc_design_size[idx]
-        self.state = np.array(self.design_space.idx_to_vec(
-                random.choice(range(start, end + 1))
+        # we make a reset location based on human implementation or
+        # a random selection
+        if np.random.random() < 0.5:
+            self.state = np.array(self.design_space.idx_to_vec(
+                    random.choice(range(start, end + 1))
+                )
             )
-        )
-        # self.state = np.array(self.design_space.idx_to_vec(
-        #         get_idx_of_human_baseline(start, end + 1)
-        #     )
-        # )
-        # construct reward baseline
-        self.ppa_baseline = get_human_baseline()
+            self.ppa_baseline = self.evaluate_microarchitecture(self.state)
+        else:
+            self.state = np.array(self.design_space.idx_to_vec(
+                    get_idx_of_human_baseline(start, end + 1)
+                )
+            )
+            self.ppa_baseline = get_human_baseline()
         return self.state
 
     def render(self):
