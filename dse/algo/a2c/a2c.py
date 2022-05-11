@@ -109,7 +109,7 @@ def train_a2c(configs, agent, fixed_preference, episode, step):
         updated_preference,
         discounted_reward,
         value,
-        step
+        episode
     )
     agent.optimize_actor_critic(total_updated_preference, discounted_reward, adv)
     agent.schedule_lr(episode)
