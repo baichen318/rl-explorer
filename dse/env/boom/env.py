@@ -254,7 +254,7 @@ class BOOMEnv(BasicEnv):
         end = self.design_space.acc_design_size[idx]
         # we make a reset location based on human implementation or
         # a random selection
-        if np.random.random() < 0.5:
+        if np.random.random() < 0.3:
             self.state = np.array(self.design_space.idx_to_vec(
                     random.choice(range(start, end + 1))
                 )
