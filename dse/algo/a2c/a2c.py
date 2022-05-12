@@ -2,6 +2,7 @@
 
 
 from collections import deque
+from time import time
 from dse.env.boom.env import BOOMEnv
 from dse.algo.a2c.agent import BOOMAgent
 # from dse.env.rocket.env import RocketEnv
@@ -134,6 +135,7 @@ def a2c(env, configs):
     )
     status = Status(configs["summary-writer"])
 
+    start = time()
     while episode < configs["max-episode"]:
         agent.buffer.reset()
         configs["logger"].info("[INFO]: current episode: {}, current step: {}.".format(
@@ -208,3 +210,9 @@ def a2c(env, configs):
 
         if agent.training:
             train_a2c(configs, agent, fixed_preference, episode, step)
+
+    end = time()
+    configs["logger"].info(
+        "done. " \
+        "cost time: {}.".format(end - start)
+    )

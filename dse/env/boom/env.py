@@ -39,6 +39,7 @@ class BasicEnv(gym.Env):
         """
             Example:
                 actions_map = {
+                    # states index  actions index
                     0: [1, 2, 3],
                     2: [4, 5, 6, 7, 8, 9, 10],
                     ...
@@ -113,12 +114,12 @@ class BOOMEnv(BasicEnv):
         """
         # TODO: validate its correctness
         # the 1st action is encoded as 1
-        action += 1
+        _action = action + 1
         for k, v in self.actions_map.items():
-            if action in v:
+            if _action in v:
                 break
         # NOTICE: `+ 1` is aligned with the design space specification
-        return k, v.index(action) + 1
+        return k, v.index(_action)
 
     def scale_ppa(self, ppa):
         """
@@ -187,9 +188,12 @@ class BOOMEnv(BasicEnv):
             self.configs["early-stopping-per-episode"]
 
     def step(self, action):
-        s_idx, component = self.identify_component(action)
+        s_idx, a_offset = self.identify_component(action)
         # modify a component for the microarchitecture, given the action
-        self.state[s_idx] = component
+        self.state[s_idx] = self.design_space.descriptions[
+            self.configs["design"]
+        ][self.design_space.components[s_idx]][a_offset]
+
         reward = self.calc_reward(
             self.evaluate_microarchitecture(self.state)
         )
