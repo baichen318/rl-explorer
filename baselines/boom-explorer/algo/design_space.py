@@ -7,6 +7,9 @@ from util import write_csv
 
 class Space(object):
     def __init__(self, dims, size):
+        """
+            dims: <list>, dimensions for each candidate
+        """
         self.dims = dims
         self.size = size
         self.n_dim = len(self.dims)

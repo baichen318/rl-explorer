@@ -1,10 +1,16 @@
 # boom-explorer
-BOOM Explorer: Design Space Explorer focusing on the CPU design
+BOOM Explorer: BOOM Microarchitecture Design Space Exploration
 
 ## End-to-end Flow
+- Get help
 ```bash
-$ python main.py -c configs/design-explorer.yml
+$ python main.py -h
+```
+- Run BOOM-Explorer
+```bash
+$ python main.py -c configs/boom-explorer.yml
 ```
 
 ## TODO
-- Implement BOOM-Explorer Baselines
+- Space partition
+- Prior knowledge

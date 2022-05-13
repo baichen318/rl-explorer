@@ -18,11 +18,20 @@ from exception import NotFoundException, UnDefinedException
 def parse_args():
 
     def initialize_parser(parser):
-        parser.add_argument('-c', '--configs',
+        parser.add_argument(
+            '-c', '--configs',
             required=True,
             type=str,
             default='configs.yml',
-            help='YAML file to be handled')
+            help='YAML file to be handled'
+        )
+        parser.add_argument(
+            '-s', '--settings',
+            required=True,
+            type=str,
+            default='configs.yml',
+            help='YAML file to be handled'
+        )
 
         return parser
 
@@ -31,6 +40,7 @@ def parse_args():
 
     return parser.parse_args()
 
+
 def get_configs(fyaml):
     if_exist(fyaml, strict=True)
     with open(fyaml, 'r') as f:
@@ -38,8 +48,8 @@ def get_configs(fyaml):
             configs = yaml.load(f, Loader=yaml.FullLoader)
         except AttributeError:
             configs = yaml.load(f)
-
     return configs
+
 
 def if_exist(path, strict=False):
     try:
@@ -54,10 +64,12 @@ def if_exist(path, strict=False):
         else:
             exit(1)
 
+
 def mkdir(path):
     if not if_exist(path):
         print("[INFO]: create directory: %s" % path)
         os.makedirs(path, exist_ok=True)
+
 
 def read_csv(data, header=0):
     """
@@ -67,89 +79,98 @@ def read_csv(data, header=0):
     return np.array(pd.read_csv(data, header=header))
 
 
-def load_dataset(path):
+def load_dataset(csv_path, split=True):
     """
-        path: <str>
+        csv_path: <str>
     """
-    def validate(dataset):
-        remove_idx = []
-        perf = dataset[:, -3]
-        power = dataset[:, -2]
-        area = dataset[:, -1]
-        # remove invalid data
-        for i in range(perf.shape[0]):
-            if perf[i] == 0:
-                remove_idx.append(i)
-                continue
-            if power[i] == 0:
-                remove_idx.append(i)
-                continue
-            if area[i] == 0:
-                remove_idx.append(i)
-                continue
-        # trasfer area to mm^2
-        dataset[:, -1] = dataset[:, -1] * 1e-6
-        dataset = np.delete(dataset, remove_idx, axis=0)
-        return dataset
-
-    dataset = load_txt(path, fmt=float)
-    dataset = validate(dataset)
-    return dataset[:, :-3].astype(int), dataset[:, -3:]
+    dataset = load_txt(
+        csv_path,
+        fmt=float
+    )
+    dataset = dataset[:, :-3]
+    dataset = scale_dataset(dataset)
+    # split to two matrices
+    x = []
+    y = []
+    for data in dataset:
+        x.append(data[:-3])
+        y.append(np.array([data[-3], data[-2], data[-1]]))
+    return np.array(x), np.array(y)
 
 
-def transform_dataset(dataset, design):
-    """
-        dataset: <numpy.array>
-        NOTICE: power and area needs to be transformed
-    """
-    assert dataset.shape[-1] == 3, "[ERROR]: PPA values."
-    if design == "rocket":
-        # power
-        dataset[:, -2] = 0.2 - dataset[:, -2]
-        # area
-        dataset[:, -1] = 5.2 - dataset[:, -1]
-    else:
-        assert design == "boom", \
-            "[ERROR]: %s is not supported." % design
-        # power
-        dataset[:, -2] = 0.5 - dataset[:, -2]
-        # area
-        dataset[:, -1] = 5.5 - dataset[:, -1]
-    return dataset
-
-
-def detransform_dataset(dataset, design):
+# customization for BOOM-Explorer
+def scale_dataset(dataset: Union[torch.Tensor, np.ndarray]):
     """
         dataset: <numpy.array>
     """
-    assert dataset.shape[-1] == 3, "[ERROR]: PPA values."
-    if design == "rocket":
-        # power
-        dataset[:, -2] = 0.2 - dataset[:, -2]
-        # area
-        dataset[:, -1] = 5.2 - dataset[:, -1]
+    # NOTICE: scale the data by `max - x / \alpha`
+    # max ipc: 1.751441
+    # min ipc: 0.646065
+    # max power: 0.305892
+    # min power: 0.02115
+    # max area: 5069115.916
+    # min area: 308878.162
+    # after scaling, the clock cycles are [0.2948, 1.32305]
+    # the power values are [0.09410800000000002, 0.37885]
+    # the areaa values are [0.09308840839999998, 0.5691121838]
+    if isinstance(dataset, torch.Tensor):
+        _dataset = dataset.clone()
     else:
-        assert design == "boom", \
-            "[ERROR]: %s is not supported." % design
-        # power
-        dataset[:, -2] = 0.5 - dataset[:, -2]
-        # area
-        dataset[:, -1] = 5.5 - dataset[:, -1]
-    return dataset
+        _dataset = dataset.copy()
+    # power
+    _dataset[:, -2] = 0.4 - _dataset[:, -2]
+    # area
+    _dataset[:, -1] = (6000000 - _dataset[:, -1]) / 1e7
 
-def remove(path):
-    if if_exist(path):
-        if os.path.isfile(path):
-            os.remove(path)
-            print("[INFO]: remove %s" % path)
-        elif os.path.isdir(path):
-            for root, dirs, files in os.walk(path, topdown=False):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
-            os.rmdir(path)
-            print("[INFO]: remove %s" % path)
+    return _dataset
+
+
+def rescale_dataset(dataset: Union[torch.Tensor, np.ndarray]):
+    # NOTICE: see `scale_dataset`
+    # Tips: remove side effect
+    if isinstance(dataset, torch.Tensor):
+        _dataset = dataset.clone()
+    else:
+        _dataset = dataset.copy()
+    _dataset[:, -2] = 0.4 - _dataset[:, -2]
+    _dataset[:, -1] = 6000000 - _dataset[:, -1] * 1e7
+
+    return _dataset
+
+
+cc_mu, cc_sigma = 0, 0
+power_mu, power_sigma = 0, 0
+def standardization(dataset: Union[torch.Tensor, np.ndarray]):
+    """
+        x - mu / sigma
+    """
+    global cc_mu, cc_sigma, power_mu, power_sigma
+    if isinstance(dataset, torch.Tensor):
+        _dataset = dataset.clone()
+    else:
+        _dataset = dataset.copy()
+    cc_mu = np.mean(_dataset[:, -2])
+    cc_sigma = np.std(_dataset[:, -2])
+    power_mu = np.mean(_dataset[:, -1])
+    power_sigma = np.std(_dataset[:, -1])
+    _dataset[:, -2] = (_dataset[:, -2] - cc_mu) / cc_sigma
+    _dataset[:, -1] = (_dataset[:, -1] - power_mu) / power_sigma
+    return _dataset
+
+
+def de_standardization(dataset: Union[torch.Tensor, np.ndarray]):
+    """
+        x * sigma + mu
+    """
+    global cc_mu, cc_sigma, power_mu, power_sigma
+    if isinstance(dataset, torch.Tensor):
+        _dataset = dataset.clone()
+    else:
+        _dataset = dataset.copy()
+    _dataset[:, -2] = _dataset[:, -2] * cc_sigma + cc_mu
+    _dataset[:, -1] = _dataset[:, -1] * power_sigma + power_mu
+    return _dataset
+
 
 def split_dataset(dataset):
     # split dataset into x label & y label
@@ -164,12 +185,15 @@ def split_dataset(dataset):
 
     return np.array(x), np.array(y)
 
+
 def calc_mape(x, y):
         return np.mean(np.abs((np.array(x) - np.array(y)) / np.array(y)))
+
 
 def timer():
 
     return datetime.now()
+
 
 def point2knob(p, dims):
     """convert point form (single integer) to knob form (vector)"""
@@ -180,6 +204,7 @@ def point2knob(p, dims):
 
     return knob
 
+
 def knob2point(knob, dims):
     """convert knob form (vector) to point form (single integer)"""
     p = 0
@@ -188,6 +213,7 @@ def knob2point(knob, dims):
 
     return p
 
+
 def execute(cmd, logger=None):
     if logger:
         logger.info("executing: %s " % cmd)
@@ -195,6 +221,7 @@ def execute(cmd, logger=None):
         print("[INFO]: executing: %s" % cmd)
 
     os.system(cmd)
+
 
 def create_logger(path, name):
     """
@@ -215,9 +242,11 @@ def create_logger(path, name):
 
     return logger
 
+
 def dump_yaml(path, yml_dict):
     with open(path, 'w') as f:
         yaml.dump(yml_dict, f)
+
 
 def is_pow2(num):
     if not (num & (num - 1)):
@@ -227,6 +256,7 @@ def is_pow2(num):
 
         return False
 
+
 def write_csv(path, data, mode='w', col_name=None):
 
     print('[INFO]: writing csv to %s' % path)
@@ -235,6 +265,7 @@ def write_csv(path, data, mode='w', col_name=None):
         if col_name:
             writer.writerow(col_name)
         writer.writerows(data)
+
 
 def write_excel(path, data, features):
     """
@@ -249,6 +280,7 @@ def write_excel(path, data, features):
     print("[INFO]: saving to %s" % path)
     writer.save()
 
+
 def write_txt(path, data, fmt='%i'):
     """
         `path`: path to the output path
@@ -261,6 +293,7 @@ def write_txt(path, data, fmt='%i'):
     print("[INFO]: saving to %s" % path)
     np.savetxt(path, data, fmt)
 
+
 def load_txt(path, fmt=int):
     if if_exist(path):
         print("[INFO]: loading to %s" % path)
@@ -268,21 +301,25 @@ def load_txt(path, fmt=int):
     else:
         print("[WARN]: cannot load %s" % path)
 
+
 def mse(gt, predict):
     # gt: `np.array`
     # predict: `np.array`
     return metrics.mean_squared_error(gt, predict)
+
 
 def r2(gt, predict):
     # gt: `np.array`
     # predict: `np.array`
     return metrics.r2_score(gt, predict)
 
+
 def mape(gt, predict):
     # gt: `np.array`
     # predict: `np.array`
     # return np.mean(np.abs(predict - gt) / gt)) * 100
     return metrics.mean_absolute_percentage_error(gt, predict)
+
 
 def rmse(gt, predict):
     """
@@ -291,11 +328,13 @@ def rmse(gt, predict):
     """
     return np.mean(np.sqrt(np.power(gt - predict, 2)))
 
+
 def strflush(msg, logger=None):
     if logger:
         logger.info(msg)
     else:
         print(msg)
+
 
 def hyper_volume(reference, point):
     """
@@ -312,14 +351,7 @@ def hyper_volume(reference, point):
             (np.abs(reference[1] - point[1]) / reference[1])
         return hv
 
-def adrs(reference, point):
-    """
-        reference: <numpy.ndarray>
-        point: <numpy.ndarray>
-    """
-    return np.sqrt((reference[0] - point[0]) ** 2 + (reference[1] - point[1]) ** 2)
-
-def adrs_v2(reference, learned_pareto_set):
+def calc_adrs(reference, learned_pareto_set):
     """
         reference: <torch.Tensor>
         learned_pareto_set: <torch.Tensor>
@@ -331,13 +363,14 @@ def adrs_v2(reference, learned_pareto_set):
         learned_pareto_set = learned_pareto_set.cpu()
     except:
         pass
-    for omiga in reference:
+    for omega in reference:
         mini = float('inf')
         for gama in learned_pareto_set:
-            mini = min(mini, np.linalg.norm(omiga - gama))
+            mini = min(mini, np.linalg.norm(omega - gama))
         ADRS += mini
     ADRS = ADRS / len(reference)
     return ADRS
+
 
 def get_pareto_points(data_array):
     num_points = data_array.shape[0]
@@ -363,3 +396,30 @@ def get_pareto_points(data_array):
     pareto_set = np.delete(data_array, delpoints, axis=0)
 
     return pareto_set
+
+
+def once(f):
+    def wrapper(*args, **kwargs):
+        if not wrapper.has_run:
+            wrapper.has_run = True
+            return f(*args, **kwargs)
+    wrapper.has_run = False
+    return wrapper
+
+
+def array_to_tensor(array, device=torch.device("cpu"), fmt=float):
+    """
+        array: <numpy.ndarray>
+        device: <class 'torch.device'>
+    """
+    if fmt == int:
+        return torch.Tensor(array).to(device).long()
+    return torch.Tensor(array).to(device).float()
+
+
+def tensor_to_array(tensor, device=torch.device("cpu")):
+    """
+        tensor: <torch.Tensor>
+        device: <class 'torch.device'>
+    """
+    return tensor.data.cpu().numpy()
