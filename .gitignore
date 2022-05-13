@@ -158,4 +158,4 @@ tools/mcpat-riscv-7/Documents/
 exp-bak/
 logs/
 ~$*.xlsx
-solution.txt
+*.txt

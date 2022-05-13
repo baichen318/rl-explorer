@@ -198,6 +198,19 @@ class Stats(object):
                 getattr(model, "{}".format(idx))
             )
 
+    def show_current_status(self):
+        for metric in self.metrics:
+            for idx in self.index:
+                try:
+                    info("{} {}: {}".format(
+                            metric,
+                            idx,
+                            self.stats[metric][idx][-1]
+                        )
+                    )
+                except IndexError:
+                    pass
+
     def summary(self):
         for metric in self.metrics:
             avg = []
@@ -278,12 +291,26 @@ def split_dataset(dataset):
         yield train, test
 
 
-def visualize(metric, dataset, model):
+def visualize(metric, dataset, model, save_path=None):
     feature, gt = getattr(
         dataset,
         "get_{}_dataset".format(metric)
     )()
     pred = model.predict(feature, gt)
+    if save_path:
+        prefix_txt_save_path = save_path.split('.')[0]
+        gt_txt_save_path = "{}-gt.txt".format(prefix_txt_save_path)
+        pred_txt_save_path = "{}-pred.txt".format(prefix_txt_save_path)
+        np.savetxt(
+            gt_txt_save_path,
+            gt
+        )
+        info("save dataset to {}.".format(gt_txt_save_path))
+        np.savetxt(
+            pred_txt_save_path,
+            pred
+        )
+        info("save dataset to {}.".format(pred_txt_save_path))
     plt.scatter(
         np.array(pred),
         np.array(gt),
@@ -303,11 +330,15 @@ def visualize(metric, dataset, model):
     plt.title("{} mape = {} kendall tau = {}".format(
         metric, model.mape, model.kendall_tau)
     )
+    if save_path:
+        plt.savefig(save_path)
+        info("save fig. to {}".format(save_path))
     plt.show()
 
 
 def calib_xgboost(design_space, dataset):
     stats = Stats(Dataset.metrics)
+    fold = 1
     for train, test in split_dataset(dataset):
         train_dataset = Dataset(
             dataset[train],
@@ -330,6 +361,20 @@ def calib_xgboost(design_space, dataset):
             model.fit(train_feature, train_gt)
             model.predict(test_feature, test_gt)
             stats.update(model)
+            stats.show_current_status()
+            visualize(
+                metric,
+                test_dataset,
+                model,
+                save_path=os.path.join(
+                    configs["vis-root"],
+                    "{}-{}.jpg".format(
+                        metric,
+                        fold
+                    )
+                )
+            )
+        fold += 1
     stats.summary()
     if args.save:
         all_dataset = Dataset(
@@ -523,7 +568,6 @@ def validate():
             "get_{}_dataset".format(metric)
         )()
         pred = lightweight_ppa_models[Dataset.metrics.index(metric)].predict(all_feature)
-        print(pred, pred.shape)
         np.savetxt("validate-{}.csv".format(metric), pred)
 
 
@@ -547,6 +591,11 @@ if __name__ == '__main__':
             os.path.dirname(__file__),
             os.path.pardir
         )
+    )
+    configs["vis-root"] = os.path.join(
+        rl_explorer_root,
+        "tools",
+        "vis"
     )
     configs["logger"] = None
     main()
