@@ -64,4 +64,6 @@ if __name__ == "__main__":
             os.path.pardir,
         )
     )
+    configs["configs"] = args.configs
+    configs["logger"] = None
     main()

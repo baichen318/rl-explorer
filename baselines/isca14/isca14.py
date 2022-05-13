@@ -28,6 +28,7 @@ sys.path.insert(
         "simulation"
     )
 )
+os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
 import itertools
 import numpy as np
@@ -224,6 +225,7 @@ def construct_sorted_list(rank_list):
     """
     sorted_list = [i for i in range(rank_list.shape[0])]
 
+    info("construct sorted list...")
     def swap(i, j):
         k = sorted_list[i]
         sorted_list[i] = sorted_list[j]
@@ -237,6 +239,7 @@ def construct_sorted_list(rank_list):
 
 
 def partition_sorted_list(design_pool, sorted_list, threshold, metric="power"):
+    info("partition sorted list...")
     metric = 1 if metric == "power" else 2
     n_samples = design_pool.shape[0]
     k = 1 / 2
@@ -263,7 +266,7 @@ def construct_rank_list(design_pool, ranker):
 
 
 def construct_ranker(dataset, metric):
-    ranker = RankBoost(T=2000)
+    ranker = RankBoost(T=200)
     info("training {} model...".format(metric))
     if metric == "perf":
         metric = -3
@@ -277,7 +280,7 @@ def construct_ranker(dataset, metric):
     return ranker.fit(X_new, y_new)
 
 
-def sample_from_design_space(k=10000):
+def sample_from_design_space(k=50):
     index = random.sample(range(design_space.size), k=k)
     design_pool = []
     info("sampling {} designs...".format(k))

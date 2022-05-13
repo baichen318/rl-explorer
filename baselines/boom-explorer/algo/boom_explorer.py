@@ -1,7 +1,17 @@
 # Author: baichen318@gmail.com
 
 
-import os
+import sys, os
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        os.path.pardir,
+        os.path.pardir,
+        "dse"
+    )
+)
 import random
 import functools
 import tqdm
@@ -9,6 +19,10 @@ import torch
 import gpytorch
 import numpy as np
 from time import time
+try:
+    from sklearn.externals import joblib
+except ImportError:
+    import joblib
 from botorch.utils.multi_objective.hypervolume import Hypervolume
 from botorch.utils.multi_objective.pareto import is_non_dominated
 from botorch.utils.multi_objective.box_decompositions.non_dominated import NondominatedPartitioning
@@ -17,6 +31,7 @@ from sample import micro_al, random_sample
 from dkl_gp import DKLGP
 from util import calc_adrs, array_to_tensor, tensor_to_array, scale_dataset, rescale_dataset
 from utils import info
+from simulation.boom.simulation import Gem5Wrapper
 
 
 def get_pareto_set(y: torch.Tensor):
@@ -148,7 +163,7 @@ def evaluate_microarchitecture(configs, design_space, vec):
     perf_model, power_model, area_model = load_ppa_model() 
     manager = Gem5Wrapper(
         configs,
-        problem.design_space,
+        design_space,
         vec,
         5
     )
@@ -218,7 +233,7 @@ def boom_explorer(configs, settings, problem):
                 evaluate_microarchitecture(
                     configs,
                     problem.design_space,
-                    tensor_to_array(new_x).astype("int")
+                    tensor_to_array(new_x).astype("int").ravel()
                 )
             ),
             0
