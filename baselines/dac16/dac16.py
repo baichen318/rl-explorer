@@ -1,6 +1,5 @@
 # Author: baichen318@gmail.com
 
-
 import sys, os
 sys.path.insert(
     0,
@@ -28,7 +27,7 @@ sys.path.insert(
         "simulation"
     )
 )
-import heapq
+os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
 import numpy as np
 from time import time
@@ -223,13 +222,13 @@ def main():
     L =  generate_L(dataset)
 
     # create a pool P by moving p unlabeled samples from U to P randomly
-    P = generate_P_from_U(32, L)
+    P = generate_P_from_U(64, L)
 
     # use L to train Adaboost.RT H1 & H2 with M1 & M2 hidden neurons
     H1 = pseudo_train_adaboost_rt(dataset, 6)
     H2 = pseudo_train_adaboost_rt(dataset, 8)
 
-    K = 5
+    K = 50
     W = 16
     N = 4
 
