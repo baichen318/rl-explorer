@@ -15,31 +15,50 @@ from time import time
 from util import create_logger, read_csv
 from exception import UnDefinedException
 
+
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+    elif classname.find("Linear") != -1:
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+
 class MLP(nn.Sequential):
     """
-        MLP as preprocessor of DNNGP
+        MLP as preprocessor of DKLGP
     """
     def __init__(self, input_dim, output_dim):
         super(MLP, self).__init__()
+        # self.add_module("linear-1", nn.utils.spectral_norm(nn.Linear(input_dim, 1000)))
         self.add_module("linear-1", nn.Linear(input_dim, 1000))
         self.add_module("relu-1", nn.ReLU())
+        # self.add_module("linear-2", nn.utils.spectral_norm(nn.Linear(1000, 500)))
         self.add_module("linear-2", nn.Linear(1000, 500))
         self.add_module("relu-2", nn.ReLU())
+        # self.add_module("linear-3", nn.utils.spectral_norm(nn.Linear(500, 50)))
         self.add_module("linear-3", nn.Linear(500, 50))
         self.add_module("relu-3", nn.ReLU())
+        # self.add_module("linear-4", nn.utils.spectral_norm(nn.Linear(50, output_dim)))
         self.add_module("linear-4", nn.Linear(50, output_dim))
+        # self.add_module("relu-4", nn.ReLU())
+        # self.add_module("linear-5", nn.Linear(50, output_dim))
 
-class DNNGP():
+class DKLGP():
     """
-        DNN-GP
+        DKL-GP: A Version of MultiTaskGP
     """
     def __init__(self, configs, x , y, **kwargs):
         self.configs = configs
         self.n_dim = x.shape[-1]
         self.n_target = y.shape[-1]
-        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.device = torch.device("cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.mlp = MLP(self.n_dim, kwargs["mlp_output_dim"])
+        self.mlp.apply(weights_init)
         x = self.forward_mlp(x)
         x = self.transform_xlayout(x)
         y = self.transform_ylayout(y)
@@ -87,6 +106,7 @@ class DNNGP():
     def forward_mlp(self, x):
         x = x.to(self.device)
         x = self.mlp(x)
+        # normalization
         x = x - x.min(0)[0]
         x = 2 * (x / x.max(0)[0]) - 1
         return x
@@ -109,21 +129,16 @@ class DNNGP():
                 y: <torch.Tensor>
             """
             y = y.chunk(self.n_target, dim=0)
-            return torch.cat([y[i] for i in range(2)], dim=1)
+            return torch.cat([y[i].unsqueeze(1) for i in range(2)], dim=1)
 
         self.set_eval()
         with torch.no_grad(), gpytorch.settings.use_toeplitz(False), gpytorch.settings.fast_pred_var():
-            pred = self.forward(x)
-        pred = _transform_ylayout(pred.mean.unsqueeze(1))
+            x = self.forward_mlp(x)
+            x = self.transform_xlayout(x)
+            pred = self.gp(x)
+        pred = _transform_ylayout(pred.mean)
 
         return pred
-
-    def forward(self, x):
-        x = x.to(self.device)
-        x = self.forward_mlp(x)
-        x = self.transform_xlayout(x)
-
-        return self.gp(x)
 
     def sample(self, x, y):
         """
@@ -161,11 +176,11 @@ class DNNGP():
         self.gp.load_state_dict(state_dict["gp"])
         self.set_eval()
 
-class DNNGPV2(gpytorch.models.ExactGP):
+class DKLGPV2(gpytorch.models.ExactGP):
         def __init__(self, configs, train_x, train_y,
             likelihood=gpytorch.likelihoods.GaussianLikelihood()):
 
-            super(DNNGPV2, self).__init__(train_x, train_y, likelihood)
+            super(DKLGPV2, self).__init__(train_x, train_y, likelihood)
             self.configs = configs
             self.mean_module = gpytorch.means.LinearMean(input_size=100)
             # self.covar_module = gpytorch.kernels.GridInterpolationKernel(

@@ -5,16 +5,18 @@ import math
 import torch
 from time import time
 import numpy as np
-from space import parse_design_space
-from util import parse_args, get_configs, create_logger, write_excel, write_txt
-from exception import UnDefinedException
+try:
+    from sklearn.externals import joblib
+except ImportError:
+    import joblib
 
-# seed = 2021
+
 seed = int(time())
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 random.seed(seed)
 np.random.seed(seed)
+sampler = None
 
 class RandomizedTED(object):
     """
@@ -22,11 +24,11 @@ class RandomizedTED(object):
         `mu`: <float>
     """
 
-    def __init__(self, kwargs):
+    def __init__(self, configs):
         super(RandomizedTED, self).__init__()
-        self.Nrted = kwargs["Nrted"]
-        self.mu = kwargs["mu"]
-        self.sig = kwargs["sig"]
+        self.Nrted = configs["Nrted"]
+        self.mu = configs["mu"]
+        self.sig = configs["sig"]
 
     def f(self, u, v):
         # t = np.linalg.norm(np.array(u,dtype=np.float64)-np.array(v,dtype=np.float64))**2
@@ -85,28 +87,48 @@ class RandomizedTED(object):
             K_.append(self.select_mi(M_, F))
         return K_
 
-class ClusteringRandomizedTED(RandomizedTED):
+
+class MicroAL(RandomizedTED):
     """
         `design_space`: <DesignSpace>
     """
-    def __init__(self, configs):
-        super(ClusteringRandomizedTED, self).__init__(configs)
+    # dataset constructed after cluster w.r.t. DecodeWidth
+    _cluster_dataset = None
+   
+    def __init__(self, configs, problem):
+        super(MicroAL, self).__init__(configs)
         self.configs = configs
-        self.batch_per_cluster = self.configs["batch"] // self.configs["cluster"]
+        self.num_per_cluster = self.configs["batch"] // self.configs["cluster"]
+        self.decoder_threshold = self.configs["decoder-threshold"]
         # feature dimension
-        assert self.configs["design"] == "boom", \
-            "[ERROR]: %s is not supported." % self.configs["design"]
-        self.n_dim = 10
+        self.n_dim = problem.n_dim
 
-    def distance(self, x, y, l=2):
+    @property
+    def cluster_dataset(self):
+        return self._cluster_dataset
+
+    @cluster_dataset.setter
+    def cluster_dataset(self, dataset):
+        self._cluster_dataset = dataset
+
+    def set_weight(self, pre_v=None):
+        # if `pre_v` is specified, then `weights` will be assigned accordingly
+        if pre_v:
+            assert isinstance(pre_v, list) and len(pre_v) == self.n_dim, \
+                "[ERROR]: unsupported pre_v."
+            weights = pre_v
+        else:
+            # NOTICE: `decodeWidth` should be assignd with larger weights
+            weights = [1 for i in range(self.n_dim)]
+            weights[1] *= self.decoder_threshold
+        return weights
+
+    def distance(self, x, y, l=2, pre_v=None):
         """calculates distance between two points"""
-        # NOTICE: `decodeWidth` should be assignd with larger weights
-        weights = [1 for i in range(self.n_dim)]
-        weights[4] *= 5
+        weights = self.set_weight(pre_v=pre_v)
+        return np.sum((x - y) ** l * weights).astype(float)
 
-        return np.sum((x - y)**l * weights).astype(float)
-
-    def clustering(self, points, k, max_iter=100):
+    def kmeans(self, points, k, max_iter=100, pre_v=None):
         """k-means clustering algorithm"""
         centroids = [points[i] for i in np.random.randint(len(points), size=k)]
         new_assignment = [0] * len(points)
@@ -120,7 +142,8 @@ class ClusteringRandomizedTED(RandomizedTED):
             i += 1
 
             for p in range(len(points)):
-                distances = [self.distance(points[p], centroids[c]) for c in range(len(centroids))]
+                distances = [self.distance(points[p], centroids[c], pre_v=pre_v) \
+                    for c in range(len(centroids))]
                 new_assignment[p] = np.argmin(distances)
 
             for c in range(len(centroids)):
@@ -131,7 +154,7 @@ class ClusteringRandomizedTED(RandomizedTED):
                     centroids[c] = points[np.random.choice(len(points))]
                     split = True
 
-        loss = np.sum([self.distance(points[p], centroids[new_assignment[p]]) \
+        loss = np.sum([self.distance(points[p], centroids[new_assignment[p]], pre_v=pre_v) \
             for p in range(len(points))])
 
         return centroids, new_assignment, loss
@@ -143,47 +166,9 @@ class ClusteringRandomizedTED(RandomizedTED):
             new_dataset[cluster[i]].append(dataset[i])
         for i in range(len(new_dataset)):
             new_dataset[i] = np.array(new_dataset[i])
-        if self.configs["vis-crted"]:
-            import matplotlib.pyplot as plt
-            from sklearn.manifold import TSNE
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            markers = [
-                '.', ',', 'o', 'v', '^', '<', '>', '1', '2', '3',
-                '4', '8', 's', 'p', 'P', '*', 'h', 'H', '+', 'x',
-                'X', 'D', 'd', '|', '_'
-            ]
-            colors = [
-                'c', 'b', 'g', 'r', 'm', 'y', 'k', 'w'
-            ]
-            tsne = TSNE(n_components=2)
-            i = 0
-            h = []
-            anno = ["cluster %d" % d for d in range(1, len(new_dataset) + 1)]
-            for c in new_dataset:
-                tsne.fit_transform(c)
-                for _c in tsne.embedding_:
-                    h.append(
-                        ax.scatter(
-                            _c[-2],
-                            _c[-1],
-                            s=4,
-                            marker=markers[2],
-                            c=colors[i],
-                            label=anno
-                        )
-                    )
-                i += 1
-            # plt.legend(tuple(h), labels=anno, loc=0, frameon=False)
-            plt.xlabel("c.c.")
-            plt.ylabel("Power")
-            plt.title("Clusters on design space")
-            plt.grid()
-            plt.show()
         return new_dataset
 
-    def crted(self, dataset):
+    def micro_al(self, dataset):
         """
             dataset: <numpy.array>: M x n_dim
         """
@@ -196,22 +181,22 @@ class ClusteringRandomizedTED(RandomizedTED):
             """
             return [list(v) for v in set([tuple(v) for v in vec])]
 
-        centroids, new_assignment, loss = self.clustering(
+        centroids, new_assignment, loss = self.kmeans(
             dataset,
             self.configs["cluster"],
-            max_iter=500
+            max_iter=self.configs["cluster-iteration"]
         )
-        new_dataset = self.gather_groups(dataset, new_assignment)
+        self.cluster_dataset = self.gather_groups(dataset, new_assignment)
 
-        data = []
-        for c in new_dataset:
+        sampled_data = []
+        for c in self.cluster_dataset:
             x = []
-            while len(x) < min(self.batch_per_cluster, len(c)):
-                if len(c) > (self.batch_per_cluster - len(x)) and \
-                    len(c) > self.configs["Nrted"]:
+            while len(x) < min(self.num_per_cluster, len(c)):
+                if len(c) > (self.num_per_cluster - len(x)) and \
+                    len(c) > self.Nrted:
                     candidates = self.rted(
                         c,
-                        self.batch_per_cluster - len(x)
+                        self.num_per_cluster - len(x)
                     )
                 else:
                     candidates = c
@@ -219,17 +204,18 @@ class ClusteringRandomizedTED(RandomizedTED):
                     x.append(_c)
                 x = _delete_duplicate(x)
             for _x in x:
-                data.append(_x)
+                sampled_data.append(_x)
+        return sampled_data
 
-        return data
 
 class Sampler(object):
     """
         Sampler: sample configurations
     """
-    def __init__(self, configs):
+    def __init__(self, configs, problem):
         super(Sampler, self).__init__()
         self.configs = configs
+        self.problem = problem
 
     def sample(self):
         """
@@ -237,71 +223,53 @@ class Sampler(object):
         """
         raise NotImplementedError
 
+
 class RandomSampler(Sampler):
     """
         RandomSampler: randomly sample configurations
     """
-    def __init__(self, configs):
-        super(RandomSampler, self).__init__(configs)
-        random.seed(2021)
+    def __init__(self, configs, problem):
+        super(RandomSampler, self).__init__(configs, problem)
+        self.visited = set()
+
     def set_random_state(self, random_state):
         random.seed(random_state)
 
-    def sample(self, x, y, batch=5):
-        """
-            dataset: <numpy.ndarray> (M x N)
-        """
-        idx = random.sample(range(len(x)), min(batch, len(x)))
-        _x, _y = [], []
-        for i in idx:
-            _x.append(x[i])
-            _y.append(y[i])
-        x = np.delete(x, idx, axis=0)
-        y = np.delete(y, idx, axis=0)
-        return (x, y), (np.array(_x), np.array(_y))
+    def sample(self, batch=1):
+        index = []
+        for i in range(batch):
+            idx = random.sample(range(self.problem.design_space.size), k=1)[0]
+            while idx in self.visited:
+                idx = random.sample(range(self.problem.design_space.size), k=1)[0]
+            self.visited.add(idx)
+            index.append(idx)
 
-    def sample_v2(self, problem, batch=1):
-        idx = random.sample(range(0, problem.n_sample), batch)
-        x = problem.x[idx]
-        y = problem.evaluate_true(x)
-        return x.to(torch.float32), y
+        x = []
+        for idx in index:
+            x.append(self.problem.design_space.idx_to_vec(idx))
+        x = np.array(x)
+        return x
 
-def crted_sample(configs, problem, mode):
-    """
-        configs: <dict>
-        problem: <MultiObjectiveTestProblem>
-        mode: <str>
-    """
-    if mode == "online":
-        sampler = ClusteringRandomizedTED(configs)
-        x = torch.Tensor(
-            sampler.crted(
-                problem.design_space.sample_v1(1).numpy()
-            )
-        )
-        y = torch.Tensor([])
-        print(x, len(x), type(x))
-        for _x in x:
-            _y = problem.evaluate_microarchitecture(_x.numpy())
-            y = torch.cat((y, _y), 0)
-    else:
-        assert mode == "offline"
-        sampler = ClusteringRandomizedTED(configs)
-        x = torch.Tensor(sampler.crted(problem.x.numpy()))
-        y = problem.evaluate_true(x)
-        problem.remove_sampled_data(x)
-    return x, y
 
-def random_sample(configs, x, y, batch=1):
-    sampler = RandomSampler(configs)
-    return sampler.sample(x, y, batch)
-
-def random_sample_v2(configs, problem, batch):
+def micro_al(configs, problem):
     """
         configs: <dict>
         problem: <MultiObjectiveTestProblem>
     """
-    sampler = RandomSampler(configs)
-    x, y = sampler.sample_v2(problem, batch)
+    global sampler
+    sampler = MicroAL(configs, problem)
+    x = torch.Tensor(sampler.micro_al(problem.x.numpy()))
+    y = problem.evaluate_true(x)
     problem.remove_sampled_data(x)
     return x, y
+
+
+def random_sample(configs, problem, batch):
+    """
+        configs: <dict>
+        problem: <MultiObjectiveTestProblem>
+    """
+    global sampler
+    sampler = RandomSampler(configs, problem)
+    x = sampler.sample(batch)
+    return x
