@@ -254,6 +254,7 @@ def partition_sorted_list(design_pool, sorted_list, threshold, metric="power"):
 def construct_rank_list(design_pool, ranker):
     comb = itertools.combinations(range(design_pool.shape[0]), 2)
     rank_list = np.zeros((design_pool.shape[0], design_pool.shape[0]))
+    info("constructing rank list...")
     for k, (i, j) in enumerate(comb):
         rank_list[i, j] = ranker.predict(
             np.expand_dims(design_pool[i] - design_pool[j], axis=0)
@@ -263,6 +264,7 @@ def construct_rank_list(design_pool, ranker):
 
 def construct_ranker(dataset, metric):
     ranker = RankBoost(T=2000)
+    info("training {} model...".format(metric))
     if metric == "perf":
         metric = -3
     elif metric == "power":
@@ -271,13 +273,14 @@ def construct_ranker(dataset, metric):
         assert metric == "area"
         metric = -1
     # align with the original paper
-    X_new, y_new = transform_pairwise(dataset[:100, :-3], dataset[:100, metric])
+    X_new, y_new = transform_pairwise(dataset[:50, :-3], dataset[:50, metric])
     return ranker.fit(X_new, y_new)
 
 
 def sample_from_design_space(k=10000):
     index = random.sample(range(design_space.size), k=k)
     design_pool = []
+    info("sampling {} designs...".format(k))
     for idx in index:
         design_pool.append(design_space.idx_to_vec(idx))
     design_pool = np.array(design_pool)
