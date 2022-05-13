@@ -315,7 +315,7 @@ def main():
             rl_explorer_root,
             "baselines",
             "isca14",
-            "solution.txt"
+            "{}-solution.txt".format(configs["design"]).replace(' ', '-')
         ),
         'w'
     ) as f:
