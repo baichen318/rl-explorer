@@ -5,13 +5,16 @@ import numpy as np
 
 
 class Preference(object):
-	def __init__(self, reward_space):
+	def __init__(self, scale_factor, reward_space):
+		"""
+			scale_factor: <list>
+		"""
 		super(Preference, self).__init__()
 		self.reward_space = reward_space
 		# NOTICE: `scale_factor` compares inprovement contributions on PPA values
 		# power model is not accurate compared to performance and area models
 		# so we apply `scale_factor`
-		self.scale_factor = [20, 1, 20]
+		self.scale_factor = scale_factor
 	
 	def init_preference(self):
 		preference = np.ones(self.reward_space) * self.scale_factor

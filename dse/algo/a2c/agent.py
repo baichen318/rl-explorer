@@ -32,7 +32,7 @@ class BOOMAgent(object):
             self.envs.reward_space
         )
         self._model = copy.deepcopy(self.model)
-        self.preference = Preference(self.envs.reward_space)
+        self.preference = Preference(self.configs["ppa-preference"], self.envs.reward_space)
         self.buffer = Buffer(
             self.envs.observation_space,
             self.envs.reward_space,
