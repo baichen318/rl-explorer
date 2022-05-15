@@ -18,6 +18,7 @@ sys.path.insert(
     0,
     os.path.join(os.path.dirname(__file__), os.path.pardir, "simulation")
 )
+import random
 import argparse
 import torch
 import torch.nn as nn
@@ -200,16 +201,13 @@ class Stats(object):
 
     def show_current_status(self):
         for metric in self.metrics:
+            msg = "{} ".format(metric)
             for idx in self.index:
                 try:
-                    info("{} {}: {}".format(
-                            metric,
-                            idx,
-                            self.stats[metric][idx][-1]
-                        )
-                    )
+                    msg += "{}: {} ".format(idx, self.stats[metric][idx][-1])
                 except IndexError:
                     pass
+            info(msg)
 
     def summary(self):
         for metric in self.metrics:
@@ -237,7 +235,7 @@ def parse_args():
             required=True,
             type=str,
             default="simulation",
-            choices=["simulation", "calib", "validate"],
+            choices=["simulation", "calib", "ablation-study", "validate"],
             help="working mode specification"
         )
         parser.add_argument(
@@ -394,6 +392,48 @@ def calib_xgboost(design_space, dataset):
             visualize(metric, all_dataset, model)
 
 
+def ablation_study_calib_xgboost(design_space, dataset):
+
+    # we make a pertubation
+    random.seed(2022)
+    n_samples = dataset.shape[0]
+    idx = random.sample(range(n_samples), k=n_samples)
+    dataset = dataset[idx]
+
+    partition = round(0.2 * (n_samples))
+    train_dataset = dataset[partition:, :]
+    test_dataset = dataset[:partition, :]
+    n_samples = train_dataset.shape[0]
+
+    ratio = [i for i in np.arange(1, 10, 0.5)]
+    for _ratio in ratio:
+        _ratio = _ratio / 10
+        info("current ratio: {}".format(_ratio))
+        stats = Stats(Dataset.metrics)
+        _train_dataset = Dataset(
+            train_dataset[:round(n_samples * _ratio), :],
+            len(design_space.descriptions[configs["design"]].keys())
+        )
+        _test_dataset = Dataset(
+            test_dataset,
+            len(design_space.descriptions[configs["design"]].keys())
+        )
+        for metric in Dataset.metrics:
+            model = CalibModel(metric)
+            train_feature, train_gt = getattr(
+                _train_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            test_feature, test_gt = getattr(
+                _test_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            model.fit(train_feature, train_gt)
+            model.predict(test_feature, test_gt)
+            stats.update(model)
+        stats.show_current_status()
+
+
 def adjust_data(design_space, data):
     """
         Re-cycle from DAC to ICCAD
@@ -548,6 +588,18 @@ def load_calibrate_ppa_models():
     return perf_model, power_model, area_model
 
 
+def abalation_study():
+    design_space = load_design_space()
+    dataset = load_txt(
+        os.path.join(
+            rl_explorer_root,
+            configs["dataset"]
+        ),
+        fmt=float
+    )
+    ablation_study_calib_xgboost(design_space, dataset)
+
+
 def validate():
     design_space = load_design_space()
     dataset = load_txt(
@@ -576,6 +628,8 @@ def main():
         generate_simulation_dataset()
     elif args.mode == "calib":
         calib_dataset()
+    elif args.mode == "ablation-study":
+        abalation_study()
     else:
         assert args.mode == "validate", \
             "[ERROR]: {} is not supported.".format(args.mode)
