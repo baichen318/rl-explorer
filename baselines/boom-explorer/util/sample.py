@@ -117,7 +117,7 @@ class MicroAL(RandomizedTED):
         else:
             # NOTICE: `decodeWidth` should be assignd with larger weights
             weights = [1 for i in range(self.n_dim)]
-            weights[1] *= self.decoder_threshold
+            weights[4] *= self.decoder_threshold
         return weights
 
     def distance(self, x, y, l=2, pre_v=None):

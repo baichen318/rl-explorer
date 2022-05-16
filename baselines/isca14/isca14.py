@@ -280,7 +280,7 @@ def construct_ranker(dataset, metric):
     return ranker.fit(X_new, y_new)
 
 
-def sample_from_design_space(k=50):
+def sample_from_design_space(k=200):
     index = random.sample(range(design_space.size), k=k)
     design_pool = []
     info("sampling {} designs...".format(k))

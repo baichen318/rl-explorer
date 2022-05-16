@@ -165,7 +165,7 @@ def evaluate_microarchitecture(configs, design_space, vec):
         configs,
         design_space,
         vec,
-        5
+        4
     )
     perf = manager.evaluate_perf()
     power, area = manager.evaluate_power_and_area()
