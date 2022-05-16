@@ -4,8 +4,7 @@
 from collections import deque
 from time import time
 from dse.env.boom.env import BOOMEnv
-from dse.algo.a2c.agent import BOOMAgent
-# from dse.env.rocket.env import RocketEnv
+from dse.env.rocket.env import RocketEnv
 from torch.utils.tensorboard import SummaryWriter
 # we do not use visdom for visualization
 # from visualizer import Visualizer
@@ -120,10 +119,11 @@ def train_a2c(configs, agent, fixed_preference, episode, step):
 
 def a2c(env, configs):
     if env == BOOMEnv:
-        agent = BOOMAgent(configs, env)
-    # else:
-    #     assert env == RocketEnv
-    #     agent = RocketAgent(configs, env)
+        from dse.algo.a2c.agent import BOOMAgent as Agent
+    else:
+        assert env == RocketEnv
+        from dse.algo.a2c.agent import RocketAgent as Agent
+    agent = Agent(configs, env)
 
     # initialization
     step, episode = 0, 0

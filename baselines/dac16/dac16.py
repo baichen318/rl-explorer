@@ -31,6 +31,7 @@ os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
 import numpy as np
 from time import time
+from datetime import datetime
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.neural_network import MLPRegressor
@@ -39,7 +40,8 @@ try:
 except ImportError:
     import joblib
 from dse.env.boom.design_space import parse_design_space
-from simulation.boom.simulation import Gem5Wrapper
+from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from utils import parse_args, get_configs, info, load_txt
 
 
@@ -191,7 +193,7 @@ def calc_cv(data1, data2):
 
 
 def evaluate_microarchitecture(vec, idx=5):
-    manager = Gem5Wrapper(
+    manager = Simulator(
         configs,
         design_space,
         vec,
@@ -282,7 +284,7 @@ def main():
             rl_explorer_root,
             "baselines",
             "dac16",
-            "solution.txt"
+            "solution-{}.txt"."{}".format(datetime.now()).replace(' ', '-')
         ),
         'w'
     ) as f:
@@ -300,6 +302,7 @@ if __name__ == "__main__":
     design_space = parse_design_space(configs)
     configs["configs"] = args.configs
     configs["logger"] = None
+    Simulator = None
     rl_explorer_root = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
@@ -311,18 +314,36 @@ if __name__ == "__main__":
         rl_explorer_root,
         configs["ppa-model"]
     )
-    perf_root = os.path.join(
-        ppa_model_root,
-        "boom-perf.pt"
-    )
-    power_root = os.path.join(
-        ppa_model_root,
-        "boom-power.pt"
-    )
-    area_root = os.path.join(
-        ppa_model_root,
-        "boom-area.pt"
-    )
+    if "BOOM" in configs["design"]:
+        perf_root = os.path.join(
+            ppa_model_root,
+            "boom-perf.pt"
+        )
+        power_root = os.path.join(
+            ppa_model_root,
+            "boom-power.pt"
+        )
+        area_root = os.path.join(
+            ppa_model_root,
+            "boom-area.pt"
+        )
+        Simulator = BOOMGem5Wrapper
+    else:
+        assert configs["design"] == "Rocket", \
+            "{} is not supported.".format(configs["design"])
+        perf_root = os.path.join(
+            ppa_model_root,
+            "rocket-perf.pt"
+        )
+        power_root = os.path.join(
+            ppa_model_root,
+            "rocket-power.pt"
+        )
+        area_root = os.path.join(
+            ppa_model_root,
+            "rocket-area.pt"
+        )
+        Simulator = RocketGem5Wrapper
     perf_model = joblib.load(perf_root)
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)

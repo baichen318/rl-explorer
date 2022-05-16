@@ -57,3 +57,36 @@ class BOOMActorCriticNetwork(MLPBase):
         policy = self.actor(x)
         value = self.critic(x)
         return policy, value
+
+
+class RocketActorCriticNetwork(MLPBase):
+    def __init__(self, observation_shape, action_shape, reward_shape):
+        super(RocketActorCriticNetwork, self).__init__(
+            observation_shape,
+            action_shape,
+            reward_shape
+        )
+        self.actor = nn.Sequential(
+            nn.Linear(512 + self.reward_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, self.action_shape)
+        )
+        self.critic = nn.Sequential(
+            nn.Linear(512 + self.reward_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, self.reward_shape)
+        )
+        self.init_network()
+
+    def init_network(self):
+        for p in self.modules():
+            if isinstance(p, nn.Conv2d) or isinstance(p, nn.Linear):
+                init.kaiming_uniform_(p.weight)
+                p.bias.data.zero_()
+
+    def forward(self, state, preference):
+        x = self.base(state)
+        x = torch.cat((x, preference), dim=1)
+        policy = self.actor(x)
+        value = self.critic(x)
+        return policy, value
