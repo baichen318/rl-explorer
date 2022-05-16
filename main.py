@@ -53,10 +53,10 @@ def rl_explorer():
     pre_requisite()
     if "BOOM" in configs["design"]:
         from dse.env.boom.env import BOOMEnv as env
-    # elif configs["design"] == "rocket":
-    #     assert configs["design"] == "rocket", \
-    #         "[ERROR]: {} is not supported.".format(configs["design"])
-    #     from dse.env.rocket.design_env import RocketEnv as env
+    else:
+        assert configs["design"] == "Rocket", \
+            "[ERROR]: {} is not supported.".format(configs["design"])
+        from dse.env.rocket.env import RocketEnv as env
     a2c(env, configs)
 
 

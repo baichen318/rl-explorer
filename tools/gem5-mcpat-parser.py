@@ -304,8 +304,10 @@ def get_config(conf):
     return curr_conf if curr_conf != None else 0
 
 
-
 def post_handle_rocket(root):
+    from dse.env.rocket.design_space import parse_design_space
+
+    design_space = parse_design_space(configs)
     for param in root.iter("param"):
         name = param.attrib["name"]
         value = param.attrib["value"]
@@ -327,30 +329,22 @@ def post_handle_rocket(root):
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "number_entries":
-                    if args.state[1] in [0, 4]:
-                        param.attrib["value"] = str(32)
-                    elif args.state[1] in [1, 2]:
-                        param.attrib["value"] = str(4)
-                    else:
-                        assert args.state[1] in [3, 5]
-                        param.attrib["value"] = str(16)
+                    itlb = design_space.components_mappings[
+                        design_space.components[1]
+                    ][args.state[1]][1]
+                    param.attrib["value"] = str(itlb)
         if name == "icache":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "icache_config":
-                    icache_size = [
-                        4 * 64 * 64,
-                        1 * 64 * 64,
-                        2 * 64 * 64,
-                        2 * 64 * 64,
-                        2 * 64 * 64,
-                        1 * 64 * 64
-                    ]
-                    icache_assoc = [4, 1, 2, 2, 2, 1]
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        icache_size[args.state[1]],
+                        design_space.components_mappings[
+                            design_space.components[1]
+                        ][args.state[1]][0] * 64 * 64,
                         64,
-                        icache_assoc[args.state[1]],
+                        design_space.components_mappings[
+                            design_space.components[1]
+                        ][args.state[1]][0],
                         1,
                         1,
                         3,
@@ -365,34 +359,26 @@ def post_handle_rocket(root):
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "number_entries":
-                    if args.state[5] in [0, 5, 7, 9]:
-                        param.attrib["value"] = str(32)
-                    elif args.state[5] in [1, 2, 3, 8]:
-                        param.attrib["value"] = str(4)
-                    else:
-                        assert args.state[5] in [4, 6]
-                        param.attrib["value"] = str(16)
+                    param.attrib["value"] = str(
+                        design_space.components_mappings[
+                            design_space.components[5]
+                        ][args.state[5]][2]
+                    )
         if name == "dcache":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "dcache_config":
-                    dcache_size = [
-                        64 * 4 * 64,
-                        64 * 1 * 64,
-                        64 * 1 * 64,
-                        64 * 2 * 64,
-                        64 * 2 * 64,
-                        64 * 2 * 64,
-                        64 * 1 * 64,
-                        64 * 4 * 64,
-                        64 * 1 * 64,
-                        64 * 4 * 64,
-                    ]
-                    dcache_assoc = [4, 1, 1, 2, 2, 2, 1, 4, 1, 4]
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        dcache_size[args.state[5]],
+                        design_space.components_mappings[
+                            design_space.components[5]
+                        ][args.state[5]][0] * \
+                            design_space.components_mappings[
+                                design_space.components[5]
+                            ][args.state[5]][1] * 64,
                         64,
-                        dcache_assoc[args.state[5]],
+                        design_space.components_mappings[
+                            design_space.components[5]
+                        ][args.state[5]][1],
                         1,
                         1,
                         3,
@@ -400,20 +386,23 @@ def post_handle_rocket(root):
                         1
                     )
                 if name == "buffer_sizes":
-                    mshr = [1, 0, 0, 0, 0, 1, 0, 2, 2, 2]
+                    mshr = design_space.components_mappings[
+                        design_space.components[5]
+                    ][args.state[5]][3]
                     param.attrib["value"] = "%s,%s,%s,%s" % (
-                        2 if mshr[args.state[5]] == 0 else mshr[args.state[5]] << 1,
-                        2, 2, 2
+                        2 if mshr == 0 else mshr << 1, 2, 2, 2
                     )
             if name == "BTB":
                 for param in component.iter("param"):
                     name = param.attrib["name"]
                     if name == "BTB_config":
-                        capacity = [0, 512, 256, 1024, 512]
+                        bht = design_space.components_mappings[
+                            design_space.components[0]
+                        ][args.state[0]][2]
                         param.attrib["value"] = "%s,%s,%s,%s,%s,%s" % (
-                            capacity[args.state[0]], 2, 1, 1, 1
+                            bht, 2, 1, 1, 1
                         )
-        if name == "L2":
+        if name == "L20":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "L2_config":
@@ -556,7 +545,7 @@ def post_handle(root):
     if "BOOM" in configs["design"]:
         post_handle_boom(root)
     else:
-        assert configs["design"] == "rocket", \
+        assert configs["design"] == "Rocket", \
             "[ERROR]: unsupported design: {}".format(args.design)
         post_handle_rocket(root)
 

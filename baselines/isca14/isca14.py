@@ -42,7 +42,8 @@ try:
 except ImportError:
     import joblib
 from dse.env.boom.design_space import parse_design_space
-from simulation.boom.simulation import Gem5Wrapper
+from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from utils import parse_args, get_configs, info, load_txt
 
 
@@ -192,7 +193,7 @@ def load_dataset():
 
 
 def evaluate_microarchitecture(vec, idx=5):
-    manager = Gem5Wrapper(
+    manager = Simulator(
         configs,
         design_space,
         vec,
@@ -339,6 +340,7 @@ if __name__ == "__main__":
     design_space = parse_design_space(configs)
     configs["configs"] = args.configs
     configs["logger"] = None
+    Simulator = None
     rl_explorer_root = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
@@ -350,40 +352,64 @@ if __name__ == "__main__":
         rl_explorer_root,
         configs["ppa-model"]
     )
-    perf_root = os.path.join(
-        ppa_model_root,
-        "boom-perf.pt"
-    )
-    power_root = os.path.join(
-        ppa_model_root,
-        "boom-power.pt"
-    )
-    area_root = os.path.join(
-        ppa_model_root,
-        "boom-area.pt"
-    )
+    if "BOOM" in configs["design"]:
+        perf_root = os.path.join(
+            ppa_model_root,
+            "boom-perf.pt"
+        )
+        power_root = os.path.join(
+            ppa_model_root,
+            "boom-power.pt"
+        )
+        area_root = os.path.join(
+            ppa_model_root,
+            "boom-area.pt"
+        )
+        Simulator = BOOMGem5Wrapper
+        # set constraint DSE
+        ppa = {
+            # ipc power area
+            # Small SonicBOOM
+            "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
+            "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
+            # Medium SonicBOOM
+            "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
+            "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
+            # Large SonicBOOM
+            "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
+            "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
+            # Mega SonicBOOM
+            "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
+            "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
+            # Giga SonicBOOM
+            "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
+        }
+    else:
+        assert configs["design"] == "Rocket", \
+            "{} is not supported.".format(configs["design"])
+        perf_root = os.path.join(
+            ppa_model_root,
+            "rocket-perf.pt"
+        )
+        power_root = os.path.join(
+            ppa_model_root,
+            "rocket-power.pt"
+        )
+        area_root = os.path.join(
+            ppa_model_root,
+            "rocket-area.pt"
+        )
+        Simulator = RocketGem5Wrapper
+        # set constraint DSE
+        ppa = {
+            # ipc power area
+            # Small SonicBOOM
+            "Rocket": [0, 0, 0],
+        }
     perf_model = joblib.load(perf_root)
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)
 
-    # set constraint DSE
-    ppa = {
-        # ipc power area
-        # Small SonicBOOM
-        "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-        "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-        # Medium SonicBOOM
-        "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-        "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-        # Large SonicBOOM
-        "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-        "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-        # Mega SonicBOOM
-        "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-        "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-        # Giga SonicBOOM
-        "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
-    }
     threshold_power = ppa[configs["design"]][1]
     threshold_area = ppa[configs["design"]][2]
     main()

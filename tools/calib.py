@@ -18,6 +18,7 @@ sys.path.insert(
     0,
     os.path.join(os.path.dirname(__file__), os.path.pardir, "simulation")
 )
+import random
 import argparse
 import torch
 import torch.nn as nn
@@ -36,7 +37,6 @@ except ImportError:
 from xgboost import XGBRegressor
 from utils import get_configs, load_txt, \
     write_txt, mkdir, info
-from simulation.boom.simulation import Gem5Wrapper
 
 
 markers = [
@@ -160,7 +160,7 @@ class CalibModel(object):
         if "BOOM" in configs["design"]:
             name = "boom"
         else:
-            assert "rocket" == configs["design"], \
+            assert "Rocket" == configs["design"], \
                     "[ERROR]: {} is not supported.".format(configs["design"])
             name = "rocket"
         output_path = os.path.join(
@@ -200,16 +200,13 @@ class Stats(object):
 
     def show_current_status(self):
         for metric in self.metrics:
+            msg = "{} ".format(metric)
             for idx in self.index:
                 try:
-                    info("{} {}: {}".format(
-                            metric,
-                            idx,
-                            self.stats[metric][idx][-1]
-                        )
-                    )
+                    msg += "{}: {} ".format(idx, self.stats[metric][idx][-1])
                 except IndexError:
                     pass
+            info(msg)
 
     def summary(self):
         for metric in self.metrics:
@@ -237,7 +234,7 @@ def parse_args():
             required=True,
             type=str,
             default="simulation",
-            choices=["simulation", "calib", "validate"],
+            choices=["simulation", "calib", "ablation-study", "validate"],
             help="working mode specification"
         )
         parser.add_argument(
@@ -275,12 +272,17 @@ def load_dataset(path):
 
 
 def load_design_space():
+    global Simulator
     if "BOOM" in configs["design"]:
         from dse.env.boom.design_space import parse_design_space
-    # else:
-    #     assert configs["design"] == "rocket", \
-    #         "[ERROR]: {} is not supported.".format(configs["design"])
-    #     from dse.env.rocket.design_space import parse_design_space
+        from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+        Simulator = BOOMGem5Wrapper
+    else:
+        assert configs["design"] == "Rocket", \
+            "[ERROR]: {} is not supported.".format(configs["design"])
+        from dse.env.rocket.design_space import parse_design_space
+        from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
+        Simulator = RocketGem5Wrapper
     return parse_design_space(configs)
 
 
@@ -362,18 +364,18 @@ def calib_xgboost(design_space, dataset):
             model.predict(test_feature, test_gt)
             stats.update(model)
             stats.show_current_status()
-            visualize(
-                metric,
-                test_dataset,
-                model,
-                save_path=os.path.join(
-                    configs["vis-root"],
-                    "{}-{}.jpg".format(
-                        metric,
-                        fold
-                    )
-                )
-            )
+            # visualize(
+            #     metric,
+            #     test_dataset,
+            #     model,
+            #     save_path=os.path.join(
+            #         configs["vis-root"],
+            #         "{}-{}.jpg".format(
+            #             metric,
+            #             fold
+            #         )
+            #     )
+            # )
         fold += 1
     stats.summary()
     if args.save:
@@ -394,7 +396,49 @@ def calib_xgboost(design_space, dataset):
             visualize(metric, all_dataset, model)
 
 
-def adjust_data(design_space, data):
+def ablation_study_calib_xgboost(design_space, dataset):
+
+    # we make a pertubation
+    random.seed(2022)
+    n_samples = dataset.shape[0]
+    idx = random.sample(range(n_samples), k=n_samples)
+    dataset = dataset[idx]
+
+    partition = round(0.2 * (n_samples))
+    train_dataset = dataset[partition:, :]
+    test_dataset = dataset[:partition, :]
+    n_samples = train_dataset.shape[0]
+
+    ratio = [i for i in np.arange(1, 10, 0.5)]
+    for _ratio in ratio:
+        _ratio = _ratio / 10
+        info("current ratio: {}".format(_ratio))
+        stats = Stats(Dataset.metrics)
+        _train_dataset = Dataset(
+            train_dataset[:round(n_samples * _ratio), :],
+            len(design_space.descriptions[configs["design"]].keys())
+        )
+        _test_dataset = Dataset(
+            test_dataset,
+            len(design_space.descriptions[configs["design"]].keys())
+        )
+        for metric in Dataset.metrics:
+            model = CalibModel(metric)
+            train_feature, train_gt = getattr(
+                _train_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            test_feature, test_gt = getattr(
+                _test_dataset,
+                "get_{}_dataset".format(metric)
+            )()
+            model.fit(train_feature, train_gt)
+            model.predict(test_feature, test_gt)
+            stats.update(model)
+        stats.show_current_status()
+
+
+def adjust_boom_data(design_space, data):
     """
         Re-cycle from DAC to ICCAD
         branchPredictor: data[0],
@@ -470,6 +514,36 @@ def adjust_data(design_space, data):
     return data
 
 
+def adjust_rocket_data(design_space, data):
+    """
+        Re-cycle from DAC to ICCAD
+        BTB: data[0],
+        R. I-Cache: data[1],
+        FPU: data[2],
+        mulDiv: data[3],
+        useVM: data[4],
+        R. D-Cache: data[5],
+    """
+    data[0] += 1
+    data[1] += 1
+    data[2] += 1
+    data[3] += 1
+    data[4] += 1
+    data[5] += 1
+    return data
+
+
+def adjust_data(design, design_space, data, choice=True):
+    if choice:
+        if "BOOM" in design:
+            return adjust_boom_data(design_space, data)
+        else:
+            assert "Rocket" in design
+            return adjust_rocket_data(design_space, data)
+    else:
+        return data
+
+
 def generate_simulation_dataset():
     dataset = load_dataset(
         os.path.join(
@@ -488,9 +562,9 @@ def generate_simulation_dataset():
     # construct pre-generated dataset
     new_dataset = []
 
-    for data in dataset:
-        data = adjust_data(design_space, data)
-        manager = Gem5Wrapper(configs, design_space, np.int64(data[:-3]), 1)
+    for data in dataset[:6]:
+        data = adjust_data(configs["design"], design_space, data, choice=True)
+        manager = Simulator(configs, design_space, np.int64(data[:-3]), 1)
         perf = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
         new_dataset.append(
@@ -524,28 +598,56 @@ def calib_dataset():
     calib_xgboost(design_space, dataset)
 
 
-def load_calibrate_ppa_models():
+def load_calibrate_ppa_models(design):
     ppa_model_root = os.path.join(
         os.path.dirname(__file__),
         os.path.pardir,
         configs["ppa-model"],
     )
-    perf_root = os.path.join(
-        ppa_model_root,
-        "boom-perf.pt"
-    )
-    power_root = os.path.join(
-        ppa_model_root,
-        "boom-power.pt"
-    )
-    area_root = os.path.join(
-        ppa_model_root,
-        "boom-area.pt"
-    )
+    if "BOOM" in design:
+        perf_root = os.path.join(
+            ppa_model_root,
+            "boom-perf.pt"
+        )
+        power_root = os.path.join(
+            ppa_model_root,
+            "boom-power.pt"
+        )
+        area_root = os.path.join(
+            ppa_model_root,
+            "boom-area.pt"
+        )
+    else:
+        assert "Rocket" == design, \
+            "[ERROR]: {} is unsupported.".format(design)
+        perf_root = os.path.join(
+            ppa_model_root,
+            "rocket-perf.pt"
+        )
+        power_root = os.path.join(
+            ppa_model_root,
+            "rocket-power.pt"
+        )
+        area_root = os.path.join(
+            ppa_model_root,
+            "rocket-area.pt"
+        )
     perf_model = joblib.load(perf_root)
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)
     return perf_model, power_model, area_model
+
+
+def abalation_study():
+    design_space = load_design_space()
+    dataset = load_txt(
+        os.path.join(
+            rl_explorer_root,
+            configs["dataset"]
+        ),
+        fmt=float
+    )
+    ablation_study_calib_xgboost(design_space, dataset)
 
 
 def validate():
@@ -561,7 +663,7 @@ def validate():
         dataset[range(dataset.shape[0])],
         len(design_space.descriptions[configs["design"]].keys())
     )
-    lightweight_ppa_models = list(load_calibrate_ppa_models())
+    lightweight_ppa_models = list(load_calibrate_ppa_models(configs["design"]))
     for metric in Dataset.metrics:
         all_feature, all_gt = getattr(
             all_dataset,
@@ -576,6 +678,8 @@ def main():
         generate_simulation_dataset()
     elif args.mode == "calib":
         calib_dataset()
+    elif args.mode == "ablation-study":
+        abalation_study()
     else:
         assert args.mode == "validate", \
             "[ERROR]: {} is not supported.".format(args.mode)
@@ -598,4 +702,6 @@ if __name__ == '__main__':
         "vis"
     )
     configs["logger"] = None
+    # a tricy to implement `Gem5Wrapper`
+    Simulator = None
     main()
