@@ -39,7 +39,8 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from dse.env.boom.design_space import parse_design_space
+from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
+from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
 from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
 from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from utils import parse_args, get_configs, info, load_txt
@@ -55,6 +56,8 @@ def generate_L(dataset):
 
 def generate_P_from_U(k, L):
     P = []
+    print(design_space.size)
+    exit()
     for i in range(k):
         idx = random.sample(range(design_space.size), k=1)[0]
         while idx in L:
@@ -258,7 +261,10 @@ def main():
         for n in temp:
             solution_set.append(n)
             vec = design_space.idx_to_vec(n)
-            ppa = evaluate_microarchitecture(vec)
+            ppa = evaluate_microarchitecture(
+                vec,
+                idx=int(os.path.basename(configs["gem5-research-root"]))
+            )
             # move the newly labeled samples from P to L
             P.remove(n)
             dataset = np.insert(
@@ -284,7 +290,7 @@ def main():
             rl_explorer_root,
             "baselines",
             "dac16",
-            "solution-{}.txt"."{}".format(datetime.now()).replace(' ', '-')
+            "solution-{}.txt".format(datetime.now()).replace(' ', '-')
         ),
         'w'
     ) as f:
@@ -299,7 +305,6 @@ def main():
 if __name__ == "__main__":
     args = parse_args()
     configs = get_configs(args.configs)
-    design_space = parse_design_space(configs)
     configs["configs"] = args.configs
     configs["logger"] = None
     Simulator = None
@@ -315,6 +320,7 @@ if __name__ == "__main__":
         configs["ppa-model"]
     )
     if "BOOM" in configs["design"]:
+        design_space = parse_boom_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
             "boom-perf.pt"
@@ -331,6 +337,7 @@ if __name__ == "__main__":
     else:
         assert configs["design"] == "Rocket", \
             "{} is not supported.".format(configs["design"])
+        design_space = parse_rocket_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
             "rocket-perf.pt"
