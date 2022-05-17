@@ -33,6 +33,7 @@ import random
 import itertools
 import numpy as np
 from time import time
+from datetime import datetime
 from sklearn.base import clone
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.tree import DecisionTreeClassifier
@@ -41,7 +42,8 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from dse.env.boom.design_space import parse_design_space
+from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
+from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
 from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
 from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from utils import parse_args, get_configs, info, load_txt
@@ -193,6 +195,7 @@ def load_dataset():
 
 
 def evaluate_microarchitecture(vec, idx=5):
+    return np.array([1, 2, 3])
     manager = Simulator(
         configs,
         design_space,
@@ -277,12 +280,12 @@ def construct_ranker(dataset, metric):
         assert metric == "area"
         metric = -1
     # align with the original paper
-    X_new, y_new = transform_pairwise(dataset[:50, :-3], dataset[:50, metric])
+    X_new, y_new = transform_pairwise(dataset[:90, :-3], dataset[:90, metric])
     return ranker.fit(X_new, y_new)
 
 
-def sample_from_design_space(k=200):
-    index = random.sample(range(design_space.size), k=k)
+def sample_from_design_space(k=1000):
+    index = random.sample(range(1, design_space.size + 1), k=k)
     design_pool = []
     info("sampling {} designs...".format(k))
     for idx in index:
@@ -322,7 +325,10 @@ def main():
             rl_explorer_root,
             "baselines",
             "isca14",
-            "{}-solution.txt".format(configs["design"]).replace(' ', '-')
+            "{}-solution-{}.txt".format(
+                configs["design"].replace(' ', '-'),
+                str(datetime.now()).replace(' ', '-')
+            )
         ),
         'w'
     ) as f:
@@ -337,7 +343,6 @@ def main():
 if __name__ == "__main__":
     args = parse_args()
     configs = get_configs(args.configs)
-    design_space = parse_design_space(configs)
     configs["configs"] = args.configs
     configs["logger"] = None
     Simulator = None
@@ -353,6 +358,7 @@ if __name__ == "__main__":
         configs["ppa-model"]
     )
     if "BOOM" in configs["design"]:
+        design_space = parse_boom_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
             "boom-perf.pt"
@@ -387,6 +393,7 @@ if __name__ == "__main__":
     else:
         assert configs["design"] == "Rocket", \
             "{} is not supported.".format(configs["design"])
+        design_space = parse_rocket_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
             "rocket-perf.pt"
@@ -404,7 +411,7 @@ if __name__ == "__main__":
         ppa = {
             # ipc power area
             # Small SonicBOOM
-            "Rocket": [0, 0, 0],
+            "Rocket": [0.801072362, 0.0026, 0.908152038],
         }
     perf_model = joblib.load(perf_root)
     power_model = joblib.load(power_root)
