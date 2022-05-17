@@ -56,8 +56,6 @@ def generate_L(dataset):
 
 def generate_P_from_U(k, L):
     P = []
-    print(design_space.size)
-    exit()
     for i in range(k):
         idx = random.sample(range(design_space.size), k=1)[0]
         while idx in L:
