@@ -195,7 +195,6 @@ def load_dataset():
 
 
 def evaluate_microarchitecture(vec, idx=5):
-    return np.array([1, 2, 3])
     manager = Simulator(
         configs,
         design_space,
