@@ -79,7 +79,7 @@ def read_csv(data, header=0):
     return np.array(pd.read_csv(data, header=header))
 
 
-def load_dataset(csv_path, split=True):
+def load_dataset(csv_path, split=True, boom=True):
     """
         csv_path: <str>
     """
@@ -88,7 +88,7 @@ def load_dataset(csv_path, split=True):
         fmt=float
     )
     dataset = dataset[:, :-3]
-    dataset = scale_dataset(dataset)
+    dataset = scale_dataset(dataset, boom)
     # split to two matrices
     x = []
     y = []
@@ -99,41 +99,61 @@ def load_dataset(csv_path, split=True):
 
 
 # customization for BOOM-Explorer
-def scale_dataset(dataset: Union[torch.Tensor, np.ndarray]):
+def scale_dataset(dataset: Union[torch.Tensor, np.ndarray], boom=True):
     """
         dataset: <numpy.array>
+    NOTICE: scale the data by `max - x / \alpha`
+    BOOM:
+      max ipc: 1.751441
+      min ipc: 0.646065
+      max power: 0.305892
+      min power: 0.02115
+      max area: 5069115.916
+      min area: 308878.162
+      after scaling,
+      the power values are [0.09410800000000002, 0.37885]
+      the area values are [0.09308840839999998, 0.5691121838]
+    Rocket:
+      max ipc: 0.846828
+      min ipc: 0.596727
+      max power: 0.014125
+      min power: 0.002483
+      max area: 875844.0
+      min area: 228969.0
+      after scaling,
+      the power values are [0.005875, 0.017517]
+      the area values are [0.024156, 0.671031]
     """
-    # NOTICE: scale the data by `max - x / \alpha`
-    # max ipc: 1.751441
-    # min ipc: 0.646065
-    # max power: 0.305892
-    # min power: 0.02115
-    # max area: 5069115.916
-    # min area: 308878.162
-    # after scaling, the clock cycles are [0.2948, 1.32305]
-    # the power values are [0.09410800000000002, 0.37885]
-    # the areaa values are [0.09308840839999998, 0.5691121838]
     if isinstance(dataset, torch.Tensor):
         _dataset = dataset.clone()
     else:
         _dataset = dataset.copy()
-    # power
-    _dataset[:, -2] = 0.4 - _dataset[:, -2]
-    # area
-    _dataset[:, -1] = (6000000 - _dataset[:, -1]) / 1e7
-
+    if boom:
+        # power
+        _dataset[:, -2] = 0.4 - _dataset[:, -2]
+        # area
+        _dataset[:, -1] = (6000000 - _dataset[:, -1]) / 1e7
+    else:
+        # power
+        _dataset[:, -2] = 0.02 - _dataset[:, -2]
+        # area
+        _dataset[:, -1] = (900000 - _dataset[:, -1]) / 1e6
     return _dataset
 
 
-def rescale_dataset(dataset: Union[torch.Tensor, np.ndarray]):
+def rescale_dataset(dataset: Union[torch.Tensor, np.ndarray], boom=True):
     # NOTICE: see `scale_dataset`
     # Tips: remove side effect
     if isinstance(dataset, torch.Tensor):
         _dataset = dataset.clone()
     else:
         _dataset = dataset.copy()
-    _dataset[:, -2] = 0.4 - _dataset[:, -2]
-    _dataset[:, -1] = 6000000 - _dataset[:, -1] * 1e7
+    if boom:
+        _dataset[:, -2] = 0.4 - _dataset[:, -2]
+        _dataset[:, -1] = 6000000 - _dataset[:, -1] * 1e7
+    else:
+        _dataset[:, -2] = 0.02 - _dataset[:, -2]
+        _dataset[:, -1] = 900000 - _dataset[:, -1] * 1e6
 
     return _dataset
 

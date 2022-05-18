@@ -8,8 +8,27 @@ sys.path.insert(
         os.path.dirname(__file__),
         os.path.pardir,
         os.path.pardir,
+        os.path.pardir
+    )
+)
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(__file__),
         os.path.pardir,
-        "dse"
+        os.path.pardir,
+        os.path.pardir,
+        "simulation"
+    )
+)
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        os.path.pardir,
+        os.path.pardir,
+        "utils"
     )
 )
 import random
@@ -19,6 +38,7 @@ import torch
 import gpytorch
 import numpy as np
 from time import time
+from datetime import datetime
 try:
     from sklearn.externals import joblib
 except ImportError:
@@ -27,11 +47,12 @@ from botorch.utils.multi_objective.hypervolume import Hypervolume
 from botorch.utils.multi_objective.pareto import is_non_dominated
 from botorch.utils.multi_objective.box_decompositions.non_dominated import NondominatedPartitioning
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
-from sample import micro_al, random_sample
+from sample import micro_al, random_sample, initial_random_sample
 from dkl_gp import DKLGP
 from util import calc_adrs, array_to_tensor, tensor_to_array, scale_dataset, rescale_dataset
 from utils import info
-from simulation.boom.simulation import Gem5Wrapper
+from boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+from rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 
 
 def get_pareto_set(y: torch.Tensor):
@@ -120,7 +141,7 @@ def report(
             configs["rl-explorer-root"],
             "baselines",
             "boom-explorer",
-            "solution.txt"
+            "solution-{}.txt".format(datetime.now()).replace(' ', '-')
         ),
         'w'
     ) as f:
@@ -137,7 +158,7 @@ def report(
         f.write("cost time: {} s.".format(ort))
 
 
-def evaluate_microarchitecture(configs, design_space, vec):
+def evaluate_microarchitecture(configs, design_space, vec, boom):
     def load_ppa_model():
         ppa_model_root = os.path.join(
             configs["rl-explorer-root"],
@@ -160,12 +181,16 @@ def evaluate_microarchitecture(configs, design_space, vec):
         area_model = joblib.load(area_root)
         return perf_model, power_model, area_model
 
-    perf_model, power_model, area_model = load_ppa_model() 
-    manager = Gem5Wrapper(
+    perf_model, power_model, area_model = load_ppa_model()
+    if boom:
+        Simulator = BOOMGem5Wrapper
+    else:
+        Simulator = RocketGem5Wrapper
+    manager = Simulator(
         configs,
         design_space,
         vec,
-        4
+        os.path.basename(configs["gem5-research-root"])
     )
     perf = manager.evaluate_perf()
     power, area = manager.evaluate_power_and_area()
@@ -187,7 +212,8 @@ def evaluate_microarchitecture(configs, design_space, vec):
     return scale_dataset(
         array_to_tensor(
             np.array([perf, power, area])
-        ).unsqueeze(0)
+        ).unsqueeze(0),
+        boom
     )
 
 
@@ -198,7 +224,10 @@ def boom_explorer(configs, settings, problem):
 
     start = time()
     # generate initial data
-    x, y = micro_al(settings, problem)
+    if problem.boom:
+        x, y = micro_al(settings, problem)
+    else:
+        x, y = initial_random_sample(settings, problem, settings["batch"])
     adrs.append(
         calc_adrs(
             get_pareto_set(problem.total_y),
@@ -233,7 +262,8 @@ def boom_explorer(configs, settings, problem):
                 evaluate_microarchitecture(
                     configs,
                     problem.design_space,
-                    tensor_to_array(new_x).astype("int").ravel()
+                    tensor_to_array(new_x).astype("int").ravel(),
+                    problem.boom
                 )
             ),
             0
@@ -251,7 +281,7 @@ def boom_explorer(configs, settings, problem):
     info(
         "reference pareto frontier (no golden pareto frontier): \n{},\n" \
         "size: {}, ADRS: {}, ORT: {} s.".format(
-            rescale_dataset(pareto_frontier),
+            rescale_dataset(pareto_frontier, problem.boom),
             len(pareto_frontier),
             adrs,
             ort

@@ -16,7 +16,8 @@ import torch
 import numpy as np
 from typing import Optional
 from botorch.test_functions.base import MultiObjectiveTestProblem
-from env.boom.design_space import parse_design_space
+from env.boom.design_space import parse_design_space as parse_boom_design_space
+from env.rocket.design_space import parse_design_space as parse_rocket_design_space
 from util import load_dataset
 
 
@@ -29,19 +30,31 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         # NOTICE: for dataset
         # after scaling, the clock cycles are [0.2948, 1.32305],
         # the power values are [0.5349999999999999, 1.5405000000000002]
-        self._ref_point = torch.tensor([0.0, 0.0, 0.0])
-        self._bounds = torch.tensor([(2.5, 0.4, 0.6)])
+        assert "BOOM" in self.configs["design"] or \
+            self.configs["design"] == "Rocket", \
+            "[ERROR]: {} is not supported.".format(self.configs["design"])
+        self.boom = "BOOM" in self.configs["design"]
+        if self.boom:
+            self._ref_point = torch.tensor([0.0, 0.0, 0.0])
+            self._bounds = torch.tensor([(2.5, 0.4, 0.6)])
+        else:
+            self._ref_point = torch.tensor([0.0, 0.0, 0.0])
+            self._bounds = torch.tensor([(1.0, 0.02, 0.7)])
         self.total_x, self.total_y = load_dataset(
             os.path.join(
                 configs["rl-explorer-root"],
                 configs["dataset"]
-            )
+            ),
+            boom=self.boom
         )
         self.total_x, self.total_y = torch.tensor(self.total_x), torch.tensor(self.total_y)
         self.x, self.y = self.total_x.clone(), self.total_y.clone()
         self.n_dim = self.x.shape[-1]
         self.n_sample = self.x.shape[0]
-        self.design_space = parse_design_space(self.configs)
+        if self.boom:
+            self.design_space = parse_boom_design_space(self.configs)
+        else:
+            self.design_space = parse_rocket_design_space(self.configs)
         super().__init__(noise_std=noise_std, negate=negate)
 
     def evaluate_true(self, x: torch.Tensor) -> torch.Tensor:

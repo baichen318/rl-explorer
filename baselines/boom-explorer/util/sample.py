@@ -6,6 +6,7 @@ import math
 import torch
 from time import time
 import numpy as np
+from util import tensor_to_array
 
 
 seed = int(time())
@@ -228,6 +229,7 @@ class RandomSampler(Sampler):
     def __init__(self, configs, problem):
         super(RandomSampler, self).__init__(configs, problem)
         self.visited = set()
+        self.labeled = set()
 
     def set_random_state(self, random_state):
         random.seed(random_state)
@@ -247,6 +249,20 @@ class RandomSampler(Sampler):
         x = np.array(x)
         return x
 
+    def sample_from_offline_dataset(self, batch=1):
+        for i in range(self.problem.n_sample):
+            self.labeled.add(
+                self.problem.design_space.vec_to_idx(
+                    tensor_to_array(self.problem.total_x[i]).astype("int")
+                )
+            )
+        index = random.sample(range(len(self.labeled)), k=batch)
+        x = []
+        for idx in index:
+            x.append(self.problem.design_space.idx_to_vec(idx))
+        x = np.array(x)
+        return x
+
 
 def micro_al(configs, problem):
     """
@@ -260,6 +276,14 @@ def micro_al(configs, problem):
     problem.remove_sampled_data(x)
     return x, y
 
+
+def initial_random_sample(configs, problem, batch):
+    global sampler
+    sampler = RandomSampler(configs, problem)
+    x = torch.Tensor(sampler.sample_from_offline_dataset(batch))
+    y = problem.evaluate_true(x)
+    problem.remove_sampled_data(x)
+    return x, y
 
 def random_sample(configs, problem, batch):
     """
