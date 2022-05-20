@@ -131,6 +131,7 @@ def ehvi_suggest(model, problem, sampled_x, sampled_y, batch=1):
 
 def report(
     configs,
+    search_x,
     pareto_frontier,
     pareto_optimal_solutions,
     ort
@@ -155,10 +156,17 @@ def report(
             f.write(
                 "{}\t{}\n".format(pareto_optimal_solutions[i], pareto_frontier[i])
             )
+        f.write("microarchitecture embedding (follow the order):\n")
+        for x in search_x:
+            f.write("{}\n".format(x))
+        f.write('\n')
         f.write("cost time: {} s.".format(ort))
 
 
 def evaluate_microarchitecture(configs, design_space, vec, boom):
+    return scale_dataset(
+        array_to_tensor(np.array([1, 2, 3])).unsqueeze(0), boom
+    )
     def load_ppa_model():
         ppa_model_root = os.path.join(
             configs["rl-explorer-root"],
@@ -291,6 +299,7 @@ def boom_explorer(configs, settings, problem):
     # report
     report(
         configs,
+        search_x,
         pareto_frontier,
         get_pareto_optimal_solutions(x, y),
         ort

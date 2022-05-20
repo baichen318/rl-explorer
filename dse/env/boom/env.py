@@ -211,37 +211,51 @@ class BOOMEnv(BasicEnv):
 
     def reset(self):
         def get_idx_of_human_baseline(start, end):
-            idx = {
-                "1-wide 4-fetch SonicBOOM": 391,
-                "1-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
-                "2-wide 4-fetch SonicBOOM": 86733931,
-                "2-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
-                "3-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
-                "3-wide 8-fetch SonicBOOM": 168415972,
-                "4-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
-                "4-wide 8-fetch SonicBOOM": 202143214,
-                "5-wide SonicBOOM": 215111986
-            }
+            if "BOOM" in self.configs["design"]:
+                idx = {
+                    "1-wide 4-fetch SonicBOOM": 391,
+                    "1-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
+                    "2-wide 4-fetch SonicBOOM": 56, # 86733931,
+                    "2-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
+                    "3-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
+                    "3-wide 8-fetch SonicBOOM": 168415972,
+                    "4-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
+                    "4-wide 8-fetch SonicBOOM": 202143214,
+                    "5-wide SonicBOOM": 215111986
+                }
+            else:
+                assert self.configs["design"] == "Rocket", \
+                    "[ERROR]: {} is not supported.".format(self.configs["design"])
+                idx = {
+                    "Rocket": 692
+                }
             return idx[self.configs["design"]]
 
         def get_human_baseline():
-            ppa = {
-                # ipc power area
-                # Small SonicBOOM
-                "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-                "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-                # Medium SonicBOOM
-                "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-                "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-                # Large SonicBOOM
-                "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-                "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-                # Mega SonicBOOM
-                "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-                "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-                # Giga SonicBOOM
-                "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
-            }
+            if "BOOM" in self.configs["design"]:
+                ppa = {
+                    # ipc power area
+                    # Small SonicBOOM
+                    "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
+                    "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
+                    # Medium SonicBOOM
+                    "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
+                    "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
+                    # Large SonicBOOM
+                    "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
+                    "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
+                    # Mega SonicBOOM
+                    "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
+                    "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
+                    # Giga SonicBOOM
+                    "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
+                }
+            else:
+                assert self.configs["design"] == "Rocket", \
+                    "[ERROR]: {} is not supported.".format(self.configs["design"])
+                ppa = {
+                    "Rocket": [0.801072362, 0.0026, 908152.038]
+                }
             # negate
             baseline = ppa[self.configs["design"]]
             baseline[1] = -baseline[1]

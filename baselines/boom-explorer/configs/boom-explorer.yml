@@ -14,7 +14,7 @@ sig: 0.1
 
 
 # batch specification in randomized TED
-batch: 20
+batch: 30
 
 
 # decoder clustering weight specification
@@ -27,6 +27,7 @@ learning-rate: 0.001
 
 # optimizer specification
 optimizer: Adam
+
 
 # optimization steps specification for DKL-GP
 max-optimize-epoch: 1200

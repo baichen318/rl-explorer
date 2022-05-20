@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 
+import numpy as np
 from collections import deque
 from time import time
 from dse.env.boom.env import BOOMEnv
@@ -15,30 +16,30 @@ class Status(object):
     def __init__(self, writer):
         super(Status, self).__init__()
         self.writer = SummaryWriter(writer)
-        self.perf_per_episode = deque(maxlen=100)
-        self.power_per_episode = deque(maxlen=100)
-        self.area_per_episode = deque(maxlen=100)
-        self.step = deque(maxlen=100)
-        self.episode = deque(maxlen=100)
-        self.temperature = deque(maxlen=100)
-        self.learning_rate = deque(maxlen=100)
-        self.actor_loss_per_step = deque(maxlen=100)
-        self.critic_loss_per_step = deque(maxlen=100)
-        self.entropy_per_step = deque(maxlen=100)
-        self.loss_per_step = deque(maxlen=100)
+        self.perf_per_episode = deque(maxlen=10)
+        self.power_per_episode = deque(maxlen=10)
+        self.area_per_episode = deque(maxlen=10)
+        self.step = deque(maxlen=10)
+        self.episode = deque(maxlen=10)
+        self.temperature = deque(maxlen=10)
+        self.learning_rate = deque(maxlen=10)
+        self.actor_loss_per_step = deque(maxlen=10)
+        self.critic_loss_per_step = deque(maxlen=10)
+        self.entropy_per_step = deque(maxlen=10)
+        self.loss_per_step = deque(maxlen=10)
 
     def reset(self):
-        self.perf_per_episode = []
-        self.power_per_episode = []
-        self.area_per_episode = []
-        self.step = []
-        self.episode = []
-        self.temperature = []
-        self.learning_rate = []
-        self.actor_loss_per_step = []
-        self.critic_loss_per_step = []
-        self.entropy_per_step = []
-        self.loss_per_step = []
+        self.perf_per_episode = deque(maxlen=10)
+        self.power_per_episode = deque(maxlen=10)
+        self.area_per_episode = deque(maxlen=10)
+        self.step = deque(maxlen=10)
+        self.episode = deque(maxlen=10)
+        self.temperature = deque(maxlen=10)
+        self.learning_rate = deque(maxlen=10)
+        self.actor_loss_per_step = deque(maxlen=10)
+        self.critic_loss_per_step = deque(maxlen=10)
+        self.entropy_per_step = deque(maxlen=10)
+        self.loss_per_step = deque(maxlen=10)
 
     def update_per_step(
         self,
@@ -82,9 +83,18 @@ class Status(object):
         self.critic_loss_per_step.append(critic_loss)
         self.entropy_per_step.append(entropy)
         self.loss_per_step.append(loss)
-        self.writer.add_scalar("perf", reward[0], episode)
-        self.writer.add_scalar("power", reward[1], episode)
-        self.writer.add_scalar("area", reward[2], episode)
+        self.writer.add_scalar("rewards/perf", reward[0], episode)
+        self.writer.add_scalar("rewards/power", reward[1], episode)
+        self.writer.add_scalar("rewards/area", reward[2], episode)
+        self.writer.add_scalar("rewards/mean-perf", np.mean(self.perf_per_episode), episode)
+        self.writer.add_scalar("rewards/mean-power", np.mean(self.power_per_episode), episode)
+        self.writer.add_scalar("rewards/mean-area", np.mean(self.area_per_episode), episode)
+        self.writer.add_scalar("rewards/max-perf", np.max(self.perf_per_episode), episode)
+        self.writer.add_scalar("rewards/max-power", np.max(self.power_per_episode), episode)
+        self.writer.add_scalar("rewards/max-area", np.max(self.area_per_episode), episode)
+        self.writer.add_scalar("rewards/min-perf", np.min(self.perf_per_episode), episode)
+        self.writer.add_scalar("rewards/min-power", np.min(self.power_per_episode), episode)
+        self.writer.add_scalar("rewards/min-area", np.min(self.area_per_episode), episode)
         self.writer.add_scalar("stats/temperature", temperature, episode)
         self.writer.add_scalar("stats/learning-rate", learning_rate, episode)
         self.writer.add_scalar("actor-loss", actor_loss, step)
