@@ -237,9 +237,9 @@ class RandomSampler(Sampler):
     def sample(self, batch=1):
         index = []
         for i in range(batch):
-            idx = random.sample(range(self.problem.design_space.size), k=1)[0]
+            idx = random.sample(range(1, self.problem.design_space.size + 1), k=1)[0]
             while idx in self.visited:
-                idx = random.sample(range(self.problem.design_space.size), k=1)[0]
+                idx = random.sample(range(1, self.problem.design_space.size + 1), k=1)[0]
             self.visited.add(idx)
             index.append(idx)
 
