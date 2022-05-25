@@ -79,7 +79,6 @@ class RocketEnv(BasicEnv):
         self.reward_space = self.dims_of_reward
         self.load_ppa_model()
         self.state = np.zeros(self.dims_of_state)
-        self.reset()
 
     def load_ppa_model(self):
         ppa_model_root = os.path.join(
@@ -127,11 +126,9 @@ class RocketEnv(BasicEnv):
                 ppa = self.scale_ppa([perf, power, area])
         """
         # performance
-        ppa[0] *= 2
-        # power
-        ppa[1] *= 20
+        ppa[1] *= 10
         # area
-        ppa[2] *= 0.5e-6
+        ppa[2] *= 1e-6
         return ppa
 
     def evaluate_microarchitecture(self, state):
@@ -159,7 +156,7 @@ class RocketEnv(BasicEnv):
             )
         )[0]
         # NOTICE: power and area should be negated
-        return np.array([perf, -power, -area])
+        return np.array(self.scale_ppa([perf, -power, -area]))
 
     def calc_reward(self, ppa):
         def negate_ppa():
@@ -209,13 +206,13 @@ class RocketEnv(BasicEnv):
     def reset(self):
         def get_idx_of_human_baseline(start, end):
             idx = {
-                "Rocket": 1
+                "Rocket": 212
             }
             return idx[self.configs["design"]]
 
         def get_human_baseline():
             ppa = {
-                "Rocket": [0, 0, 0]
+                "Rocket": [0.826904888, 0.0077, 0.906193]
             }
             # negate
             baseline = ppa[self.configs["design"]]

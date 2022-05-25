@@ -82,7 +82,6 @@ class BOOMEnv(BasicEnv):
         self.reward_space = self.dims_of_reward
         self.load_ppa_model()
         self.state = np.zeros(self.dims_of_state)
-        self.reset()
 
     def load_ppa_model(self):
         ppa_model_root = os.path.join(
