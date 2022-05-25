@@ -14,7 +14,7 @@ sig: 0.1
 
 
 # batch specification in randomized TED
-batch: 30
+batch: 50
 
 
 # decoder clustering weight specification
