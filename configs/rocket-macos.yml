@@ -61,7 +61,7 @@ max-step-per-episode: 100
 
 
 # early stopping specifications in one episode
-early-stopping-per-episode: 1
+early-stopping-per-episode: 5
 
 
 # the batch size for training specifications
