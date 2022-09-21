@@ -4,7 +4,7 @@ SHELL = /bin/sh
 .SUFFIXES: .cc .o
 
 ifndef NTHREADS
-  NTHREADS = 80
+  NTHREADS = 4
 endif
 
 
@@ -16,15 +16,14 @@ ifeq ($(TAG),dbg)
   OPT = -ggdb -g -O0 -DNTHREADS=1 -Icacti
 else
   DBG = 
-  # OPT = -O3 -msse2 -mfpmath=sse -DNTHREADS=$(NTHREADS) -Icacti
-  OPT = -msse2 -mfpmath=sse -DNTHREADS=$(NTHREADS) -Icacti
+  OPT = -O3 -DNTHREADS=$(NTHREADS) -Icacti # -msse2 -mfpmath=sse
   #OPT = -O0 -DNTHREADS=$(NTHREADS)
 endif
 
 #CXXFLAGS = -Wall -Wno-unknown-pragmas -Winline $(DBG) $(OPT) 
 CXXFLAGS = -Wno-unknown-pragmas $(DBG) $(OPT) 
-CXX = g++ -std=c++11
-CC  = gcc -std=c99
+CXX = g++
+CC  = gcc
 
 VPATH = cacti
 

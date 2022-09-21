@@ -154,7 +154,7 @@ def a2c(env, configs):
             )
         )
         step += configs["num-parallel"] * configs["num-step"]
-        for _ in range(configs["num-step"]):
+        for _step in range(configs["num-step"]):
             action = agent.get_action(state, explored_preference)
             next_state, reward, done, info = agent.envs.step(action)
             agent.buffer.insert(
@@ -165,21 +165,21 @@ def a2c(env, configs):
                 done
             )
 
-            # a tricky part to output the best state
-            if done:
-                configs["logger"].info(
-                    "episode: {}, " \
-                    "state: {}, " \
-                    "next_state: {}, " \
-                    "reward: {}.".format(
-                        episode,
-                        state,
-                        next_state,
-                        info
-                    )
+            configs["logger"].info(
+                "episode: {}, " \
+                "step: {}, " \
+                "state: {}, " \
+                "action: {}, " \
+                "next_state: {}, " \
+                "info: {}.".format(
+                    episode,
+                    _step + 1,
+                    state,
+                    action,
+                    next_state,
+                    info
                 )
-
-            state = next_state
+            )
 
             if agent.training:
                 try:
@@ -194,6 +194,17 @@ def a2c(env, configs):
                     pass
 
             if done:
+                configs["logger"].info(
+                    "episode: {}, " \
+                    "state: {}, " \
+                    "next_state: {}, " \
+                    "info: {}.".format(
+                        episode,
+                        state,
+                        next_state,
+                        info
+                    )
+                )
                 state = agent.envs.reset()
                 if agent.training:
                     agent.anneal()
@@ -217,6 +228,8 @@ def a2c(env, configs):
                             i
                         )
                 episode += 1
+
+            state = next_state
 
         if agent.training:
             train_a2c(configs, agent, fixed_preference, episode, step)

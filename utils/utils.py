@@ -282,6 +282,10 @@ def error(msg):
     exit(1)
 
 
+def assert_error(msg):
+    return "[ERROR]: {}".format(msg)
+
+
 class MultiLogHandler(logging.Handler):
     """
         support for multiple loggers

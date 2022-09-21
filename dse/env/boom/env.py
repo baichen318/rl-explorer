@@ -23,9 +23,6 @@ class BasicEnv(gym.Env):
         self.configs = configs
         # NOTICE: `self.idx`, a key to distinguish different gem5 repo.
         self.idx = idx
-        # NOTICE: every agent should have different initial seeds,
-        # so we make a small perturbation.
-        seed = round(self.idx + np.random.rand())
         self.design_space = parse_design_space(self.configs)
         self.dims_of_state = self.generate_dims_of_state(self.configs["design"])
         self.actions_map, self.candidate_actions = self.generate_actions_lut(
@@ -146,17 +143,29 @@ class BOOMEnv(BasicEnv):
         perf = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
         perf = self.perf_model.predict(np.expand_dims(
-                np.concatenate((state, [perf])),
+                np.concatenate(
+                    (np.array(self.design_space.vec_to_embedding(
+                        list(state))
+                    ), [perf])
+                ),
                 axis=0
             )
         )[0]
         power = self.power_model.predict(np.expand_dims(
-                np.concatenate((state, [power])),
+                np.concatenate(
+                    (np.array(self.design_space.vec_to_embedding(
+                        list(state))
+                    ), [power])
+                ),
                 axis=0
             )
         )[0]
         area = self.area_model.predict(np.expand_dims(
-                np.concatenate((state, [area])),
+                np.concatenate(
+                    (np.array(self.design_space.vec_to_embedding(
+                        list(state))
+                    ),[area])
+                ),
                 axis=0
             )
         )[0]
@@ -177,11 +186,9 @@ class BOOMEnv(BasicEnv):
             (negate_ppa() + np.array([1e-8, 1e-8, 1e-8]))
 
     def early_stopping(self, ppa):
-        preference = np.ones(self.dims_of_reward)
-        preference /= np.sum(preference)
-        reward_w_preference = np.dot(ppa, preference)
-        if reward_w_preference > self.best_reward_w_preference:
-            self.best_reward_w_preference = reward_w_preference
+        if ppa[0] > self.ppa_baseline[0] and \
+            self.ppa[1] > self.ppa_baseline[1] and \
+            self.ppa[2] > self.ppa_baseline[2]:
             self.last_update = self.steps
         return (self.steps - self.last_update) > \
             self.configs["early-stopping-per-episode"]
@@ -193,34 +200,44 @@ class BOOMEnv(BasicEnv):
             self.configs["design"]
         ][self.design_space.components[s_idx]][a_offset]
 
-        reward = self.calc_reward(
-            self.evaluate_microarchitecture(self.state)
-        )
+        proxy_ppa = self.evaluate_microarchitecture(self.state)
+        done = False
         self.steps += 1
-        done = bool(
-            self.steps > self.configs["max-step-per-episode"] or \
-            self.early_stopping(reward)
-        )
+        if self.steps == self.configs["num-step"]:
+            reward = self.calc_reward(proxy_ppa)
+            done = True
+        else:
+            reward = np.array([0, 0, 0])
+        # done = bool(
+        #     self.steps > self.configs["max-step-per-episode"] or \
+        #     self.early_stopping(reward)
+        # )
         info = {
             "perf": reward[0],
             "power": reward[1],
-            "area": reward[2]
+            "area": reward[2],
+            "pred-perf": proxy_ppa[0],
+            "pred-power": proxy_ppa[1],
+            "pred-area": proxy_ppa[2],
+            "baseline-perf": self.ppa_baseline[0],
+            "baseline-power": self.ppa_baseline[1],
+            "baseline-area": self.ppa_baseline[2],
+            "last-update": self.last_update
         }
         return self.state, reward, done, info
 
-    def reset(self):
-        def get_idx_of_human_baseline(start, end):
+
+    def get_human_implementation(self):
+        def get_idx_of_human_baseline():
             if "BOOM" in self.configs["design"]:
+                # some human implementations are missing, so we only explore a design
+                # that already has a human implementations.
                 idx = {
-                    "1-wide 4-fetch SonicBOOM": 391,
-                    "1-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
-                    "2-wide 4-fetch SonicBOOM": 56, # 86733931,
-                    "2-wide 8-fetch SonicBOOM": random.choice(range(start, end)),
-                    "3-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
+                    "1-wide 4-fetch SonicBOOM": 17,
+                    "2-wide 4-fetch SonicBOOM": 86733931,
                     "3-wide 8-fetch SonicBOOM": 168415972,
-                    "4-wide 4-fetch SonicBOOM": random.choice(range(start, end)),
                     "4-wide 8-fetch SonicBOOM": 202143214,
-                    "5-wide SonicBOOM": 215111986
+                    "5-wide SonicBOOM": 215828887
                 }
             else:
                 assert self.configs["design"] == "Rocket", \
@@ -230,59 +247,49 @@ class BOOMEnv(BasicEnv):
                 }
             return idx[self.configs["design"]]
 
-        def get_human_baseline():
-            if "BOOM" in self.configs["design"]:
-                ppa = {
-                    # ipc power area
-                    # Small SonicBOOM
-                    "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-                    "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-                    # Medium SonicBOOM
-                    "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-                    "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-                    # Large SonicBOOM
-                    "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-                    "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-                    # Mega SonicBOOM
-                    "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-                    "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-                    # Giga SonicBOOM
-                    "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
-                }
-            else:
-                assert self.configs["design"] == "Rocket", \
-                    "[ERROR]: {} is not supported.".format(self.configs["design"])
-                ppa = {
-                    "Rocket": [0.801072362, 0.0026, 908152.038]
-                }
-            # negate
-            baseline = ppa[self.configs["design"]]
-            baseline[1] = -baseline[1]
-            baseline[2] = -baseline[2]
-            return np.array(baseline)
+        return np.array(self.design_space.idx_to_vec(
+                get_idx_of_human_baseline()
+            )
+        )
 
+    def get_human_baseline(self):
+        if "BOOM" in self.configs["design"]:
+            ppa = {
+                # ipc power area
+                # Small SonicBOOM
+                "1-wide 4-fetch SonicBOOM":
+                    [0.7760953307151794434, 0.02541292458772659302, 1.504957375000000000e+06], # [0.766128848, 0.0212, 1504764.403],
+                # Medium SonicBOOM
+                "2-wide 4-fetch SonicBOOM":
+                    [1.121231794357299805, 0.03620982170104980469, 1.939831625000000000e+06], # [1.100314122, 0.0267, 1933210.356],
+                # Large SonicBOOM
+                "3-wide 8-fetch SonicBOOM":
+                    [1.327529311180114746, 0.06920745223760604858, 3.213275500000000000e+06], # [1.312793895, 0.0457, 3205484.562],
+                # Mega SonicBOOM
+                "4-wide 8-fetch SonicBOOM":
+                    [1.642608880996704102, 0.07648544013500213623, 4.829858000000000000e+06], # [1.634452069, 0.0592, 4805888.807],
+                # Giga SonicBOOM
+                "5-wide SonicBOOM":
+                    [1.653097748756408691, 0.07422129064798355103, 5.043137500000000000e+06] # [1.644617524, 0.0715, 5069115.916]
+            }
+        else:
+            assert self.configs["design"] == "Rocket", \
+                "[ERROR]: {} is not supported.".format(self.configs["design"])
+            ppa = {
+                "Rocket": [0.801072362, 0.0026, 908152.038]
+            }
+        # negate
+        baseline = ppa[self.configs["design"]]
+        baseline[1] = -baseline[1]
+        baseline[2] = -baseline[2]
+        return np.array(baseline)
+
+    def reset(self):
         self.steps = 0
         self.best_reward_w_preference = -float("inf")
         self.last_update = 0
-        idx = self.design_space.designs.index(self.configs["design"])
-        start = self.design_space.acc_design_size[idx - 1] \
-            if idx > 0 \
-            else 0
-        end = self.design_space.acc_design_size[idx]
-        # we make a reset location based on human implementation or
-        # a random selection
-        if np.random.random() < 0.1:
-            self.state = np.array(self.design_space.idx_to_vec(
-                    random.choice(range(start, end + 1))
-                )
-            )
-            self.ppa_baseline = self.evaluate_microarchitecture(self.state)
-        else:
-            self.state = np.array(self.design_space.idx_to_vec(
-                    get_idx_of_human_baseline(start, end + 1)
-                )
-            )
-            self.ppa_baseline = get_human_baseline()
+        self.state = self.get_human_implementation()
+        self.ppa_baseline = self.get_human_baseline()
         return self.state
 
     def render(self):

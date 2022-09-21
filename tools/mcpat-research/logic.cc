@@ -385,44 +385,44 @@ void Pipeline::compute_stage_vector()
 	{
 		/* assume 12 stage pipe stages and try to estimate bits per pipe stage */
 		/*OOO: Fetch, decode, rename, IssueQ, dispatch, regread, EXE, MEM, WB, CM */
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage 0/1F*/
 		num_piperegs += coredynp.pc_width*2*coredynp.num_hthreads ;//PC and Next PC
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage IF/ID */
 		num_piperegs += coredynp.fetchW*(coredynp.instruction_length + coredynp.pc_width)*coredynp.num_hthreads;//PC is used to feed branch predictor in ID
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage 1D/Renaming*/
 		num_piperegs += coredynp.decodeW*(coredynp.instruction_length + coredynp.pc_width)*coredynp.num_hthreads;//PC is for branch exe in later stage.
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage Renaming/wire_drive */
 		num_piperegs += coredynp.decodeW*(coredynp.instruction_length + coredynp.pc_width);
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage Renaming/IssueQ */
 		num_piperegs += coredynp.issueW*(coredynp.instruction_length  + coredynp.pc_width + 3*coredynp.phy_ireg_width)*coredynp.num_hthreads;//3*coredynp.phy_ireg_width means 2 sources and 1 dest
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage IssueQ/Dispatch */
 		num_piperegs += coredynp.issueW*(coredynp.instruction_length + 3 * coredynp.phy_ireg_width);
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage Dispatch/EXE */
 
 		num_piperegs += coredynp.issueW*(3 * coredynp.phy_ireg_width + coredynp.pc_width + pow(2.0,opcode_length)/*+2*powers (2,reg_length)*/);
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* 2^opcode_length means the total decoded signal for the opcode*/
 		num_piperegs += coredynp.issueW*(2*coredynp.int_data_width + pow(2.0,opcode_length)/*+2*powers (2,reg_length)*/);
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/*2 source operands in EXE; Assume 2EXE stages* since we do not really distinguish OP*/
 		num_piperegs += coredynp.issueW*(2*coredynp.int_data_width + pow(2.0,opcode_length)/*+2*powers (2,reg_length)*/);
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage EXE/MEM, data need to be read/write, address*/
 		num_piperegs += coredynp.issueW*(coredynp.int_data_width + coredynp.v_address_width + pow(2.0,opcode_length)/*+2*powers (2,reg_length)*/);//memory Opcode still need to be passed
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage MEM/WB; result data, writeback regs */
 		num_piperegs += coredynp.issueW*(coredynp.int_data_width + coredynp.phy_ireg_width /* powers (2,opcode_length) + (2,opcode_length)+2*powers (2,reg_length)*/);
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 		/* pipe stage WB/CM ; result data, regs need to be updated, address for resolve memory ops in ROB's top*/
 		num_piperegs += coredynp.commitW*(coredynp.int_data_width + coredynp.v_address_width + coredynp.phy_ireg_width/*+ powers (2,opcode_length)*2*powers (2,reg_length)*/)*coredynp.num_hthreads;
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 //		if (multithreaded)
 //		{
 //
@@ -435,7 +435,7 @@ cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
 	num_piperegs = num_piperegs * 1.5;
 	tot_stage_vector=num_piperegs;
 	per_stage_vector=tot_stage_vector/num_stages;
-cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout<< "num_piperegs: " << num_piperegs << endl;
 	if (coredynp.core_ty==Inorder)
 	{
 		if (coredynp.pipeline_stages>6)
@@ -446,8 +446,8 @@ cout<< "[INFO]: num_piperegs: " << num_piperegs << endl;
 		if (coredynp.pipeline_stages != 12)
 			num_piperegs= per_stage_vector * coredynp.pipeline_stages;
 	}
-cout << "[INFO]: coredynp.pipeline_stages: " << coredynp.pipeline_stages << endl;
-cout << "[INFO]: num_piperegs: " << num_piperegs << endl;
+// cout << "coredynp.pipeline_stages: " << coredynp.pipeline_stages << endl;
+// cout << "num_piperegs: " << num_piperegs << endl;
   }
 }
 
@@ -564,7 +564,7 @@ FunctionalUnit::FunctionalUnit(ParseXML *XML_interface, int ithCore_, InputParam
 			exit(0);
 		}
 	}
-cout << "[INFO]: base_energy: " << base_energy <<endl;
+// cout << "base_energy: " << base_energy <<endl;
 	//IEXEU, simple ALU and FPU
 	//  double C_ALU, C_EXEU, C_FPU; //Lum Equivalent capacitance of IEXEU and FPU. Based on Intel and Sun 90nm process fabracation.
 	//
@@ -647,7 +647,9 @@ void FunctionalUnit::computeEnergy(bool is_tdp)
 	    //rt_power.readOp.dynamic = base_energy*executionTime + energy*stats_t.readAc.access;
 		
 	    	rt_power.readOp.dynamic += per_access_energy*stats_t.readAc.access;
+		// cout << "[Before]fu->rt_power: " << rt_power.readOp.dynamic << endl;
 		rt_power.readOp.dynamic += base_energy*executionTime;
+		// cout << "[After ]fu->rt_power: " << rt_power.readOp.dynamic << endl;
 		double sckRation = g_tp.sckt_co_eff;
 		rt_power.readOp.dynamic *= sckRation;
 		rt_power.writeOp.dynamic *= sckRation;

@@ -49,7 +49,10 @@ def make_vec_envs(configs, device, env):
         make_env(
             env,
             configs,
-            int(os.path.basename(configs["gem5-research-root"]))
+            int(os.path.basename(
+                    configs["gem5-research-root"].rstrip("/gem5-research")
+                )
+            )
         ) \
             for i in range(configs["num-parallel"])
     ]

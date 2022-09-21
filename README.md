@@ -11,6 +11,6 @@ $ python3 main.py -c configs/rocket.yml
 $ python3 main.py -c configs/boom-macos.yml
 ```
 
-## TODO
-- ~~Loss visualization~~
-- Trajectory visualization
+## Notice
+
+This is a branch: that demonstrates the importance of the VLSI flow rather than the analysis tools.

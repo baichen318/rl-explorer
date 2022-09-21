@@ -55,24 +55,31 @@ class Dataset(object):
 
     def __init__(self, dataset, dims_of_state):
         super(Dataset, self).__init__()
-        self.perf_feature = dataset[
-            :, [i for i in range(dims_of_state)] + [-3]
-        ]
-        self.perf_gt = dataset[
-            :, dims_of_state
-        ]
-        self.power_feature = dataset[
-            :, [i for i in range(dims_of_state)] + [-2]
-        ]
-        self.power_gt = dataset[
-            :, dims_of_state + 1
-        ]
-        self.area_feature = dataset[
-            :, [i for i in range(dims_of_state)] + [-1]
-        ]
-        self.area_gt = dataset[
-            :, dims_of_state + 2
-        ]
+        self.dataset = dataset
+        self.dims_of_state = dims_of_state
+        self.design_space = load_design_space()
+        self.embedding = self.vec_to_feature()
+        self.perf_feature = np.concatenate(
+            (self.embedding, np.expand_dims(dataset[:, -3], axis=1)),
+            axis=1
+        )
+        self.perf_gt = dataset[:, dims_of_state]
+        self.power_feature = np.concatenate(
+            (self.embedding, np.expand_dims(dataset[:, -2], axis=1)),
+            axis=1
+        )
+        self.power_gt = dataset[:, dims_of_state + 1]
+        self.area_feature = np.concatenate(
+            (self.embedding, np.expand_dims(dataset[:, -1], axis=1)),
+            axis=1
+        )
+        self.area_gt = dataset[:, dims_of_state + 2]
+
+    def vec_to_feature(self):
+        embedding = []
+        for vec in self.dataset[:, :self.dims_of_state]:
+            embedding.append(self.design_space.vec_to_embedding(list(vec)))
+        return np.array(embedding)
 
     def get_perf_dataset(self):
         return self.perf_feature, self.perf_gt
@@ -213,7 +220,7 @@ class Stats(object):
             avg = []
             for idx in self.index:
                 avg.append(np.average(self.stats[metric][idx]))
-            info("{} mae: {}, mse: {}, mape: {}, kendall tau: {}".format(
+            info("summary: {} mae: {}, mse: {}, mape: {}, kendall tau: {}".format(
                     metric, avg[0], avg[1], avg[2], avg[3]
                 )
             )

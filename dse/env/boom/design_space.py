@@ -4,7 +4,7 @@
 import os
 import numpy as np
 from collections import OrderedDict
-from utils import load_excel, if_exist
+from utils import load_excel, assert_error, if_exist
 from ..base_design_space import DesignSpace, Macros
 
 
@@ -204,11 +204,36 @@ class %s extends Config(
 		with open(self.macros["soc-cfg"], 'a') as f:
 			f.writelines(codes)
 
-	def vec_to_microarchitecture_embedding(self, vec):
-		pass
+	def vec_to_embedding(self, vec):
+		embedding = []
+		# branch predictor
+		embedding.append(vec[0])
+		for idx in range(1, len(vec)):
+			for v in self.get_mapping_params(vec, idx):
+				embedding.append(v)
+		return embedding
 
-	def microarchitecture_embedding_to_vec(self, microarchitecture_embedding):
-		pass
+	def embedding_to_vec(self, microarchitecture_embedding):
+		# branch predictor
+		vec = []
+		c, idx = 1, 1
+		vec.append(microarchitecture_embedding[0])
+		while idx < len(microarchitecture_embedding):
+			prev_idx = idx
+			num = len(self.components_mappings[self.components[c]]["description"])
+			feature = microarchitecture_embedding[idx : idx + num]
+			for k, v in self.components_mappings[self.components[c]].items():
+				if v == feature:
+					vec.append(int(k))
+					idx += num
+					break
+			if prev_idx == idx:
+				break
+			c += 1
+		assert len(vec) == self.dims, assert_error(
+			"invalid vec: {}".format(vec, idx)
+		)
+		return vec
 
 
 class BOOMDesignSpace(DesignSpace, BOOMMacros):
@@ -366,12 +391,12 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
 		idx += 1
 		return idx
 
-	def idx_to_microarchitecture_embedding(self, idx):
+	def idx_to_embedding(self, idx):
 		vec = self.idx_to_vec(idx)
-		return self.vec_to_microarchitecture_embedding(vec)
+		return self.vec_to_embedding(vec)
 
-	def idx_to_microarchitecture_embedding_to_idx(self, microarchitecture_embedding):
-		vec = self.microarchitecture_embedding_to_vec(microarchitecture_embedding)
+	def embedding_to_idx(self, microarchitecture_embedding):
+		vec = self.embedding_to_vec(microarchitecture_embedding)
 		return self.vec_to_idx(vec)
 
 	def generate_core_cfg(self, batch):

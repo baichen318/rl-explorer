@@ -30,3 +30,6 @@
 # McPAT custom
 mcpat
 obj_opt/
+.DS_Store
+*sw*
+

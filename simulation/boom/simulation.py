@@ -21,10 +21,7 @@ class Gem5Wrapper(Simulation):
         self.state = state
         self.idx = idx
         self.macros["gem5-research-root"] = os.path.abspath(
-            os.path.join(
-                self.configs["gem5-research-root"],
-                "gem5-research"
-            ),
+                self.configs["gem5-research-root"]
         )
         self.macros["gem5-benchmark-root"] = os.path.join(
             self.macros["gem5-research-root"],
@@ -254,8 +251,7 @@ class Gem5Wrapper(Simulation):
                 self.macros["simulator"]
             )
             cmd += "cd -;"
-        elif machine == "MacBook-Pro.local" or \
-            machine == "MacBook-Pro.lan":
+        elif "MacBook-Pro" in machine or "192.168" in machine:
             cmd = "cd %s; " % self.macros["gem5-research-root"]
             cmd += "scons "
             cmd += "build/RISCV/gem5.opt "
@@ -438,7 +434,7 @@ class Gem5Wrapper(Simulation):
                         os.path.join(
                             self.macros["rl-explorer-root"],
                             "tools",
-                            "mcpat-riscv-7",
+                            "mcpat-research",
                             "mcpat"
                         ),
                         mcpat_xml,
