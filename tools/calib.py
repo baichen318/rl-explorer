@@ -568,26 +568,39 @@ def generate_simulation_dataset():
     design_space = load_design_space()
     # construct pre-generated dataset
     new_dataset = []
+    size = dataset.shape[0] // 10
+    cnt = 0
 
-    for data in dataset[:6]:
-        data = adjust_data(configs["design"], design_space, data, choice=True)
+    for data in dataset:
+        # data = adjust_data(configs["design"], design_space, data, choice=True)
         manager = Simulator(configs, design_space, np.int64(data[:-3]), 1)
-        perf = manager.evaluate_perf()
+        perf, stats = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
+        _stats = []
+        for k, v in stats.items():
+            _stats.append(v)
         new_dataset.append(
             np.insert(
                 data,
                 len(data),
-                values=np.array([perf, power, area * 1e6]),
+                values=np.array(_stats + [perf, power, area * 1e6]),
                 axis=0
             )
         )
         _new_dataset = np.array(new_dataset)
-        write_txt(
-            target_dataset,
-            _new_dataset,
-            fmt="%f"
-        )
+        if cnt != size and cnt % size == 0:
+            write_txt(
+                target_dataset,
+                _new_dataset,
+                fmt="%f"
+            )
+        cnt += 1
+        if cnt == size:
+            write_txt(
+                target_dataset,
+                _new_dataset,
+                fmt="%f"
+            )
 
 
 def calib_dataset():

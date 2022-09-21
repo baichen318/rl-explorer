@@ -6,9 +6,10 @@ import os
 import re
 import time
 import multiprocessing
+from collections import OrderedDict
 from multiprocessing.pool import ThreadPool
 import numpy as np
-from utils import execute, if_exist, remove, mkdir, \
+from utils import execute, remove_prefix, if_exist, remove, mkdir, \
     round_power_of_two, error
 from simulation.base_simulation import Simulation
 
@@ -21,24 +22,21 @@ class Gem5Wrapper(Simulation):
         self.state = state
         self.idx = idx
         self.macros["gem5-research-root"] = os.path.abspath(
-                self.configs["gem5-research-root"]
+            os.path.join(
+                self.configs["gem5-research-root"],
+                "gem5-research"
+            )
         )
         self.macros["gem5-benchmark-root"] = os.path.join(
             self.macros["gem5-research-root"],
             "benchmarks",
             "riscv-tests"
         )
-        self.macros["simulator"] = "gem5-{}-{}-{}-{}-{}-{}-{}-{}.opt".format(
-            self.state[1],
-            self.state[2],
-            self.state[4],
-            self.state[5],
-            self.state[6],
-            self.state[7],
-            self.state[8],
-            self.state[9]
+        self.macros["simulator"] = "gem5-{}.opt".format(
+            '-'.join(["{}".format(i) for i in state])
         )
         self.initialize_lut()
+        self.stats, self.stats_name = self.init_stats()
 
     def initialize_lut(self):
         self.btb_root = os.path.join(
@@ -80,17 +78,28 @@ class Gem5Wrapper(Simulation):
         mkdir(self.temp_root)
 
 
+    def init_stats(self):
+        # 16 stats
+        stats = OrderedDict()
+        stats_name = [
+            "issueRate", "intInstQueueReads", "intInstQueueWrites", "fpInstQueueReads",
+            "fpInstQueueWrites", "intAluAccesses", "fpAluAccesses", "numLoadInsts",
+            "numStoreInsts", "numBranches", "condIncorrect", "BTBLookups",
+            "RASIncorrect", "indirectMispredicted", "intRegfileReads", "intRegfileWrites"
+        ]
+        for name in stats_name:
+            stats[name] = 0
+        return stats, stats_name
+
     def modify_gem5(self):
-        # NOTICE: we modify gem5 w.r.t. state[1], state[2],
-        # state[4], state[5], state[6], state[7], state[8],
-        # state[9] (eight)
+        # NOTICE: we modify GEM5 accordingly
         def _modify_gem5(src, pattern, target, count=0):
             cnt = open(src, "r+").read()
             with open(src, 'w') as f:
                 f.write(re.sub(r"%s" % pattern, target, cnt, count))
 
         # fetchWidth
-        fetch_width = self.design_space.generate_fetch_width(self.state, 1)
+        fetch_width = self.state[1]
         _modify_gem5(
             self.o3cpu_root,
             "fetchWidth\ =\ Param.Unsigned\(\d+,\ \"Fetch\ width\"\)",
@@ -100,7 +109,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # decodeWidth
-        decode_width = self.design_space.generate_decode_width(self.state, 4)
+        decode_width = self.state[5]
         _modify_gem5(
             self.o3cpu_root,
             "decodeWidth\ =\ Param.Unsigned\(\d+,\ \"Decode\ width\"\)",
@@ -109,7 +118,7 @@ class Gem5Wrapper(Simulation):
 
         # numFetchBufferEntries
         # NOTICE: GEM5 requires `cache block size % fetch buffer == 0`
-        fetch_buffer_entries = self.design_space.generate_fetch_buffer(self.state, 2)
+        fetch_buffer_entries = self.state[2]
         _modify_gem5(
             self.o3cpu_root,
             "fetchBufferSize\ =\ Param.Unsigned\(\d+,\ \"Fetch\ buffer\ size\ in\ bytes\"\)",
@@ -118,7 +127,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # numRobEntries
-        rob_entries = self.design_space.generate_rob_entries(self.state, 5)
+        rob_entries = self.state[6]
         _modify_gem5(
             self.o3cpu_root,
             "numROBEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ reorder\ buffer\ entries\"\)",
@@ -127,7 +136,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # numIntPhysRegisters
-        int_phys_registers = self.design_space.get_mapping_params(self.state, 6)[0]
+        int_phys_registers = self.state[7]
         _modify_gem5(
             self.o3cpu_root,
             "numPhysIntRegs\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ physical\ integer\ registers\"\)",
@@ -136,7 +145,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # numFpPhysRegisters
-        fp_phys_registers = self.design_space.get_mapping_params(self.state, 6)[1]
+        fp_phys_registers = self.state[8]
         _modify_gem5(
             self.o3cpu_root,
             "numPhysFloatRegs\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ physical\ floating\ point\ \"",
@@ -145,7 +154,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # numLdqEntries
-        ldq_entries = self.design_space.get_mapping_params(self.state, 8)[0]
+        ldq_entries = self.state[18]
         _modify_gem5(
             self.o3cpu_root,
             "LQEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ load\ queue\ entries\"\)",
@@ -154,7 +163,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # numStqEntries
-        stq_entries = self.design_space.get_mapping_params(self.state, 8)[1]
+        stq_entries = self.state[19]
         _modify_gem5(
             self.o3cpu_root,
             "SQEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ store\ queue\ entries\"\)",
@@ -164,8 +173,7 @@ class Gem5Wrapper(Simulation):
 
         # issueEntries
         # NOTICE: GEM5 requires `issueWidth <= 12`
-        issue_params = self.design_space.get_mapping_params(self.state, 7)
-        issue_width = issue_params[0] + issue_params[3] + issue_params[6]
+        issue_width = self.state[9] + self.state[12] + self.state[15]
         _modify_gem5(
             self.o3cpu_root,
             "issueWidth\ =\ Param.Unsigned\(\d+,\ \"Issue\ width\"\)",
@@ -174,8 +182,18 @@ class Gem5Wrapper(Simulation):
             )
         )
 
+        # issueQueue
+        issue_queue = self.state[10] + self.state[13] + self.state[16]
+        _modify_gem5(
+            self.o3cpu_root,
+            "numIQEntries\ =\ Param.Unsigned\(\d+,\ \"Number\ of\ instruction\ queue\ entries\"\)",
+            "numIQEntries = Param.Unsigned(%d, \"Number of instruction queue entries\")" % (
+                issue_queue
+            )
+        )
+
         # dcache.nMSHRs
-        mshrs = self.design_space.get_mapping_params(self.state, 9)[1]
+        mshrs = self.state[21]
         _modify_gem5(
             self.cache_root,
             "mshrs\ =\ \d+",
@@ -184,7 +202,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # dcache.nTLBWays
-        dcache_tlb_ways = self.design_space.get_mapping_params(self.state, 9)[2]
+        dcache_tlb_ways = self.state[22]
         _modify_gem5(
             self.tlb_root,
             "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
@@ -267,14 +285,27 @@ class Gem5Wrapper(Simulation):
 
     def get_results(self):
         instructions, cycles = 0, 0
+        misc_stats = OrderedDict()
         with open(os.path.join(self.m5out_root, "stats.txt"), 'r') as f:
             cnt = f.readlines()
+        stats_name = ["system.cpu.{}".format(name) for name in self.stats_name]
         for line in cnt:
             if line.startswith("simInsts"):
                 instructions = int(line.split()[1])
             if line.startswith("system.cpu.numCycles"):
                 cycles = int(line.split()[1])
-        return instructions, cycles
+            for name in stats_name:
+                if line.startswith(name):
+                    misc_stats[remove_prefix(name, "system.cpu.")] = float(line.split()[1])
+        return instructions, cycles, misc_stats
+
+    def incr_stats(self, misc_stats):
+        for k, v in misc_stats.items():
+            self.stats[k] += v
+
+    def avg_stats(self, cnt=1):
+        for k, v in self.stats.items():
+            self.stats[k] /= cnt
 
     def simulate(self):
         machine = os.popen("hostname").readlines()[0].strip()
@@ -282,9 +313,9 @@ class Gem5Wrapper(Simulation):
             remove(os.path.join(self.temp_root, "m5out-%s" % bmark))
         ipc = 0
         bp = {
-            "TAGEL": "LTAGE",
-            "Gshare": "TAGE",
-            "BiModal": "BiModeBP"
+            1: "LTAGE",
+            2: "TAGE",
+            3: "BiModeBP"
         }
         for bmark in self.configs["benchmarks"]:
             cmd = "cd {}; build/RISCV/{} configs/example/se.py ".format(
@@ -300,16 +331,16 @@ class Gem5Wrapper(Simulation):
             cmd += "--caches "
             cmd += "--cacheline_size=64 "
             cmd += " --l1d_size={}kB ".format(
-                (self.design_space.get_mapping_params(self.state, 9)[0] << (6 + 6)) >> 10
+                (self.state[20] << (6 + 6)) >> 10
             )
             cmd += "--l1i_size={}kB ".format(
-                ((self.design_space.generate_fetch_width(self.state, 1) >> 1) << (6 + 6)) >> 10
+                ((self.state[1] >> 1) << (6 + 6)) >> 10
             )
             cmd += "--l1d_assoc={} ".format(
-                self.design_space.get_mapping_params(self.state, 9)[0]
+                self.state[20]
             )
             cmd += "--l1i_assoc={} ".format(
-                self.design_space.generate_fetch_width(self.state, 1) >> 1
+                self.state[1] >> 1
             )
             cmd += "--sys-clock=2000000000Hz "
             cmd += "--cpu-clock=2000000000Hz "
@@ -321,14 +352,12 @@ class Gem5Wrapper(Simulation):
             cmd += "--mem-type=LPDDR3_1600_1x32 "
             cmd += "--mem-channels=1 "
             cmd += "--enable-dram-powerdown "
-            cmd += "--bp-type=%s " % (
-                bp[self.design_space.get_mapping_params(self.state, 0)[0]]
+            cmd += "--bp-type=%s; cd -" % (
+                bp[self.state[0]]
             )
-            cmd += "--l1i-hwp-type=TaggedPrefetcher "
-            cmd += "--l1d-hwp-type=TaggedPrefetcher "
-            cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
             execute(cmd, logger=self.configs["logger"])
-            instructions, cycles = self.get_results()
+            instructions, cycles, misc_stats = self.get_results()
+            self.incr_stats(misc_stats)
             ipc += (instructions / cycles)
             # for McPAT usage
             execute(
@@ -338,6 +367,7 @@ class Gem5Wrapper(Simulation):
                 )
             )
         ipc /= len(self.configs["benchmarks"])
+        self.avg_stats(len(self.configs["benchmarks"]))
         return ipc
 
 
@@ -353,11 +383,11 @@ class Gem5Wrapper(Simulation):
             )
         ):
             ipc = self.simulate()
-            return ipc
+            return ipc, self.stats
         self.modify_gem5()
         self.generate_gem5()
         ipc = self.simulate()
-        return ipc
+        return ipc, self.stats
 
     def evaluate_power_and_area(self):
         def extract_power(mcpat_report):

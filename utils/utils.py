@@ -180,6 +180,13 @@ def write_txt(path, data, fmt="%i"):
     )
     np.savetxt(path, data, fmt)
 
+
+def remove_prefix(s, prefix):
+    if prefix and s.startswith(prefix):
+        return s[len(prefix):]
+    else:
+        return s[:]
+
 def remove_suffix(s, suffix):
     """
         s: <str>

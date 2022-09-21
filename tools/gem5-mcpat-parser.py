@@ -434,31 +434,15 @@ def post_handle_boom(root):
         name = param.attrib["name"]
         value = param.attrib["value"]
         if name == "fp_issue_width":
-            param.attrib["value"] = str(
-                design_space.components_mappings[
-                    design_space.components[7]
-                ][args.state[7]][6]
-            )
+            param.attrib["value"] = str(args.state[15])
         if name in [
             "fp_issue_width"
         ]:
-            param.attrib["value"] = str(
-                design_space.components_mappings[
-                    design_space.components[7]
-                ][args.state[7]][6]
-            )
+            param.attrib["value"] = str(args.state[15])
         elif name in ["phy_Regs_IRF_size"]:
-            param.attrib["value"] = str(
-                design_space.components_mappings[
-                    design_space.components[6]
-                ][args.state[6]][0]
-            )
+            param.attrib["value"] = str(args.state[7])
         elif name in ["phy_Regs_FRF_size"]:
-            param.attrib["value"] = str(
-                design_space.components_mappings[
-                    design_space.components[6]
-                ][args.state[6]][1]
-            )
+            param.attrib["value"] = str(args.state[7])
         elif name in ["rename_writes", "fp_rename_writes"]:
             param.attrib["value"] = str(0)
     for component in root.iter("component"):
@@ -474,15 +458,9 @@ def post_handle_boom(root):
                 name = param.attrib["name"]
                 if name == "icache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        (
-                            design_space.components_mappings[
-                                design_space.components[1]
-                            ][args.state[1]][0] >> 1
-                        ) * 64 * 64,
+                        (args.state[1] >> 1) * 64 * 64,
                         64,
-                        design_space.components_mappings[
-                            design_space.components[1]
-                        ][args.state[1]][0] >> 1,
+                        args.state[1] >> 1,
                         1,
                         1,
                         3,
@@ -497,23 +475,15 @@ def post_handle_boom(root):
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "number_entries":
-                    param.attrib["value"] = str(
-                        design_space.components_mappings[
-                            design_space.components[9]
-                        ][args.state[9]][2]
-                    )
+                    param.attrib["value"] = str(args.state[22])
         if name == "dcache":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "dcache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        design_space.components_mappings[
-                            design_space.components[9]
-                        ][args.state[9]][0] * 64 * 64,
+                        args.state[20] * 64 * 64,
                         64,
-                        design_space.components_mappings[
-                            design_space.components[9]
-                        ][args.state[9]][0],
+                        args.state[20],
                         1,
                         1,
                         3,
@@ -521,9 +491,7 @@ def post_handle_boom(root):
                         1
                     )
                 if name == "buffer_sizes":
-                    mshr = design_space.components_mappings[
-                        design_space.components[9]
-                    ][args.state[9]][1]
+                    mshr = args.state[21]
                     param.attrib["value"] = "%s,%s,%s,%s" % (
                         mshr,
                         mshr,
