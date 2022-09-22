@@ -41,7 +41,7 @@ from xml.etree import ElementTree as ET
 from xml.dom import minidom
 import copy
 import types
-from utils import get_configs, info, warn, error, load_excel
+from utils import get_configs, round_power_of_two, info, warn, error, load_excel
 
 
 def create_parser():
@@ -442,9 +442,11 @@ def post_handle_boom(root):
         elif name in ["phy_Regs_IRF_size"]:
             param.attrib["value"] = str(args.state[7])
         elif name in ["phy_Regs_FRF_size"]:
-            param.attrib["value"] = str(args.state[7])
+            param.attrib["value"] = str(args.state[8])
         elif name in ["rename_writes", "fp_rename_writes"]:
             param.attrib["value"] = str(0)
+        elif name in ["instruction_buffer_size"]:
+            param.attrib["value"] = str(round_power_of_two(int(value)))
     for component in root.iter("component"):
         id = component.attrib["name"]
         name = component.attrib["name"]
