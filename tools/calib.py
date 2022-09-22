@@ -19,8 +19,9 @@ sys.path.insert(
     os.path.join(os.path.dirname(__file__), os.path.pardir, "simulation")
 )
 import random
-import argparse
+import socket
 import torch
+import argparse
 import torch.nn as nn
 import torch.utils.data as data
 import numpy as np
@@ -563,13 +564,11 @@ def generate_simulation_dataset():
         os.path.dirname(configs["dataset"]),
         os.path.splitext(
             os.path.basename(configs["dataset"])
-        )[0] + "-extend.txt"
+        )[0] + "-{}.txt".format(socket.gethostname())
     )
     design_space = load_design_space()
     # construct pre-generated dataset
     new_dataset = []
-    size = dataset.shape[0] // 10
-    cnt = 0
 
     for data in dataset:
         # data = adjust_data(configs["design"], design_space, data, choice=True)
@@ -588,19 +587,11 @@ def generate_simulation_dataset():
             )
         )
         _new_dataset = np.array(new_dataset)
-        if cnt != size and cnt % size == 0:
-            write_txt(
-                target_dataset,
-                _new_dataset,
-                fmt="%f"
-            )
-        cnt += 1
-        if cnt == size:
-            write_txt(
-                target_dataset,
-                _new_dataset,
-                fmt="%f"
-            )
+        write_txt(
+            target_dataset,
+            _new_dataset,
+            fmt="%f"
+        )
 
 
 def calib_dataset():
