@@ -82,10 +82,9 @@ class Gem5Wrapper(Simulation):
         # 16 stats
         stats = OrderedDict()
         stats_name = [
-            "issueRate", "intInstQueueReads", "intInstQueueWrites", "fpInstQueueReads",
-            "fpInstQueueWrites", "intAluAccesses", "fpAluAccesses", "numLoadInsts",
-            "numStoreInsts", "numBranches", "condIncorrect", "BTBLookups",
-            "RASIncorrect", "indirectMispredicted", "intRegfileReads", "intRegfileWrites"
+            "issueRate", "intInstQueueReads", "intInstQueueWrites",
+            "intAluAccesses", "numLoadInsts", "numStoreInsts",
+            "numBranches", "intRegfileReads", "intRegfileWrites"
         ]
         for name in stats_name:
             stats[name] = 0
