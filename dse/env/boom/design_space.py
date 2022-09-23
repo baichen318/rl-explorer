@@ -289,6 +289,9 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
 		# Example:
 		# 	["fetchWidth", "decodeWidth", "ISU", "IFU"]
 		self.components = list(self.descriptions[self.designs[0]].keys())
+		# Example:
+		#		length of ["branchPredictor", "fetchWidth", "numFetchBufferEntries", ...]
+		self.embedding_dims = self.construct_embedding_dims()
 		self.design_size = self.construct_design_size()
 		# self.acc_design_size: <list> list of accumulated sizes of each design
 		# Example:
@@ -315,6 +318,12 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
 		]
 		DesignSpace.__init__(self, size, len(self.components))
 		BOOMMacros.__init__(self, root)
+
+	def construct_embedding_dims(self):
+		dims = 0
+		for k, v in self.descriptions[self.designs[0]].items():
+			dims += len(self.components_mappings[k]["description"])
+		return dims
 
 	def construct_design_size(self):
 		"""

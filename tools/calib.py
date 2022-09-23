@@ -59,28 +59,40 @@ class Dataset(object):
         self.dataset = dataset
         self.dims_of_state = dims_of_state
         self.design_space = load_design_space()
-        self.embedding = self.vec_to_feature()
-        self.perf_feature = np.concatenate(
-            (self.embedding, np.expand_dims(dataset[:, -3], axis=1)),
+        self.embedding = self.design_space.embedding_dims
+        self.perf_feature = np.concatenate((
+                # embedding
+                dataset[:, :self.embedding],
+                # statistics
+                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                # pred. PPA
+                np.expand_dims(dataset[:, -3], axis=1)
+            ),
             axis=1
         )
-        self.perf_gt = dataset[:, dims_of_state]
-        self.power_feature = np.concatenate(
-            (self.embedding, np.expand_dims(dataset[:, -2], axis=1)),
+        self.perf_gt = dataset[:, self.embedding]
+        self.power_feature = np.concatenate((
+                # embedding
+                dataset[:, :self.embedding],
+                # statistics
+                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                # pred. PPA
+                np.expand_dims(dataset[:, -2], axis=1)
+            ),
             axis=1
         )
-        self.power_gt = dataset[:, dims_of_state + 1]
-        self.area_feature = np.concatenate(
-            (self.embedding, np.expand_dims(dataset[:, -1], axis=1)),
+        self.power_gt = dataset[:, self.embedding + 1]
+        self.area_feature = np.concatenate((
+                # embedding
+                dataset[:, :self.embedding],
+                # statistics
+                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                # pred. PPA
+                np.expand_dims(dataset[:, -1], axis=1)
+            ),
             axis=1
         )
-        self.area_gt = dataset[:, dims_of_state + 2]
-
-    def vec_to_feature(self):
-        embedding = []
-        for vec in self.dataset[:, :self.dims_of_state]:
-            embedding.append(self.design_space.vec_to_embedding(list(vec)))
-        return np.array(embedding)
+        self.area_gt = dataset[:, self.embedding + 2]
 
     def get_perf_dataset(self):
         return self.perf_feature, self.perf_gt
