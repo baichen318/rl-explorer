@@ -117,7 +117,7 @@ class CalibModel(object):
     def init_xgb(self):
         if self.metric == "perf":
             return XGBRegressor(
-                max_depth=5,
+                max_depth=6,
                 gamma=0.0000001,
                 min_child_weight=1,
                 subsample=1.0,
@@ -125,13 +125,13 @@ class CalibModel(object):
                 reg_alpha=0,
                 reg_lambda=0.1,
                 booster="gbtree",
-                objective="reg:squarederror",
+                objective="reg:squaredlogerror",
                 eval_metric="mae",
                 n_jobs=-1
             )
         elif self.metric == "power":
             return XGBRegressor(
-                max_depth=3,
+                max_depth=6,
                 gamma=0.0000001,
                 min_child_weight=1,
                 subsample=1.0,
@@ -147,7 +147,7 @@ class CalibModel(object):
             assert self.metric == "area", \
                 "[ERROR]: {} is not supported.".format(metric)
             return XGBRegressor(
-                max_depth=3,
+                max_depth=6,
                 gamma=0.0000001,
                 min_child_weight=1,
                 subsample=1.0,
