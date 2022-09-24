@@ -21,11 +21,10 @@ class Preference(object):
 		return preference / np.sum(preference)
 
 	def generate_preference(self, num_of_preference, fixed_preference=None):
-		# preference = np.random.randn(num_of_preference - 1, self.reward_space) * self.scale_factor
-		# ablation
-		preference = np.ones((num_of_preference - 1, self.reward_space)) * self.scale_factor
-		preference = preference / np.sum(preference)
 		if fixed_preference is not None:
+			preference = np.random.randn(
+				num_of_preference - 1, self.reward_space
+			) * self.scale_factor
 			preference = np.abs(preference) / \
 				np.linalg.norm(preference, ord=1, axis=1).reshape(
 					num_of_preference - 1,
@@ -33,6 +32,9 @@ class Preference(object):
 				)
 			return np.concatenate(([fixed_preference], preference))
 		else:
+			preference = np.random.randn(
+				num_of_preference, self.reward_space
+			) * self.scale_factor
 			preference = np.abs(preference) / \
 				np.linalg.norm(preference, ord=1, axis=1).reshape(
 					num_of_preference,

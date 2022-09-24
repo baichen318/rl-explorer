@@ -172,6 +172,9 @@ class BOOMEnv(BasicEnv):
                 axis=0
             )
         )[0]
+        # NOTICE: it is important to scale area
+        # compared with performance and power
+        area *= 1e-6
         # NOTICE: power and area should be negated
         return np.array([perf, -power, -area])
 
@@ -213,10 +216,10 @@ class BOOMEnv(BasicEnv):
                 # that already has a human implementations.
                 idx = {
                     "1-wide 4-fetch SonicBOOM": 17,
-                    "2-wide 4-fetch SonicBOOM": 86733931,
-                    "3-wide 8-fetch SonicBOOM": 168415972,
-                    "4-wide 8-fetch SonicBOOM": 202143214,
-                    "5-wide SonicBOOM": 215828887
+                    "2-wide 4-fetch SonicBOOM": 39391288,
+                    "3-wide 8-fetch SonicBOOM": 82366510,
+                    "4-wide 8-fetch SonicBOOM": 100910681,
+                    "5-wide SonicBOOM": 100912554
                 }
             else:
                 assert self.configs["design"] == "Rocket", \

@@ -235,7 +235,7 @@ class BOOMAgent(object):
 
     def schedule_lr(self, episode):
         self.lr = self.configs["learning-rate"] - \
-            (episode / (self.configs["max-iteration"] * self.configs["num-step"])) * \
+            (episode / (self.configs["max-sequence"] * self.configs["num-step"])) * \
             self.configs["learning-rate"]
         for params in self.optimizer.param_groups:
             params["lr"] = self.lr

@@ -219,7 +219,7 @@ def a2c(env, configs):
     agent = Agent(configs, env)
 
     # initialization
-    iteration, episode, sequence = 0, 0, 0
+    sequence, episode = 0, 0
     state = agent.envs.reset()
     fixed_preference = agent.preference.init_preference()
     explored_preference = agent.preference.generate_preference(
@@ -229,11 +229,11 @@ def a2c(env, configs):
     status = Status(configs["summary-writer"])
 
     start = time()
-    while iteration < configs["max-iteration"]:
+    while sequence < configs["max-sequence"]:
         agent.buffer.reset()
         configs["logger"].info(
-            "[INFO]: current iteration: {}, current episode {}.".format(
-                iteration,
+            "[INFO]: current sequence: {}, current episode {}.".format(
+                sequence,
                 episode
             )
         )
@@ -249,12 +249,14 @@ def a2c(env, configs):
             )
 
             configs["logger"].info(
+                "sequence: {}, " \
                 "episode: {}, " \
                 "step: {}, " \
                 "state: {}, " \
                 "action: {}, " \
                 "next_state: {}, " \
                 "info: {}.".format(
+                    sequence,
                     episode,
                     _step + 1,
                     state,
@@ -276,13 +278,10 @@ def a2c(env, configs):
                 status_update_per_sequence(
                     status, agent, info, explored_preference, sequence
                 )
+                explored_preference = agent.preference.generate_preference(
+                    configs["num-parallel"]
+                )
                 sequence += 1
-                # cannot reach
-                for i in range(1, configs["num-parallel"]):
-                    explored_preference = agent.preference.renew_preference(
-                        explored_preference,
-                        i
-                    )
 
             episode += configs["num-parallel"]
 
