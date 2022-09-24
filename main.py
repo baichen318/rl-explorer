@@ -14,16 +14,26 @@ sys.path.insert(
     0,
     os.path.join(os.path.dirname(__file__), "simulation")
 )
-import getpass
-import socket
+import time
 import torch
+import socket
+import getpass
 from dse.algo.a2c.a2c import a2c
-from time import time
 from utils import parse_args, get_configs, write_txt, if_exist, \
     mkdir, create_logger, execute
 
 
 def pre_requisite():
+    configs["output-path"] = os.path.join(
+        configs["output-path"],
+        "{}-{}-{}-{}-{}".format(
+            configs["mode"],
+            configs["design"].replace(' ', '-'),
+            getpass.getuser(),
+            socket.gethostname(),
+            time.strftime("%Y-%m-%d-%H-%M")
+        )
+    )
     logger, log_file = create_logger(
         configs["output-path"],
         "{}-{}-{}-{}".format(

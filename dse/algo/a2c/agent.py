@@ -46,7 +46,8 @@ class BOOMAgent(object):
         )
         self.temperature = self.configs["temperature"]
         self.mse = nn.MSELoss()
-        self.set_random_state(round(time.time()))
+        # self.set_random_state(round(time.time()))
+        self.set_random_state(0)
 
     def set_random_state(self, seed):
         np.random.seed(seed)
@@ -67,12 +68,14 @@ class BOOMAgent(object):
             )
         return True if self.configs["mode"] == "train" else False
 
-    def get_action(self, state, preference):
+    def get_action(self, state, preference, status=None, episode=None):
         state = array_to_tensor(state)
         preference = array_to_tensor(preference)
         policy, value = self.model(state, preference)
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
+            if status is not None and episode is not None:
+                status.update_action_per_episode(policy, episode)
         else:
             policy = F.softmax(policy, dim=-1)
         action = self.random_choice_prob_index(policy)
@@ -144,23 +147,23 @@ class BOOMAgent(object):
         return np.concatenate(total_discounted_reward).reshape(-1, self.envs.reward_space)
 
     def calc_advantage(self, preference, discounted_reward, value, episode):
-        n_step = self.configs["num-parallel"] * self.configs["num-step"]
+        ofs = self.configs["num-parallel"] * self.configs["num-step"]
 
         def apply_envelope_operator(discounted_reward, preference):
             prod = np.inner(discounted_reward, preference)
             mask = prod.transpose().reshape(
                 self.configs["sample-size"],
                 -1,
-                n_step
+                ofs
             ).argmax(axis=1)
-            mask = mask.reshape(-1) * n_step + \
+            mask = mask.reshape(-1) * ofs + \
                 np.array(
-                    list(range(n_step)) * self.configs["sample-size"]
+                    list(range(ofs)) * self.configs["sample-size"]
                 )
             discounted_reward = discounted_reward[mask]
             return discounted_reward
 
-        if episode > self.configs["apply-envelope-operator-start"]:
+        if episode > self.configs["episode-when-apply-envelope-operator"]:
             discounted_reward = apply_envelope_operator(
                 discounted_reward,
                 preference
@@ -232,15 +235,16 @@ class BOOMAgent(object):
 
     def schedule_lr(self, episode):
         self.lr = self.configs["learning-rate"] - \
-            (episode / self.configs["max-episode"]) * self.configs["learning-rate"]
+            (episode / (self.configs["max-iteration"] * self.configs["num-step"])) * \
+            self.configs["learning-rate"]
         for params in self.optimizer.param_groups:
             params["lr"] = self.lr
-        self.configs["logger"].info("[INFO]: learning rate: {}.".format(self.lr))
+        # self.configs["logger"].info("[INFO]: learning rate: {}.".format(self.lr))
 
-    def save(self, episode, step):
-        if step % (
+    def save(self, episode):
+        if episode % (
             self.configs["num-parallel"] * \
-            self.configs["num-step"]
+            self.configs["num-step"] * 100
         ) == 0:
             model_path = os.path.join(
                 self.configs["model-path"],
@@ -256,8 +260,8 @@ class BOOMAgent(object):
                 model_path
             )
             self.configs["logger"].info(
-                "[INFO]: save model: {} at episode: {}, step: {}.".format(
-                    model_path, episode, step
+                "[INFO]: save model: {} at episode: {}.".format(
+                    model_path, episode
                 )
             )
 
@@ -273,13 +277,12 @@ class BOOMAgent(object):
         )
 
 
-    def sync_critic(self, episode, step):
-        if step % self.configs["update-critic-step"] == 0:
+    def sync_critic(self, episode):
+        if episode % self.configs["update-critic-episode"] == 0:
             self._model.load_state_dict(self.model.state_dict())
             self.configs["logger"].info(
-                "[INFO]: update the critic at episode: {}, step: {}.".format(
-                    episode,
-                    step
+                "[INFO]: update the critic at episode: {}.".format(
+                    episode
                 )
             )
 

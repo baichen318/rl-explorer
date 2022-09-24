@@ -39,7 +39,7 @@ dataset: data/boom/dataset.txt
 
 # working mode specifications
 # train | explore
-mode: explore
+mode: train
 
 
 # RL model specifications
@@ -50,20 +50,23 @@ rl-model: 1-wide-4-fetch-SonicBOOM-baichen-MacBook-Pro.lan-2022-05-09-18-11.pt
 ppa-model: tools/models
 
 
+# PPA preference scaling
+ppa-preference:
+  - 1
+  - 1
+  - 1
+
+
 # the number of processes specifications
 num-parallel: 1
 
 
-# maximal episode specifications
-max-episode: 10000
+# maximal iteration specifications
+max-iteration: 1000000
 
 
-# maximal step specifications
-max-step-per-episode: 100
-
-
-# early stopping specifications in one episode
-early-stopping-per-episode: 10
+# done condition: after `terminate-step`, the agent cannot explore a better design
+terminate-step: 10
 
 
 # the batch size for training specifications
@@ -75,7 +78,7 @@ use-cuda: false
 
 
 # the number of n-step evaluation specifications
-num-step: 5
+num-step: 3
 
 
 # softmax temperature specifications to encourage exploration
@@ -106,12 +109,12 @@ alpha: 0.02
 clip-grad-norm: 0.5
 
 
-# the step specifications begin to apply the envelope operator
-apply-envelope-operator-start: 10
+# the episode specifications begin to apply the envelope operator
+episode-when-apply-envelope-operator: 1000
 
 
-# the step specifications to update the critic
-update-critic-step: 10
+# the episode specifications to update the critic
+update-critic-episode: 100
 
 
 # output path specifications

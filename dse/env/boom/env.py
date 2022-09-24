@@ -117,54 +117,57 @@ class BOOMEnv(BasicEnv):
         # NOTICE: `+ 1` is aligned with the design space specification
         return k, v.index(_action)
 
-    def scale_ppa(self, ppa):
-        """
-            scale PPA values can help to converge
-            ppa: <list>
-
-            Example:
-                ppa = self.scale_ppa([perf, power, area])
-        """
-        # performance
-        ppa[0] *= 2
-        # power
-        ppa[1] *= 20
-        # area
-        ppa[2] *= 0.5e-6
-        return ppa
-
     def evaluate_microarchitecture(self, state):
         manager = Gem5Wrapper(
             self.configs,
             self.design_space,
-            state,
+            self.design_space.vec_to_embedding(state),
             self.idx
         )
-        perf = manager.evaluate_perf()
+        perf, stats = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
+        stats_feature = []
+        for k, v in stats.items():
+            stats_feature.append(v)
+        stats_feature = np.array(stats_feature)
         perf = self.perf_model.predict(np.expand_dims(
                 np.concatenate(
-                    (np.array(self.design_space.vec_to_embedding(
-                        list(state))
-                    ), [perf])
+                    (
+                        np.array(self.design_space.vec_to_embedding(
+                                list(state)
+                            )
+                        ),
+                        stats_feature,
+                        [perf]
+                    )
+                ),
+                axis=0
+            )
+        )[0]
+        perf = self.perf_model.predict(np.expand_dims(
+                np.concatenate(
+                    (
+                        np.array(self.design_space.vec_to_embedding(
+                                list(state)
+                            )
+                        ),
+                        stats_feature,
+                        [power]
+                    )
                 ),
                 axis=0
             )
         )[0]
         power = self.power_model.predict(np.expand_dims(
                 np.concatenate(
-                    (np.array(self.design_space.vec_to_embedding(
-                        list(state))
-                    ), [power])
-                ),
-                axis=0
-            )
-        )[0]
-        area = self.area_model.predict(np.expand_dims(
-                np.concatenate(
-                    (np.array(self.design_space.vec_to_embedding(
-                        list(state))
-                    ),[area])
+                    (
+                        np.array(self.design_space.vec_to_embedding(
+                                list(state)
+                            )
+                        ),
+                        stats_feature,
+                        [area]
+                    )
                 ),
                 axis=0
             )
@@ -172,26 +175,13 @@ class BOOMEnv(BasicEnv):
         # NOTICE: power and area should be negated
         return np.array([perf, -power, -area])
 
-    def calc_reward(self, ppa):
-        def negate_ppa():
-            return np.array(
-                [
-                    self.ppa_baseline[0],
-                    abs(self.ppa_baseline[1]),
-                    abs(self.ppa_baseline[2])
-                ]
-            )
-
-        return (ppa - self.ppa_baseline) / \
-            (negate_ppa() + np.array([1e-8, 1e-8, 1e-8]))
-
-    def early_stopping(self, ppa):
+    def if_done(self, ppa):
         if ppa[0] > self.ppa_baseline[0] and \
-            self.ppa[1] > self.ppa_baseline[1] and \
-            self.ppa[2] > self.ppa_baseline[2]:
+            ppa[1] > self.ppa_baseline[1] and \
+            ppa[2] > self.ppa_baseline[2]:
             self.last_update = self.steps
         return (self.steps - self.last_update) > \
-            self.configs["early-stopping-per-episode"]
+            self.configs["terminate-step"]
 
     def step(self, action):
         s_idx, a_offset = self.identify_component(action)
@@ -201,27 +191,16 @@ class BOOMEnv(BasicEnv):
         ][self.design_space.components[s_idx]][a_offset]
 
         proxy_ppa = self.evaluate_microarchitecture(self.state)
-        done = False
+        reward = proxy_ppa
+        done = self.if_done(proxy_ppa)
         self.steps += 1
-        if self.steps == self.configs["num-step"]:
-            reward = self.calc_reward(proxy_ppa)
-            done = True
-        else:
-            reward = np.array([0, 0, 0])
-        # done = bool(
-        #     self.steps > self.configs["max-step-per-episode"] or \
-        #     self.early_stopping(reward)
-        # )
         info = {
-            "perf": reward[0],
-            "power": reward[1],
-            "area": reward[2],
-            "pred-perf": proxy_ppa[0],
-            "pred-power": proxy_ppa[1],
-            "pred-area": proxy_ppa[2],
-            "baseline-perf": self.ppa_baseline[0],
-            "baseline-power": self.ppa_baseline[1],
-            "baseline-area": self.ppa_baseline[2],
+            "perf-pred": proxy_ppa[0],
+            "power-pred": proxy_ppa[1],
+            "area-pred": proxy_ppa[2],
+            "perf-baseline": self.ppa_baseline[0],
+            "power-baseline": self.ppa_baseline[1],
+            "area-baseline": self.ppa_baseline[2],
             "last-update": self.last_update
         }
         return self.state, reward, done, info
