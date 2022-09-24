@@ -78,7 +78,7 @@ use-cuda: false
 
 
 # the number of n-step evaluation specifications
-num-step: 3
+num-step: 5
 
 
 # softmax temperature specifications to encourage exploration

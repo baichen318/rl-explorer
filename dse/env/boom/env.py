@@ -144,7 +144,7 @@ class BOOMEnv(BasicEnv):
                 axis=0
             )
         )[0]
-        perf = self.perf_model.predict(np.expand_dims(
+        power = self.power_model.predict(np.expand_dims(
                 np.concatenate(
                     (
                         np.array(self.design_space.vec_to_embedding(
@@ -158,7 +158,7 @@ class BOOMEnv(BasicEnv):
                 axis=0
             )
         )[0]
-        power = self.power_model.predict(np.expand_dims(
+        area = self.area_model.predict(np.expand_dims(
                 np.concatenate(
                     (
                         np.array(self.design_space.vec_to_embedding(
@@ -237,19 +237,19 @@ class BOOMEnv(BasicEnv):
                 # ipc power area
                 # Small SonicBOOM
                 "1-wide 4-fetch SonicBOOM":
-                    [0.7760953307151794434, 0.02541292458772659302, 1.504957375000000000e+06], # [0.766128848, 0.0212, 1504764.403],
+                    [7.977547049522399902e-01, 4.337445273995399475e-02, 1.504552125e+06], # [0.766128848, 0.0212, 1504764.403],
                 # Medium SonicBOOM
                 "2-wide 4-fetch SonicBOOM":
-                    [1.121231794357299805, 0.03620982170104980469, 1.939831625000000000e+06], # [1.100314122, 0.0267, 1933210.356],
+                    [1.168446421623229980, 5.214343592524528503e-02, 1.92402725e+06], # [1.100314122, 0.0267, 1933210.356],
                 # Large SonicBOOM
                 "3-wide 8-fetch SonicBOOM":
-                    [1.327529311180114746, 0.06920745223760604858, 3.213275500000000000e+06], # [1.312793895, 0.0457, 3205484.562],
+                    [1.400907158851623535, 9.281466156244277954e-02, 3.219418e+06], # [1.312793895, 0.0457, 3205484.562],
                 # Mega SonicBOOM
                 "4-wide 8-fetch SonicBOOM":
-                    [1.642608880996704102, 0.07648544013500213623, 4.829858000000000000e+06], # [1.634452069, 0.0592, 4805888.807],
+                    [1.735840678215026855, 1.194135993719100952e-01, 4.787427e+06], # [1.634452069, 0.0592, 4805888.807],
                 # Giga SonicBOOM
                 "5-wide SonicBOOM":
-                    [1.653097748756408691, 0.07422129064798355103, 5.043137500000000000e+06] # [1.644617524, 0.0715, 5069115.916]
+                    [1.762486934661865234, 1.423006653785705566e-01, 5.025076e+06] # [1.644617524, 0.0715, 5069115.916]
             }
         else:
             assert self.configs["design"] == "Rocket", \

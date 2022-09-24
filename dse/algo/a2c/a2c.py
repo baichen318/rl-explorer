@@ -166,7 +166,7 @@ class Status(object):
         action = np.array(self.action).mean(axis=0)
         action_dict = OrderedDict()
         cnt = 1
-        for a in action[0]:
+        for a in action:
             action_dict['a' + str(cnt)] = a
             cnt += 1
         self.writer.add_scalars(
@@ -238,7 +238,7 @@ def a2c(env, configs):
             )
         )
         for _step in range(configs["num-step"]):
-            action = agent.get_action(state, explored_preference, episode)
+            action = agent.get_action(state, explored_preference, status, episode)
             next_state, reward, done, info = agent.envs.step(action)
             agent.buffer.insert(
                 state,
@@ -260,7 +260,7 @@ def a2c(env, configs):
                     state,
                     action,
                     next_state,
-                    info
+                    info[0]
                 )
             )
 
