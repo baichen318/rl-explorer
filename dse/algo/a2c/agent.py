@@ -32,13 +32,17 @@ class BOOMAgent(object):
             self.envs.reward_space
         )
         self._model = copy.deepcopy(self.model)
-        self.preference = Preference(self.configs["ppa-preference"], self.envs.reward_space)
+        self.training = self.set_mode()
+        self.preference = Preference(
+            self.configs["ppa-preference"],
+            self.envs.reward_space,
+            self.training
+        )
         self.buffer = Buffer(
             self.envs.observation_space,
             self.envs.reward_space,
             self.configs["sample-size"]
         )
-        self.training = self.set_mode()
         self.lr = self.configs["learning-rate"]
         self.optimizer = optim.Adam(
             self.model.parameters(),
@@ -61,8 +65,6 @@ class BOOMAgent(object):
             self._model.eval()
             self.load(
                 os.path.join(
-                    self.configs["output-path"],
-                    "models",
                     self.configs["rl-model"]
                 )
             )
@@ -273,7 +275,7 @@ class BOOMAgent(object):
             self.model.load_state_dict(torch.load(path))
         self._model = copy.deepcopy(self.model)
         self.configs["logger"].info(
-            "load the RL model from {}".format(path)
+            "[INFO]: load the RL model from {}".format(path)
         )
 
 
