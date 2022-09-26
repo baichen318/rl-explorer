@@ -105,9 +105,10 @@ class Dataset(object):
 
 
 class CalibModel(object):
-    def __init__(self, metric):
+    def __init__(self, metric, decode_width=None):
         super(CalibModel, self).__init__()
         self.metric = metric
+        self.decode_width = decode_width
         self.model = self.init_xgb()
         self.mae = None
         self.mse = None
@@ -121,7 +122,7 @@ class CalibModel(object):
                 gamma=0.0000001,
                 min_child_weight=1,
                 subsample=1.0,
-                eta=0.25,
+                eta=0.1,
                 reg_alpha=0,
                 reg_lambda=0.1,
                 booster="gbtree",
@@ -132,10 +133,10 @@ class CalibModel(object):
         elif self.metric == "power":
             return XGBRegressor(
                 max_depth=6,
-                gamma=0.0000001,
+                gamma=0,
                 min_child_weight=1,
                 subsample=1.0,
-                eta=0.25,
+                eta=0.11,
                 reg_alpha=0,
                 reg_lambda=0.1,
                 booster="gbtree",
@@ -172,10 +173,17 @@ class CalibModel(object):
         return pred
 
     def save(self):
-        output_path = os.path.join(
-            rl_explorer_root,
-            configs["ppa-model"]
-        )
+        if self.decode_width is not None:
+            output_path = os.path.join(
+                rl_explorer_root,
+                configs["ppa-model"],
+                self.decode_width
+            )
+        else:
+            output_path = os.path.join(
+                rl_explorer_root,
+                configs["ppa-model"]
+            )
         mkdir(output_path)
         if "BOOM" in configs["design"]:
             name = "boom"
@@ -308,6 +316,8 @@ def load_design_space():
 
 def split_dataset(dataset):
     # NOTICE: we omit the rest of groups
+    if configs["decode_width"] is not None:
+        dataset = dataset[np.where(dataset[:, 5] == int(configs["decode_width"]))[0]]
     kfold = KFold(n_splits=5, shuffle=True, random_state=2022)
     for train, test in kfold.split(dataset):
         yield train, test
@@ -371,7 +381,10 @@ def calib_xgboost(design_space, dataset):
             len(design_space.descriptions[configs["design"]].keys())
         )
         for metric in Dataset.metrics:
-            model = CalibModel(metric)
+            model = CalibModel(
+                metric,
+                decode_width=configs["decode_width"]
+            )
             train_feature, train_gt = getattr(
                 train_dataset,
                 "get_{}_dataset".format(metric)
@@ -404,13 +417,17 @@ def calib_xgboost(design_space, dataset):
             len(design_space.descriptions[configs["design"]].keys())
         )
         for metric in Dataset.metrics:
-            model = CalibModel(metric)
+            model = CalibModel(
+                metric,
+                decode_width=configs["decode_width"]
+            )
             all_feature, all_gt = getattr(
                 all_dataset,
                 "get_{}_dataset".format(metric)
             )()
             model.fit(all_feature, all_gt)
             model.predict(all_feature, all_gt)
+            stats.update(model)
             model.save()
             stats.summary()
             visualize(metric, all_dataset, model)
@@ -621,12 +638,20 @@ def calib_dataset():
     calib_xgboost(design_space, dataset)
 
 
-def load_calibrate_ppa_models(design):
-    ppa_model_root = os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        configs["ppa-model"],
-    )
+def load_calibrate_ppa_models(design, decode_width=None):
+    if decode_width is not None:
+        ppa_model_root = os.path.join(
+            os.path.dirname(__file__),
+            os.path.pardir,
+            configs["ppa-model"],
+            decode_width
+        )
+    else:
+        ppa_model_root = os.path.join(
+            os.path.dirname(__file__),
+            os.path.pardir,
+            configs["ppa-model"]
+        )
     if "BOOM" in design:
         perf_root = os.path.join(
             ppa_model_root,
@@ -682,11 +707,14 @@ def validate():
         ),
         fmt=float
     )
+    dataset = dataset[np.where(dataset[:, 5] == int(configs["decode_width"]))[0]]
     all_dataset = Dataset(
         dataset[range(dataset.shape[0])],
         len(design_space.descriptions[configs["design"]].keys())
     )
-    lightweight_ppa_models = list(load_calibrate_ppa_models(configs["design"]))
+    lightweight_ppa_models = list(
+        load_calibrate_ppa_models(configs["design"], configs["decode_width"])
+    )
     for metric in Dataset.metrics:
         all_feature, all_gt = getattr(
             all_dataset,
@@ -727,4 +755,9 @@ if __name__ == '__main__':
     configs["logger"] = None
     # a tricy to implement `Gem5Wrapper`
     Simulator = None
+    if "BOOM" in configs["design"]:
+        decode_width = configs["design"].split(' ')[0].split('-')[0]
+        configs["decode_width"] = decode_width
+    else:
+        configs["decode_width"] = None
     main()

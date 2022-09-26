@@ -86,7 +86,8 @@ class BOOMEnv(BasicEnv):
             os.path.pardir,
             os.path.pardir,
             os.path.pardir,
-            self.configs["ppa-model"]
+            self.configs["ppa-model"],
+            self.configs["design"].split(' ')[0].split('-')[0]
         )
         perf_root = os.path.join(
             ppa_model_root,
