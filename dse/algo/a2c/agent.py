@@ -246,7 +246,7 @@ class BOOMAgent(object):
     def save(self, episode):
         if episode % (
             self.configs["num-parallel"] * \
-            self.configs["num-step"] * 100
+            self.configs["num-step"] * 10
         ) == 0:
             model_path = os.path.join(
                 self.configs["model-path"],

@@ -86,7 +86,7 @@ class BOOMEnv(BasicEnv):
             os.path.pardir,
             os.path.pardir,
             os.path.pardir,
-            self.configs["ppa-model"],
+            self.configs["ppa-model"]
         )
         perf_root = os.path.join(
             ppa_model_root,
@@ -99,6 +99,7 @@ class BOOMEnv(BasicEnv):
         area_root = os.path.join(
             ppa_model_root,
             "boom-area.pt"
+
         )
         self.perf_model = joblib.load(perf_root)
         self.power_model = joblib.load(power_root)
@@ -126,6 +127,7 @@ class BOOMEnv(BasicEnv):
         )
         perf, stats = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
+        area *= 1e6
         stats_feature = []
         for k, v in stats.items():
             stats_feature.append(v)
