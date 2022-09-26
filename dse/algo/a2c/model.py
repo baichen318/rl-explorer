@@ -48,7 +48,7 @@ class BOOMActorCriticNetwork(MLPBase):
     def init_network(self):
         for p in self.modules():
             if isinstance(p, nn.Conv2d) or isinstance(p, nn.Linear):
-                init.kaiming_uniform_(p.weight)
+                init.xavier_uniform_(p.weight)
                 p.bias.data.zero_()
     
     def forward(self, state, preference):

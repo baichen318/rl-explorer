@@ -51,7 +51,7 @@ class BOOMAgent(object):
         self.temperature = self.configs["temperature"]
         self.mse = nn.MSELoss()
         # self.set_random_state(round(time.time()))
-        self.set_random_state(0)
+        self.set_random_state(21164)
 
     def set_random_state(self, seed):
         np.random.seed(seed)
@@ -76,6 +76,7 @@ class BOOMAgent(object):
         policy, value = self.model(state, preference)
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
+            self.configs["logger"].info("[INFO]: action prob: {}.".format(policy.data.cpu().numpy()))
             if status is not None and episode is not None:
                 status.update_action_per_episode(policy, episode)
         else:
@@ -235,6 +236,14 @@ class BOOMAgent(object):
         )
         self.optimizer.step()
 
+        self.configs["logger"].info(
+            "[INFO]: actor loss: {}, critic loss: {}, entropy loss: {}.".format(
+                self.actor_loss.detach().numpy(),
+                self.critic_loss.detach().numpy(),
+                self.entropy.detach().numpy()
+            )
+        )
+
     def schedule_lr(self, episode):
         self.lr = self.configs["learning-rate"] - \
             (episode / (self.configs["max-sequence"] * self.configs["num-step"])) * \
@@ -344,6 +353,7 @@ class RocketAgent(object):
         policy, value = self.model(state, preference)
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
+            self.configs["logger"].info("[INFO]: action prob: {}.".format(policy.data.cpu.numpy()))
         else:
             policy = F.softmax(policy, dim=-1)
         action = self.random_choice_prob_index(policy)
@@ -492,7 +502,7 @@ class RocketAgent(object):
 
         self.loss = self.actor_loss.mean() + self.critic_loss - \
             self.configs["alpha"] * self.entropy
-
+        
         self.optimizer.zero_grad()
         self.loss.backward()
         nn.utils.clip_grad_norm_(
