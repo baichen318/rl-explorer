@@ -182,10 +182,11 @@ class BOOMEnv(BasicEnv):
         return np.array([perf, -power, -area])
 
     def if_done(self, ppa):
-        if ppa[0] > self.ppa_baseline[0] and \
-            ppa[1] > self.ppa_baseline[1] and \
-            ppa[2] > self.ppa_baseline[2]:
+        if ppa[0] > self.best_ppa[0] and \
+            ppa[1] > self.best_ppa[1] and \
+            ppa[2] > self.best_ppa[2]:
             self.last_update = self.steps
+            self.best_ppa = ppa.copy()
         return (self.steps - self.last_update) > \
             self.configs["terminate-step"]
 
@@ -276,6 +277,7 @@ class BOOMEnv(BasicEnv):
         self.last_update = 0
         self.state = self.get_human_implementation()
         self.ppa_baseline = self.get_human_baseline()
+        self.best_ppa = self.ppa_baseline.copy()
         return self.state
 
     def render(self):
