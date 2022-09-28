@@ -1,6 +1,7 @@
 # Author: baichen318@gmail.com
 
 import os
+import sys
 import torch
 import random
 import time
@@ -52,7 +53,8 @@ class BasicEnv(gym.Env):
         actions_map, candidate_actions = OrderedDict(), []
         s_idx, a_idx = 0, 1
         for k, v in self.design_space.descriptions[design].items():
-            if k == "fetchWidth" or k == "decodeWidth":
+            if k == "fetchWidth" or k == "decodeWidth" or \
+                k == "branchPredictor":
                 s_idx += 1
                 continue
             else:
@@ -245,19 +247,19 @@ class BOOMEnv(BasicEnv):
                 # area should be x 1e-6
                 # Small SonicBOOM
                 "1-wide 4-fetch SonicBOOM":
-                    [7.977547049522399902e-01, 4.337445273995399475e-02, 1.504552125], # [0.766128848, 0.0212, 1504764.403],
+                    [7.919527292251586914e-01, 4.375652596354484558e-02, 1.504552125], # [0.766128848, 0.0212, 1504764.403],
                 # Medium SonicBOOM
                 "2-wide 4-fetch SonicBOOM":
-                    [1.168446421623229980, 5.214343592524528503e-02, 1.92402725], # [1.100314122, 0.0267, 1933210.356],
+                    [1.162309169769287109, 5.288236215710639954e-02, 1.92402725], # [1.100314122, 0.0267, 1933210.356],
                 # Large SonicBOOM
                 "3-wide 8-fetch SonicBOOM":
-                    [1.400907158851623535, 9.281466156244277954e-02, 3.219418], # [1.312793895, 0.0457, 3205484.562],
+                    [1.385208010673522949, 9.215448051691055298e-02, 3.219418], # [1.312793895, 0.0457, 3205484.562],
                 # Mega SonicBOOM
                 "4-wide 8-fetch SonicBOOM":
-                    [1.735840678215026855, 1.194135993719100952e-01, 4.787427], # [1.634452069, 0.0592, 4805888.807],
+                    [1.699511766433715820, 1.193742826581001282e-01, 4.787427], # [1.634452069, 0.0592, 4805888.807],
                 # Giga SonicBOOM
                 "5-wide SonicBOOM":
-                    [1.762486934661865234, 1.423006653785705566e-01, 5.025076] # [1.644617524, 0.0715, 5069115.916]
+                    [1.758375167846679688, 1.426837295293807983e-01, 5.025076] # [1.644617524, 0.0715, 5069115.916]
             }
         else:
             assert self.configs["design"] == "Rocket", \

@@ -24,6 +24,9 @@ class Status(object):
         self.power_preference = []
         self.area_pred = []
         self.area_preference = []
+        self.perf_reward = []
+        self.power_reward = []
+        self.area_reward = []
         self.actor_loss = []
         self.critic_loss = []
         self.entropy = []
@@ -38,6 +41,15 @@ class Status(object):
         self.power_preference.append(float(preference[0][1]))
         self.area_pred.append(float(info["area-pred"]))
         self.area_preference.append(float(preference[0][2]))
+        self.perf_reward.append(
+            float(preference[0][0]) * float(info["perf-pred"])
+        )
+        self.power_reward.append(
+            float(preference[0][1]) * float(info["power-pred"])
+        )
+        self.area_reward.append(
+            float(preference[0][2]) * float(info["area-pred"])
+        )
         self.writer.add_scalars(
             "episode/perf",
             {
@@ -71,6 +83,18 @@ class Status(object):
                 "perf-preference": float(preference[0][0]),
                 "power-preference": float(preference[0][1]),
                 "area-preference": float(preference[0][2])
+            },
+            episode
+        )
+        self.writer.add_scalars(
+            "episode/reward",
+            {
+                "perf-reward": float(preference[0][0]) * float(info["perf-pred"]),
+                "power-reward": float(preference[0][1]) * float(info["power-pred"]),
+                "area-reward": float(preference[0][2]) * float(info["area-pred"]),
+                "total-reward": float(preference[0][0]) * float(info["perf-pred"]) + \
+                    float(preference[0][1]) * float(info["power-pred"]) + \
+                    float(preference[0][2]) * float(info["area-pred"])
             },
             episode
         )
@@ -150,6 +174,17 @@ class Status(object):
                 "perf-preference": np.mean(self.perf_preference),
                 "power-preference": np.mean(self.power_preference),
                 "area-preference": np.mean(self.area_preference)
+            },
+            sequence
+        )
+        self.writer.add_scalars(
+            "sequence/reward",
+            {
+                "perf-reward": np.mean(self.perf_reward),
+                "power-reward": np.mean(self.power_reward),
+                "area-reward": np.mean(self.area_reward),
+                "total-reward": np.mean(self.perf_reward) + \
+                    np.mean(self.power_reward) + np.mean(self.area_reward)
             },
             sequence
         )
