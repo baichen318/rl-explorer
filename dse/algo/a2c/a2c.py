@@ -42,8 +42,8 @@ class Status(object):
             "episode/perf",
             {
                 "perf-baseline": float(info["perf-baseline"]),
-                "perf-pred": float(info["perf-pred"]),
-                "perf-preference": float(preference[0][0])
+                "perf-pred": float(info["perf-pred"])
+                # "perf-preference": float(preference[0][0])
             },
             episode
         )
@@ -51,8 +51,8 @@ class Status(object):
             "episode/power",
             {
                 "power-baseline": float(info["power-baseline"]),
-                "power-pred": float(info["power-pred"]),
-                "power-preference": float(preference[0][1])
+                "power-pred": float(info["power-pred"])
+                # "power-preference": float(preference[0][1])
             },
             episode
         )
@@ -60,8 +60,8 @@ class Status(object):
             "episode/area",
             {
                 "area-baseline": float(info["area-baseline"]),
-                "area-pred": float(info["area-pred"]),
-                "area-preference": float(preference[0][2])
+                "area-pred": float(info["area-pred"])
+                # "area-preference": float(preference[0][2])
             },
             episode
         )
