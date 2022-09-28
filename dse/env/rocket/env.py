@@ -24,9 +24,6 @@ class BasicEnv(gym.Env):
         self.configs = configs
         # NOTICE: `self.idx`, a key to distinguish different gem5 repo.
         self.idx = idx
-        # NOTICE: every agent should have different initial seeds,
-        # so we make a small perturbation.
-        seed = round(self.idx + np.random.rand())
         self.design_space = parse_design_space(self.configs)
         self.dims_of_state = self.generate_dims_of_state(self.configs["design"])
         self.actions_map, self.candidate_actions = self.generate_actions_lut(
@@ -117,20 +114,6 @@ class RocketEnv(BasicEnv):
         # NOTICE: `+ 1` is aligned with the design space specification
         return k, v.index(_action)
 
-    def scale_ppa(self, ppa):
-        """
-            scale PPA values can help to converge
-            ppa: <list>
-
-            Example:
-                ppa = self.scale_ppa([perf, power, area])
-        """
-        # performance
-        ppa[1] *= 10
-        # area
-        ppa[2] *= 1e-6
-        return ppa
-
     def evaluate_microarchitecture(self, state):
         manager = Gem5Wrapper(
             self.configs,
@@ -140,6 +123,7 @@ class RocketEnv(BasicEnv):
         )
         perf = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
+        area *= 1e6
         perf = self.perf_model.predict(np.expand_dims(
                 np.concatenate((state, [perf])),
                 axis=0
@@ -155,31 +139,20 @@ class RocketEnv(BasicEnv):
                 axis=0
             )
         )[0]
+        # NOTICE: it is important to scale area
+        # compared with performance and power
+        area *= 1e-6
         # NOTICE: power and area should be negated
         return np.array(self.scale_ppa([perf, -power, -area]))
 
-    def calc_reward(self, ppa):
-        def negate_ppa():
-            return np.array(
-                [
-                    self.ppa_baseline[0],
-                    abs(self.ppa_baseline[1]),
-                    abs(self.ppa_baseline[2])
-                ]
-            )
-
-        return (ppa - self.ppa_baseline) / \
-            (negate_ppa() + np.array([1e-8, 1e-8, 1e-8]))
-
-    def early_stopping(self, ppa):
-        preference = np.ones(self.dims_of_reward)
-        preference /= np.sum(preference)
-        reward_w_preference = np.dot(ppa, preference)
-        if reward_w_preference > self.best_reward_w_preference:
-            self.best_reward_w_preference = reward_w_preference
+    def if_done(self, ppa):
+        if ppa[0] > self.best_ppa[0] and \
+            ppa[1] > self.best_ppa[1] and \
+            ppa[2] > self.best_ppa[2]:
             self.last_update = self.steps
+            self.best_ppa = ppa.copy()
         return (self.steps - self.last_update) > \
-            self.configs["early-stopping-per-episode"]
+            self.configs["terminate-step"]
 
     def step(self, action):
         s_idx, a_offset = self.identify_component(action)
@@ -188,60 +161,44 @@ class RocketEnv(BasicEnv):
             self.configs["design"]
         ][self.design_space.components[s_idx]][a_offset]
 
-        reward = self.calc_reward(
-            self.evaluate_microarchitecture(self.state)
-        )
+        proxy_ppa = self.evaluate_microarchitecture(self.state)
+        reward = proxy_ppa
+        done = self.if_done(proxy_ppa)
         self.steps += 1
-        done = bool(
-            self.steps > self.configs["max-step-per-episode"] or \
-            self.early_stopping(reward)
-        )
         info = {
-            "perf": reward[0],
-            "power": reward[1],
-            "area": reward[2]
+            "perf-pred": proxy_ppa[0],
+            "power-pred": proxy_ppa[1],
+            "area-pred": proxy_ppa[2],
+            "perf-baseline": self.ppa_baseline[0],
+            "power-baseline": self.ppa_baseline[1],
+            "area-baseline": self.ppa_baseline[2],
+            "last-update": self.last_update
         }
         return self.state, reward, done, info
 
+    def get_human_implementation(self):
+        return np.array(self.design_space.idx_to_vec(
+                692
+            )
+        )
+
+    def get_human_baseline(self):
+        ppa = {
+            "Rocket": [0.822898, 0.007800, 682508.000000] # [0.801072362, 0.0026, 908152.038]
+        }
+        # negate
+        baseline = ppa[self.configs["design"]]
+        baseline[1] = -baseline[1]
+        baseline[2] = -baseline[2]
+        return np.array(baseline)
+
     def reset(self):
-        def get_idx_of_human_baseline(start, end):
-            idx = {
-                "Rocket": 212
-            }
-            return idx[self.configs["design"]]
-
-        def get_human_baseline():
-            ppa = {
-                "Rocket": [0.826904888, 0.0077, 0.906193]
-            }
-            # negate
-            baseline = ppa[self.configs["design"]]
-            baseline[1] = -baseline[1]
-            baseline[2] = -baseline[2]
-            return np.array(baseline)
-
         self.steps = 0
-        self.best_reward_w_preference = -float("inf")
+        # self.best_reward_w_preference = -float("inf")
         self.last_update = 0
-        idx = self.design_space.designs.index(self.configs["design"])
-        start = self.design_space.acc_design_size[idx - 1] \
-            if idx > 0 \
-            else 0
-        end = self.design_space.acc_design_size[idx]
-        # we make a reset location based on human implementation or
-        # a random selection
-        if np.random.random() < 0.9:
-            self.state = np.array(self.design_space.idx_to_vec(
-                    random.choice(range(start, end + 1))
-                )
-            )
-            self.ppa_baseline = self.evaluate_microarchitecture(self.state)
-        else:
-            self.state = np.array(self.design_space.idx_to_vec(
-                    get_idx_of_human_baseline(start, end + 1)
-                )
-            )
-            self.ppa_baseline = get_human_baseline()
+        self.state = self.get_human_implementation()
+        self.ppa_baseline = self.get_human_baseline()
+        self.best_ppa = self.ppa_baseline.copy()
         return self.state
 
     def render(self):

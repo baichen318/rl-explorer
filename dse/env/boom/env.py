@@ -214,7 +214,6 @@ class BOOMEnv(BasicEnv):
         }
         return self.state, reward, done, info
 
-
     def get_human_implementation(self):
         def get_idx_of_human_baseline():
             if "BOOM" in self.configs["design"]:
@@ -275,7 +274,6 @@ class BOOMEnv(BasicEnv):
 
     def reset(self):
         self.steps = 0
-        self.best_reward_w_preference = -float("inf")
         self.last_update = 0
         self.state = self.get_human_implementation()
         self.ppa_baseline = self.get_human_baseline()

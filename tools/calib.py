@@ -54,45 +54,65 @@ class Dataset(object):
 
     metrics = ["perf", "power", "area"]
 
-    def __init__(self, dataset, dims_of_state):
+    def __init__(self, design, dataset, dims_of_state):
         super(Dataset, self).__init__()
         self.dataset = dataset
         self.dims_of_state = dims_of_state
         self.design_space = load_design_space()
         self.embedding = self.design_space.embedding_dims
-        self.perf_feature = np.concatenate((
-                # embedding
-                dataset[:, :self.embedding],
-                # statistics
-                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
-                # pred. PPA
-                np.expand_dims(dataset[:, -3], axis=1)
-            ),
-            axis=1
-        )
-        self.perf_gt = dataset[:, self.embedding]
-        self.power_feature = np.concatenate((
-                # embedding
-                dataset[:, :self.embedding],
-                # statistics
-                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
-                # pred. PPA
-                np.expand_dims(dataset[:, -2], axis=1)
-            ),
-            axis=1
-        )
-        self.power_gt = dataset[:, self.embedding + 1]
-        self.area_feature = np.concatenate((
-                # embedding
-                dataset[:, :self.embedding],
-                # statistics
-                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
-                # pred. PPA
-                np.expand_dims(dataset[:, -1], axis=1)
-            ),
-            axis=1
-        )
-        self.area_gt = dataset[:, self.embedding + 2]
+        if "BOOM" in design:
+            self.perf_feature = np.concatenate((
+                    # embedding
+                    dataset[:, :self.embedding],
+                    # statistics
+                    dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                    # pred. PPA
+                    np.expand_dims(dataset[:, -3], axis=1)
+                ),
+                axis=1
+            )
+            self.perf_gt = dataset[:, self.embedding]
+            self.power_feature = np.concatenate((
+                    # embedding
+                    dataset[:, :self.embedding],
+                    # statistics
+                    dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                    # pred. PPA
+                    np.expand_dims(dataset[:, -2], axis=1)
+                ),
+                axis=1
+            )
+            self.power_gt = dataset[:, self.embedding + 1]
+            self.area_feature = np.concatenate((
+                    # embedding
+                    dataset[:, :self.embedding],
+                    # statistics
+                    dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                    # pred. PPA
+                    np.expand_dims(dataset[:, -1], axis=1)
+                ),
+                axis=1
+            )
+            self.area_gt = dataset[:, self.embedding + 2]
+        else:
+            self.perf_feature = dataset[
+                :, [i for i in range(dims_of_state)] + [-3]
+            ]
+            self.perf_gt = dataset[
+                :, dims_of_state
+            ]
+            self.power_feature = dataset[
+                :, [i for i in range(dims_of_state)] + [-2]
+            ]
+            self.power_gt = dataset[
+                :, dims_of_state + 1
+            ]
+            self.area_feature = dataset[
+                :, [i for i in range(dims_of_state)] + [-1]
+            ]
+            self.area_gt = dataset[
+                :, dims_of_state + 2
+            ]
 
     def get_perf_dataset(self):
         return self.perf_feature, self.perf_gt
@@ -373,10 +393,12 @@ def calib_xgboost(design_space, dataset):
     fold = 1
     for train, test in split_dataset(dataset):
         train_dataset = Dataset(
+            configs["design"],
             dataset[train],
             len(design_space.descriptions[configs["design"]].keys())
         )
         test_dataset = Dataset(
+            configs["design"],
             dataset[test],
             len(design_space.descriptions[configs["design"]].keys())
         )
@@ -413,6 +435,7 @@ def calib_xgboost(design_space, dataset):
     stats.summary()
     if args.save:
         all_dataset = Dataset(
+            configs["design"],
             dataset[range(dataset.shape[0])],
             len(design_space.descriptions[configs["design"]].keys())
         )
@@ -452,10 +475,12 @@ def ablation_study_calib_xgboost(design_space, dataset):
         info("current ratio: {}".format(_ratio))
         stats = Stats(Dataset.metrics)
         _train_dataset = Dataset(
+            configs["design"],
             train_dataset[:round(n_samples * _ratio), :],
             len(design_space.descriptions[configs["design"]].keys())
         )
         _test_dataset = Dataset(
+            configs["design"],
             test_dataset,
             len(design_space.descriptions[configs["design"]].keys())
         )
@@ -707,8 +732,10 @@ def validate():
         ),
         fmt=float
     )
-    dataset = dataset[np.where(dataset[:, 5] == int(configs["decode_width"]))[0]]
+    if configs["decode_width"] is not None:
+        dataset = dataset[np.where(dataset[:, 5] == int(configs["decode_width"]))[0]]
     all_dataset = Dataset(
+        configs["design"],
         dataset[range(dataset.shape[0])],
         len(design_space.descriptions[configs["design"]].keys())
     )
@@ -755,9 +782,10 @@ if __name__ == '__main__':
     configs["logger"] = None
     # a tricy to implement `Gem5Wrapper`
     Simulator = None
-    if "BOOM" in configs["design"]:
-        decode_width = configs["design"].split(' ')[0].split('-')[0]
-        configs["decode_width"] = decode_width
-    else:
-        configs["decode_width"] = None
+    # if "BOOM" in configs["design"]:
+    #     decode_width = configs["design"].split(' ')[0].split('-')[0]
+    #     configs["decode_width"] = decode_width
+    # else:
+    #     configs["decode_width"] = None
+    configs["decode_width"] = None
     main()

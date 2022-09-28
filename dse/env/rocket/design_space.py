@@ -227,6 +227,9 @@ class RocketDesignSpace(DesignSpace, RocketMacros):
         # Example:
         #   ["BTB", "R. I-Cache", "FPU", "mulDiv", "useVM", "R. D-Cache"]
         self.components = list(self.descriptions[self.designs[0]].keys())
+        # Example:
+        #       length of ["branchPredictor", "fetchWidth", "numFetchBufferEntries", ...]
+        self.embedding_dims = self.construct_embedding_dims()
         self.design_size = self.construct_design_size()
         # self.acc_design_size: <list> list of accumulated sizes of each design
         # Example:
@@ -241,6 +244,12 @@ class RocketDesignSpace(DesignSpace, RocketMacros):
         self.component_dims = self.construct_component_dims()
         DesignSpace.__init__(self, size, len(self.components))
         RocketMacros.__init__(self, root)
+
+    def construct_embedding_dims(self):
+        dims = 0
+        for k, v in self.descriptions[self.designs[0]].items():
+            dims += len(self.components_mappings[k]["description"])
+        return dims
 
     def construct_design_size(self):
         """

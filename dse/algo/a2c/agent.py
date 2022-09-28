@@ -312,13 +312,17 @@ class RocketAgent(object):
             self.envs.reward_space
         )
         self._model = copy.deepcopy(self.model)
-        self.preference = Preference(self.configs["ppa-preference"], self.envs.reward_space)
+        self.training = self.set_mode()
+        self.preference = Preference(
+            self.configs["ppa-preference"],
+            self.envs.reward_space,
+            self.training
+        )
         self.buffer = Buffer(
             self.envs.observation_space,
             self.envs.reward_space,
             self.configs["sample-size"]
         )
-        self.training = self.set_mode()
         self.lr = self.configs["learning-rate"]
         self.optimizer = optim.Adam(
             self.model.parameters(),
@@ -326,7 +330,8 @@ class RocketAgent(object):
         )
         self.temperature = self.configs["temperature"]
         self.mse = nn.MSELoss()
-        self.set_random_state(round(time.time()))
+        # self.set_random_state(round(time.time()))
+        self.set_random_state(21164)
 
     def set_random_state(self, seed):
         np.random.seed(seed)
@@ -347,13 +352,15 @@ class RocketAgent(object):
             )
         return True if self.configs["mode"] == "train" else False
 
-    def get_action(self, state, preference):
+    def get_action(self, state, preference, status=None, episode=None):
         state = array_to_tensor(state)
         preference = array_to_tensor(preference)
         policy, value = self.model(state, preference)
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
             self.configs["logger"].info("[INFO]: action prob: {}.".format(policy.data.cpu.numpy()))
+            if status is not None and episode is not None:
+                status.update_action_per_episode(policy, episode)
         else:
             policy = F.softmax(policy, dim=-1)
         action = self.random_choice_prob_index(policy)
@@ -511,17 +518,34 @@ class RocketAgent(object):
         )
         self.optimizer.step()
 
+        self.configs["logger"].info(
+            "[INFO]: actor loss: {}, critic loss: {}, entropy loss: {}.".format(
+                self.actor_loss.detach().numpy(),
+                self.critic_loss.detach().numpy(),
+                self.entropy.detach().numpy()
+            )
+        )
+
+        self.configs["logger"].info(
+            "[INFO]: actor loss: {}, critic loss: {}, entropy loss: {}.".format(
+                self.actor_loss.detach().numpy(),
+                self.critic_loss.detach().numpy(),
+                self.entropy.detach().numpy()
+            )
+        )
+
     def schedule_lr(self, episode):
         self.lr = self.configs["learning-rate"] - \
-            (episode / self.configs["max-episode"]) * self.configs["learning-rate"]
+            (episode / (self.configs["max-sequence"] * self.configs["num-step"])) * \
+            self.configs["learning-rate"]
         for params in self.optimizer.param_groups:
             params["lr"] = self.lr
-        self.configs["logger"].info("[INFO]: learning rate: {}.".format(self.lr))
+        # self.configs["logger"].info("[INFO]: learning rate: {}.".format(self.lr))
 
-    def save(self, episode, step):
-        if step % (
+    def save(self, episode):
+        if episode % (
             self.configs["num-parallel"] * \
-            self.configs["num-step"]
+            self.configs["num-step"] * 10
         ) == 0:
             model_path = os.path.join(
                 self.configs["model-path"],
@@ -537,8 +561,8 @@ class RocketAgent(object):
                 model_path
             )
             self.configs["logger"].info(
-                "[INFO]: save model: {} at episode: {}, step: {}.".format(
-                    model_path, episode, step
+                "[INFO]: save model: {} at episode: {}.".format(
+                    model_path, episode
                 )
             )
 
@@ -554,12 +578,11 @@ class RocketAgent(object):
         )
 
 
-    def sync_critic(self, episode, step):
-        if step % self.configs["update-critic-step"] == 0:
+    def sync_critic(self, episode):
+        if episode % self.configs["update-critic-episode"] == 0:
             self._model.load_state_dict(self.model.state_dict())
             self.configs["logger"].info(
-                "[INFO]: update the critic at episode: {}, step: {}.".format(
-                    episode,
-                    step
+                "[INFO]: update the critic at episode: {}.".format(
+                    episode
                 )
             )

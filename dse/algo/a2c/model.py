@@ -67,12 +67,12 @@ class RocketActorCriticNetwork(MLPBase):
             reward_shape
         )
         self.actor = nn.Sequential(
-            nn.Linear(512 + self.reward_shape, 128),
+            nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
             nn.Linear(128, self.action_shape)
         )
         self.critic = nn.Sequential(
-            nn.Linear(512 + self.reward_shape, 128),
+            nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
             nn.Linear(128, self.reward_shape)
         )
@@ -85,8 +85,8 @@ class RocketActorCriticNetwork(MLPBase):
                 p.bias.data.zero_()
 
     def forward(self, state, preference):
-        x = self.base(state)
-        x = torch.cat((x, preference), dim=1)
+        x = torch.cat((state, preference), dim=1)
+        # x = self.base(state)
         policy = self.actor(x)
         value = self.critic(x)
         return policy, value

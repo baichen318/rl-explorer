@@ -154,8 +154,19 @@ class Gem5Wrapper(Simulation):
                 self.macros["simulator"]
             )
             cmd += "cd -;"
-        elif machine == "MacBook-Pro.local" or \
-            machine == "MacBook-Pro.lan":
+        elif machine.startswith("alish-rs"):
+            cmd = "cd {} && " \
+                "scons build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/proj/users/chen.bai/tools/protobuf-21.6/build/include\" " \
+                "PYTHON_CONFIG=/usr/bin/python3-config " \
+                "LINKFLAGS_EXTRA=\"-L/proj/users/chen.bai/tools/protobuf-21.6/build/lib\" " \
+                "-j{}; ".format(
+                    self.macros["gem5-research-root"],
+                    int(multiprocessing.cpu_count())
+                )
+            cmd += "mv build/RISCV/gem5.opt build/RISCV/{}; ".format(
+                self.macros["simulator"]
+            )
+        elif "MacBook-Pro" in machine or "192.168" in machine:
             cmd = "cd %s; " % self.macros["gem5-research-root"]
             cmd += "scons "
             cmd += "build/RISCV/gem5.opt "
