@@ -34,12 +34,12 @@ class BOOMActorCriticNetwork(MLPBase):
             reward_shape
         )
         self.actor = nn.Sequential(
-            nn.Linear(512, 128),
+            nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
             nn.Linear(128, self.action_shape)
         )
         self.critic = nn.Sequential(
-            nn.Linear(512, 128),
+            nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
             nn.Linear(128, self.reward_shape)
         )
@@ -53,7 +53,7 @@ class BOOMActorCriticNetwork(MLPBase):
     
     def forward(self, state, preference):
         x = torch.cat((state, preference), dim=1)
-        x = self.base(x)
+        # x = self.base(x)
         policy = self.actor(x)
         value = self.critic(x)
         return policy, value
