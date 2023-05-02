@@ -2,33 +2,36 @@
 
 
 import os
-import argparse
 import yaml
 import time
 import csv
 import shutil
 import torch
 import logging
+import argparse
 import subprocess
-import pandas as pd
 import numpy as np
+import pandas as pd
 from typing import Union
-from datetime import datetime
-from sklearn import metrics
 from math import ceil, log
-from exception import NotFoundException
+from sklearn import metrics
+from datetime import datetime
+from utils.exception import NotFoundException
 
 
 def parse_args():
     def initialize_parser(parser):
-        parser.add_argument("-c", "--configs",
+        parser.add_argument(
+            "-c", "--configs",
             required=True,
             type=str,
             default="configs.yml",
             help="YAML file to be handled")
         return parser
 
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser = initialize_parser(parser)
     return parser.parse_args()
 
@@ -41,6 +44,10 @@ def get_configs(fyaml):
         except AttributeError:
             configs = yaml.load(f)
     return configs
+
+
+def get_configs_from_command():
+    return get_configs(parse_args().configs)
 
 
 def if_exist(path, strict=False):
@@ -112,7 +119,7 @@ def create_logger(path, name):
     logger.setLevel(logging.INFO)
     console = logging.StreamHandler()
     logging.getLogger('').addHandler(console)
-    logger.info("[INFO]: create logger: %s/%s" % (path, name))
+    logger.info("[INFO]: create logger: {}".format(log_file))
     # logger.removeHandler(console)
     return logger, log_file
 
@@ -340,3 +347,24 @@ class MultiLogHandler(logging.Handler):
             raise
         except:
             self.handleError(record)
+
+
+class Timer(object):
+    def __init__(self, msg):
+        super(Timer, self).__init__()
+        self.msg = msg
+        self.time = None
+        self.duration = 0
+
+    @property
+    def now(self):
+        return time.time()
+
+    def __enter__(self):
+        self.time = self.now
+
+    def __exit__(self, type, value, trace):
+        self.duration = self.now - self.time
+        info("[{}]: duration: {} s".format(
+            self.msg, self.duration)
+        )

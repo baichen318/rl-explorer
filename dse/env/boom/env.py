@@ -2,124 +2,145 @@
 
 import os
 import sys
-import torch
-import random
-import time
 import gym
+import time
+import random
+import torch
 import numpy as np
-from gym import spaces
 from collections import OrderedDict
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from dse.env.boom.design_space import parse_design_space
 from simulation.boom.simulation import Gem5Wrapper
+from dse.env.boom.design_space import parse_design_space
+from utils.exception import EvaluateException, UnSupportedException
 
 
 class BasicEnv(gym.Env):
-    """ BasicEnv """
+    """
+        We apply the scaling graph:
+        ISU -> IFU -> maxBrCount -> ROB -> PRF -> LSU -> D$
+        Refer to: 2009TOCS: A mechanistic performance model for superscalar out-of-order processors
+    """
     def __init__(self, configs, idx):
         super(BasicEnv, self).__init__()
         self.configs = configs
         # NOTICE: `self.idx`, a key to distinguish different gem5 repo.
         self.idx = idx
+        self.component_do_not_touch = [
+            "branchPredictor", 
+            "fetchWidth",
+            "decodeWidth"
+        ]
+        # in-order
+        self.component_touch = [
+            "ISU",
+            "IFU",
+            "maxBrCount",
+            "ROB",
+            "PRF",
+            "LSU",
+            "D-Cache"
+        ]
         self.design_space = parse_design_space(self.configs)
-        self.dims_of_state = self.generate_dims_of_state(self.configs["design"])
-        self.actions_map, self.candidate_actions = self.generate_actions_lut(
-            self.configs["design"]
-        )
-        self.dims_of_action = len(self.candidate_actions)
+        assert len(self.component_do_not_touch + self.component_touch) == \
+            len(self.design_space.descriptions[self.design].keys())
+        self.dims_of_state = self.generate_dims_of_state()
+        self.actions = self.generate_actions()
+        self.dims_of_action = self.get_dims_of_action()
         # PPA metrics
         self.dims_of_reward = 3
+        self.dims_of_tunable_state = len(self.component_touch)
 
-    def generate_actions_lut(self, design):
+    @property
+    def design(self):
+        return self.configs["algo"]["design"]
+
+    @property
+    def ppa_model_root(self):
+        return self.configs["env"]["calib"]["ppa-model"]
+
+    def get_action_candidates(self, state_idx):
+        return self.actions[state_idx]
+
+    def get_dims_of_action(self):
         """
-            Example:
-                actions_map = {
-                    # states index  actions index
-                    0: [1, 2, 3],
-                    2: [4, 5, 6, 7, 8, 9, 10],
+            Since each state faces different action candidates,
+            we need to adjust the action space give a state.
+            So the action space should be the maximal dimension
+            among all action candidates.
+        """
+        return max([len(v) \
+            for k, v in self.actions.items()]
+        )
+
+    def generate_actions(self):
+        """
+            A mapping from an episode state to an action candidates.
+            E.g.,
+                actions = {
+                    # ISU
+                    0: [1, 21, 36, 41],
+                    # IFU
+                    1: [1, 2, 9, 10]
                     ...
                 }
-                candidate_actions = [
-                    # branchPredictor x 3
-                    1, 2, 3
-                    # IFU x 7
-                    4, 5, 6, 7, 8, 9, 10,
-                    ...
-                ]
         """
-        actions_map, candidate_actions = OrderedDict(), []
-        s_idx, a_idx = 0, 1
-        for k, v in self.design_space.descriptions[design].items():
-            if k == "fetchWidth" or k == "decodeWidth" or \
-                k == "branchPredictor":
-                s_idx += 1
-                continue
-            else:
-                for _v in v:
-                    candidate_actions.append(a_idx)
-                    if s_idx in actions_map.keys():
-                        actions_map[s_idx].append(a_idx)
-                    else:
-                        actions_map[s_idx] = [a_idx]
-                    a_idx += 1
-                s_idx += 1
-        return actions_map, np.array(candidate_actions)
+        actions = OrderedDict()
+        for idx in range(len(self.component_touch)):
+            actions[idx] = \
+                self.design_space.descriptions[self.design] \
+                    [self.component_touch[idx]]
+        return actions
 
-    def generate_dims_of_state(self, design):
-        return len(self.design_space.descriptions[design].keys())
+    def generate_dims_of_state(self):
+        """
+            NOTICE: "branchPredictor", "fetchWidth", & "decodeWidth"
+            are fixed in any state.
+        """
+        return len(self.design_space.descriptions[self.design].keys())
 
 
 class BOOMEnv(BasicEnv):
-    """ BOOMEnv """
+    """
+        BOOM environment
+    """
     def __init__(self, configs, idx):
         super(BOOMEnv, self).__init__(configs, idx)
         self.observation_space = self.dims_of_state
         self.action_space = self.dims_of_action
         self.reward_space = self.dims_of_reward
         self.load_ppa_model()
-        self.state = np.zeros(self.dims_of_state)
+        self.state = None
+        self.state_idx = None
+
+    @property
+    def if_terminate(self):
+        return self.state_idx == \
+            self.dims_of_tunable_state - 1
+
+    @property
+    def current_state(self):
+        return self.state_idx
 
     def load_ppa_model(self):
-        ppa_model_root = os.path.join(
-            os.path.dirname(__file__),
-            os.path.pardir,
-            os.path.pardir,
-            os.path.pardir,
-            self.configs["ppa-model"],
-            self.configs["design"].split(' ')[0].split('-')[0]
-        )
         perf_root = os.path.join(
-            ppa_model_root,
+            self.ppa_model_root,
             "boom-perf.pt"
         )
         power_root = os.path.join(
-            ppa_model_root,
+            self.ppa_model_root,
             "boom-power.pt"
         )
         area_root = os.path.join(
-            ppa_model_root,
+            self.ppa_model_root,
             "boom-area.pt"
 
         )
         self.perf_model = joblib.load(perf_root)
         self.power_model = joblib.load(power_root)
         self.area_model = joblib.load(area_root)
-
-    def identify_component(self, action):
-        """
-            action: <numpy.ndarray>
-        """
-        # TODO: validate its correctness
-        # the 1st action is encoded as 1
-        _action = action + 1
-        for k, v in self.actions_map.items():
-            if _action in v:
-                break
-        # NOTICE: `+ 1` is aligned with the design space specification
-        return k, v.index(_action)
 
     def evaluate_microarchitecture(self, state):
         manager = Gem5Wrapper(
@@ -136,8 +157,7 @@ class BOOMEnv(BasicEnv):
             stats_feature.append(v)
         stats_feature = np.array(stats_feature)
         perf = self.perf_model.predict(np.expand_dims(
-                np.concatenate(
-                    (
+                np.concatenate((
                         np.array(self.design_space.vec_to_embedding(
                                 list(state)
                             )
@@ -150,8 +170,7 @@ class BOOMEnv(BasicEnv):
             )
         )[0]
         power = self.power_model.predict(np.expand_dims(
-                np.concatenate(
-                    (
+                np.concatenate((
                         np.array(self.design_space.vec_to_embedding(
                                 list(state)
                             )
@@ -164,8 +183,7 @@ class BOOMEnv(BasicEnv):
             )
         )[0]
         area = self.area_model.predict(np.expand_dims(
-                np.concatenate(
-                    (
+                np.concatenate((
                         np.array(self.design_space.vec_to_embedding(
                                 list(state)
                             )
@@ -183,35 +201,50 @@ class BOOMEnv(BasicEnv):
         # NOTICE: power and area should be negated
         return np.array([perf, -power, -area])
 
-    def if_done(self, ppa):
-        if ppa[0] > self.best_ppa[0] and \
-            ppa[1] > self.best_ppa[1] and \
-            ppa[2] > self.best_ppa[2]:
-            self.last_update = self.steps
-            self.best_ppa = ppa.copy()
-        return (self.steps - self.last_update) > \
-            self.configs["terminate-step"]
+    def increase_state_idx(self):
+        self.state_idx += 1
+
+    def reset_state_idx(self):
+        self.state_idx = 0
+
+    def state_idx_to_state(self):
+        return [
+            7, 2, 3, 5, 6, 8, 9
+        ][self.state_idx]
 
     def step(self, action):
-        s_idx, a_offset = self.identify_component(action)
-        # modify a component for the microarchitecture, given the action
-        self.state[s_idx] = self.design_space.descriptions[
-            self.configs["design"]
-        ][self.design_space.components[s_idx]][a_offset]
+        """
+            Take the action.
+        """
+        try:
+            self.state[self.state_idx_to_state()] = \
+                self.get_action_candidates(self.state_idx)[action]
+        except IndexError as e:
+            raise EvaluateException(
+                "index out of range: {} vs {}. " \
+                "current state: {}.".format(
+                        action,
+                        len(self.get_action_candidates(self.state_idx)),
+                        self.current_state
+                    )
+            )
 
-        proxy_ppa = self.evaluate_microarchitecture(self.state)
-        reward = proxy_ppa
-        done = self.if_done(proxy_ppa)
-        self.steps += 1
-        info = {
-            "perf-pred": proxy_ppa[0],
-            "power-pred": proxy_ppa[1],
-            "area-pred": proxy_ppa[2],
-            "perf-baseline": self.ppa_baseline[0],
-            "power-baseline": self.ppa_baseline[1],
-            "area-baseline": self.ppa_baseline[2],
-            "last-update": self.last_update
-        }
+        info = {}
+        if self.if_terminate:
+            reward = self.evaluate_microarchitecture(self.state)
+            info = {
+                "perf-pred": reward[0],
+                "power-pred": reward[1],
+                "area-pred": reward[2]
+            }
+            done = True
+        else:
+            reward = np.array([0, 0, 0])
+            done = False
+
+        # change to the next state
+        self.increase_state_idx()
+
         return self.state, reward, done, info
 
     def get_human_implementation(self):
@@ -272,12 +305,36 @@ class BOOMEnv(BasicEnv):
         baseline[2] = -baseline[2]
         return np.array(baseline)
 
+    def generate_init_state(self):
+        self.state = np.zeros(self.observation_space).astype(int)
+        if self.design == "1-wide 4-fetch SonicBOOM":
+            self.state[0] = 1
+            self.state[1] = 1
+            self.state[4] = 1
+        elif self.design == "2-wide 4-fetch SonicBOOM":
+            self.state[0] = 1
+            self.state[1] = 1
+            self.state[4] = 2
+        elif self.design == "3-wide 8-fetch SonicBOOM":
+            self.state[0] = 1
+            self.state[1] = 2
+            self.state[4] = 3
+        elif self.design == "4-wide 8-fetch SonicBOOM":
+            self.state[0] = 1
+            self.state[1] = 2
+            self.state[4] = 4
+        elif self.design == "5-wide 8-fetch SonicBOOM":
+            self.state[0] = 1
+            self.state[1] = 2
+            self.state[4] = 5
+        else:
+            raise UnSupportedException(
+                "design {} is not supported.".format(self.design)
+            )
+
     def reset(self):
-        self.steps = 0
-        self.last_update = 0
-        self.state = self.get_human_implementation()
-        self.ppa_baseline = self.get_human_baseline()
-        self.best_ppa = self.ppa_baseline.copy()
+        self.reset_state_idx()
+        self.generate_init_state()
         return self.state
 
     def render(self):

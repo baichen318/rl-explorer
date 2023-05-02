@@ -1,0 +1,86 @@
+# Author: baichen318@gmail.com
+
+
+### algorithm settings
+algo:
+  # design specifications
+  # 1-wide 4-fetch SonicBOOM
+  # 1-wide 8-fetch SonicBOOM
+  # 2-wide 4-fetch SonicBOOM
+  # 2-wide 8-fetch SonicBOOM
+  # 3-wide 4-fetch SonicBOOM
+  # 3-wide 8-fetch SonicBOOM
+  # 4-wide 4-fetch SonicBOOM
+  # 4-wide 8-fetch SonicBOOM
+  # 5-wide SonicBOOM
+  design: "1-wide 4-fetch SonicBOOM"
+  # the number of processes specifications
+  num-parallel: 1
+  # maximal episode specifications
+  max-episode: 1000000
+  # GPU utilization specifications
+  use-cuda: false
+  # output root specifications
+  output-root: logs
+  # working mode specifications
+  # train | test
+  mode: train
+  random-seed: 42
+  train:
+    # the batch size for training specifications
+    sample-size: 8
+    # the number of n-step evaluation specifications
+    num-step: 7
+    # softmax temperature specifications to encourage exploration
+    temperature: 10
+    # learning rate specifications
+    learning-rate: 0.001
+    # reward discount specifications
+    gamma: 0.99
+    # coefficient of generalized advantage estimator (GAE)
+    lambda: 0.95
+    # coefficient specifications between two critical loss components
+    beta: 0.5
+    # entropy coefficient specifications
+    alpha: 1
+    # clip gradient normalization
+    clip-grad-norm: 0.5
+    # the episode specifications begin to apply the envelope operator
+    episode-when-apply-envelope-operator: 1000
+    # the episode specifications to update the critic
+    update-critic-episode: 100
+  test:
+    # PPA preference scaling
+    ppa-preference:
+      - 1
+      - 1
+      - 1
+    # RL model specifications
+    rl-model: 1-wide-4-fetch-SonicBOOM-baichen-MacBook-Pro.lan-2022-05-09-18-11.pt
+
+
+### environment settings
+env:
+  ## VLSI flow settings
+  vlsi:
+    # chipyard research root path specifications
+    # make sure chipyar-research is at the 'rl' branch
+    # and it is an absolute path
+    chipyard-research-root: /Volumes/Research/repo/chipyard-research/
+  ## simulation settings
+  sim:
+    # gem5 research pool root path specifications
+    # it is an absolute path
+    gem5-research-root: /Volumes/Research/repo/gem5-repo/
+  ## calibration settings
+  calib:
+    # dataset specifications
+    dataset: data/boom/dataset.txt
+    # PPA models specifications
+    ppa-model: /Volumes/Research/repo/rl-explorer/tools/models
+  ## benchmarks specifications
+  benchmarks:
+    - median
+    # - towers
+    # - vvadd
+    # - multiply

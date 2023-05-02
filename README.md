@@ -2,6 +2,11 @@
 Reinforcement Learning Solver For RISC-V Microarchitecture Design Space
 
 ## End-to-end Flow
+- Environment setup
+```bash
+$ export PYTHONPATH=`pwd`
+```
+
 - Rocket@CUHK
 ```bash
 $ python3 main.py -c configs/rocket.yml

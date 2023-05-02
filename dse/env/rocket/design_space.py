@@ -4,8 +4,8 @@
 import os
 import numpy as np
 from collections import OrderedDict
-from utils import load_excel, if_exist
-from ..base_design_space import DesignSpace, Macros
+from utils.utils import load_excel, if_exist
+from dse.env.base_design_space import DesignSpace, Macros
 
 
 class RocketMacros(Macros):

@@ -1,17 +1,17 @@
 # Author: baichen318@gmail.com
 
 
-import sys
 import os
 import re
+import sys
 import time
+import numpy as np
 import multiprocessing
 from collections import OrderedDict
 from multiprocessing.pool import ThreadPool
-import numpy as np
-from utils import execute, remove_prefix, if_exist, remove, mkdir, \
-    round_power_of_two, error
 from simulation.base_simulation import Simulation
+from utils.utils import execute, remove_prefix, if_exist, \
+    remove, mkdir, round_power_of_two, error
 
 
 class Gem5Wrapper(Simulation):
@@ -23,7 +23,8 @@ class Gem5Wrapper(Simulation):
         self.idx = idx
         self.macros["gem5-research-root"] = os.path.abspath(
             os.path.join(
-                self.configs["gem5-research-root"],
+                self.configs["env"]["sim"]["gem5-research-root"],
+                str(self.idx),
                 "gem5-research"
             )
         )
@@ -33,10 +34,18 @@ class Gem5Wrapper(Simulation):
             "riscv-tests"
         )
         self.macros["simulator"] = "gem5-{}.opt".format(
-            '-'.join(["{}".format(i) for i in state])
+            design_space.embedding_to_idx(state)
         )
         self.initialize_lut()
         self.stats, self.stats_name = self.init_stats()
+
+    @property
+    def benchmarks(self):
+        return self.configs["env"]["benchmarks"]
+
+    @property
+    def logger(self):
+        return self.configs["logger"]
 
     def initialize_lut(self):
         self.btb_root = os.path.join(
@@ -320,15 +329,17 @@ class Gem5Wrapper(Simulation):
 
     def simulate(self):
         machine = os.popen("hostname").readlines()[0].strip()
-        for bmark in self.configs["benchmarks"]:
-            remove(os.path.join(self.temp_root, "m5out-%s" % bmark))
+        for bmark in self.benchmarks:
+            remove(os.path.join(
+                self.temp_root, "m5out-{}".format(bmark))
+            )
         ipc = 0
         bp = {
             1: "LTAGE",
             2: "TAGE",
             3: "BiModeBP"
         }
-        for bmark in self.configs["benchmarks"]:
+        for bmark in self.benchmarks:
             cmd = "cd {}; build/RISCV/{} configs/example/se.py ".format(
                 self.macros["gem5-research-root"],
                 self.macros["simulator"]
@@ -366,7 +377,7 @@ class Gem5Wrapper(Simulation):
             cmd += "--bp-type=%s; cd -" % (
                 bp[self.state[0]]
             )
-            execute(cmd, logger=self.configs["logger"])
+            execute(cmd, logger=self.logger)
             instructions, cycles, misc_stats = self.get_results()
             self.incr_stats(misc_stats)
             ipc += (instructions / cycles)
@@ -377,8 +388,8 @@ class Gem5Wrapper(Simulation):
                     os.path.join(self.temp_root, "m5out-%s" % bmark)
                 )
             )
-        ipc /= len(self.configs["benchmarks"])
-        self.avg_stats(len(self.configs["benchmarks"]))
+        ipc /= len(self.benchmarks)
+        self.avg_stats(len(self.benchmarks))
         return ipc
 
 
@@ -430,8 +441,8 @@ class Gem5Wrapper(Simulation):
             return area
 
         power, area = 0, 0
-        pool = ThreadPool(len(self.configs["benchmarks"]))
-        for bmark in self.configs["benchmarks"]:
+        pool = ThreadPool(len(self.benchmarks))
+        for bmark in self.benchmarks:
             mcpat_xml = os.path.join(
                 self.temp_root,
                 "m5out-%s" % bmark,
@@ -485,7 +496,7 @@ class Gem5Wrapper(Simulation):
             )
         pool.close()
         pool.join()
-        for bmark in self.configs["benchmarks"]:
+        for bmark in self.benchmarks:
             mcpat_report = os.path.join(
                 self.temp_root,
                 "m5out-%s" % bmark,
@@ -493,5 +504,5 @@ class Gem5Wrapper(Simulation):
             )
             power += extract_power(mcpat_report)
             area += extract_area(mcpat_report)
-        return power / len(self.configs["benchmarks"]), \
-            area / len(self.configs["benchmarks"])
+        return power / len(self.benchmarks), \
+            area / len(self.benchmarks)

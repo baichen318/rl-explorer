@@ -1,47 +1,18 @@
-# baichen318@gmail.py
+# baichen318@gmail.com
 
 
-import sys, os
-sys.path.insert(
-    1,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir
-    )
-)
-sys.path.insert(
-    1,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        "dse"
-    )
-)
-sys.path.insert(
-    1,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        "utils"
-    )
-)
-sys.path.insert(
-    1,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        "simulation"
-    )
-)
-import argparse
+import os
+import re
+import sys
 import yaml
 import json
-import re
-from xml.etree import ElementTree as ET
-from xml.dom import minidom
 import copy
 import types
-from utils import get_configs, round_power_of_two, info, warn, error, load_excel
+import argparse
+from xml.dom import minidom
+from xml.etree import ElementTree as ET
+from utils.utils import get_configs, round_power_of_two, \
+    info, warn, error, load_excel
 
 
 def create_parser():
@@ -512,10 +483,10 @@ def post_handle_boom(root):
 
 
 def post_handle(root):
-    if "BOOM" in configs["design"]:
+    if "BOOM" in configs["algo"]["design"]:
         post_handle_boom(root)
     else:
-        assert configs["design"] == "Rocket", \
+        assert configs["algo"]["design"] == "Rocket", \
             "[ERROR]: unsupported design: {}".format(args.design)
         post_handle_rocket(root)
 

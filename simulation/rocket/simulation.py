@@ -1,16 +1,16 @@
 # Author: baichen318@gmail.com
 
 
-import sys
 import os
 import re
+import sys
 import time
+import numpy as np
 import multiprocessing
 from multiprocessing.pool import ThreadPool
-import numpy as np
-from utils import execute, if_exist, remove, mkdir, \
-    round_power_of_two, error
 from simulation.base_simulation import Simulation
+from utils.utils import execute, if_exist, remove, mkdir, \
+    round_power_of_two, error
 
 
 class Gem5Wrapper(Simulation):
