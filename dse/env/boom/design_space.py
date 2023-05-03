@@ -3,6 +3,7 @@
 
 import os
 import numpy as np
+from typing import List
 from collections import OrderedDict
 from dse.env.base_design_space import DesignSpace, Macros
 from utils.utils import load_excel, assert_error, if_exist
@@ -103,20 +104,38 @@ class BOOMMacros(Macros):
             params[1]
         )
 
+  def generate_icache(self, vec, idx):
+    params = self.get_mapping_params(vec, idx)
+    return """Some(
+              ICacheParams(
+                rowBits = site(SystemBusKey).beatBits,
+                nSets=%d,
+                nWays=%d,
+                fetchBytes=%d*4
+              )
+            )""" % (
+            params[1],
+            params[0],
+            self.generate_fetch_width(vec, 1) << 1
+        )
+
   def generate_dcache_and_mmu(self, vec, idx):
     params = self.get_mapping_params(vec, idx)
+    decode_width = self.generate_decode_width(vec, 4)
+    tlb_ways = [8, 8, 16, 32, 32]
     return """Some(
               DCacheParams(
                 rowBits=site(SystemBusKey).beatBits,
-                nSets=64,
+                nSets=%d,
                 nWays=%d,
                 nMSHRs=%d,
                 nTLBWays=%d
               )
             )""" % (
-            params[0],
             params[1],
-            params[2]
+            params[0],
+            params[2],
+            tlb_ways[decode_width - 1]
         )
 
   def generate_core_cfg_impl(self, name, vec):
@@ -147,15 +166,8 @@ class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
               ),
               enablePrefetching = true
             ),
+            icache = %s,
             dcache = %s,
-            icache = Some(
-              ICacheParams(
-                rowBits = site(SystemBusKey).beatBits,
-                nSets=64,
-                nWays=%d,
-                fetchBytes=%d*4
-              )
-            ),
             hartId = i + idOffset
           ),
           crossingParams = RocketCrossingParams()
@@ -178,9 +190,8 @@ class %s(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
   self.generate_phy_registers(vec, 6),
   self.generate_issue_parames(vec, 7),
   self.generate_lsu(vec, 8),
-  self.generate_dcache_and_mmu(vec, 9),
-  self.generate_fetch_width(vec, 1),
-  self.generate_fetch_width(vec, 1) >> 1,
+  self.generate_icache(vec, 9),
+  self.generate_dcache_and_mmu(vec, 10),
   self.generate_fetch_width(vec, 1) << 1
 )
     return codes
@@ -213,15 +224,19 @@ class %s extends Config(
         embedding.append(v)
     return embedding
 
-  def embedding_to_vec(self, microarchitecture_embedding):
+  def embedding_to_vec(self, embedding: List):
+    """
+        `embedding`: List
+    """
     # branch predictor
     vec = []
     c, idx = 1, 1
-    vec.append(microarchitecture_embedding[0])
-    while idx < len(microarchitecture_embedding):
+    print(embedding)
+    vec.append(embedding[0])
+    while idx < len(embedding):
       prev_idx = idx
       num = len(self.components_mappings[self.components[c]]["description"])
-      feature = microarchitecture_embedding[idx : idx + num]
+      feature = embedding[idx : idx + num]
       for k, v in self.components_mappings[self.components[c]].items():
         if v == feature:
           vec.append(int(k))
@@ -231,8 +246,8 @@ class %s extends Config(
         break
       c += 1
     assert len(vec) == self.dims, assert_error(
-      "invalid vec: {}".format(vec, idx)
-    )
+          "invalid vec: {}".format(vec, idx)
+        )
     return vec
 
 
@@ -307,12 +322,8 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
     self.type = [
       # "fetchWidth" "decodeWidth"
       [1, 1],
-      [2, 1],
       [1, 2],
-      [2, 2],
-      [1, 3],
       [2, 3],
-      [1, 4],
       [2, 4],
       [2, 5]
     ]
@@ -541,7 +552,7 @@ def parse_design_space(configs):
       "workstation",
       "configs",
       "design-space",
-      "design-space.xlsx"
+      "design-space-v2.xlsx"
     )
   )
   boom_design_space_sheet = load_excel(

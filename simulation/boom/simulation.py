@@ -34,7 +34,7 @@ class Gem5Wrapper(Simulation):
             "riscv-tests"
         )
         self.macros["simulator"] = "gem5-{}.opt".format(
-            design_space.embedding_to_idx(state)
+            design_space.embedding_to_idx(state.tolist())
         )
         self.initialize_lut()
         self.stats, self.stats_name = self.init_stats()
@@ -201,7 +201,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # dcache.nMSHRs
-        mshrs = self.state[21]
+        mshrs = self.state[24]
         _modify_gem5(
             self.cache_root,
             "mshrs\ =\ \d+",
@@ -209,14 +209,14 @@ class Gem5Wrapper(Simulation):
             count=1
         )
 
-        # dcache.nTLBWays
-        dcache_tlb_ways = self.state[22]
-        _modify_gem5(
-            self.tlb_root,
-            "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
-            "size = Param.Int(%d, \"TLB size\")" %
-                round_power_of_two(dcache_tlb_ways)
-        )
+        # DEPRECATED: dcache.nTLBWays
+        # dcache_tlb_ways = self.state[22]
+        # _modify_gem5(
+        #     self.tlb_root,
+        #     "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
+        #     "size = Param.Int(%d, \"TLB size\")" %
+        #         round_power_of_two(dcache_tlb_ways)
+        # )
 
         # BTB
         """
@@ -353,16 +353,16 @@ class Gem5Wrapper(Simulation):
             cmd += "--caches "
             cmd += "--cacheline_size=64 "
             cmd += " --l1d_size={}kB ".format(
-                (self.state[20] << (6 + 6)) >> 10
+                (((self.state[22] * self.state[23]) << 6)) >> 10
             )
             cmd += "--l1i_size={}kB ".format(
-                ((self.state[1] >> 1) << (6 + 6)) >> 10
+                (((self.state[20] * self.state[21]) << 6)) >> 10
             )
             cmd += "--l1d_assoc={} ".format(
-                self.state[20]
+                self.state[22]
             )
             cmd += "--l1i_assoc={} ".format(
-                self.state[1] >> 1
+                self.state[20]
             )
             cmd += "--sys-clock=2000000000Hz "
             cmd += "--cpu-clock=2000000000Hz "

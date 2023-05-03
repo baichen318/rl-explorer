@@ -75,12 +75,13 @@ env:
   ## calibration settings
   calib:
     # dataset specifications
-    dataset: data/boom/dataset.txt
+    dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/dataset.txt
     # PPA models specifications
     ppa-model: /Volumes/Research/repo/rl-explorer/tools/models
   ## benchmarks specifications
   benchmarks:
-    - median
-    # - towers
-    # - vvadd
+    - towers
+    - vvadd
+    - spmv
+    # - median
     # - multiply

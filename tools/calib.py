@@ -1,43 +1,28 @@
 # Author: baichen318@gmail.com
 
 
-import sys, os
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(__file__), os.path.pardir)
-)
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(__file__), os.path.pardir, "dse")
-)
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(__file__), os.path.pardir, "utils")
-)
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(__file__), os.path.pardir, "simulation")
-)
+import os
+import sys
+import torch
 import random
 import socket
-import torch
 import argparse
-import torch.nn as nn
-import torch.utils.data as data
 import numpy as np
-import matplotlib.pyplot as plt
+import torch.nn as nn
 import scipy.stats as stats
+import torch.utils.data as data
+import matplotlib.pyplot as plt
+from xgboost import XGBRegressor
 from collections import OrderedDict
 from sklearn.model_selection import KFold
+from utils.utils import get_configs, load_txt, \
+    write_txt, mkdir, info, assert_error
 from sklearn.metrics import mean_absolute_error, mean_squared_error, \
     mean_absolute_percentage_error
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
-from xgboost import XGBRegressor
-from utils import get_configs, load_txt, \
-    write_txt, mkdir, info
 
 
 markers = [
@@ -321,13 +306,13 @@ def load_dataset(path):
 
 def load_design_space():
     global Simulator
-    if "BOOM" in configs["design"]:
+    if "BOOM" in configs["algo"]["design"]:
         from dse.env.boom.design_space import parse_design_space
         from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
         Simulator = BOOMGem5Wrapper
     else:
-        assert configs["design"] == "Rocket", \
-            "[ERROR]: {} is not supported.".format(configs["design"])
+        assert configs["algo"]["design"] == "Rocket", \
+            assert_error("{} is not supported.".format(configs["design"]))
         from dse.env.rocket.design_space import parse_design_space
         from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
         Simulator = RocketGem5Wrapper
@@ -608,16 +593,12 @@ def adjust_data(design, design_space, data, choice=True):
 
 def generate_simulation_dataset():
     dataset = load_dataset(
-        os.path.join(
-            rl_explorer_root,
-            configs["dataset"]
-        )
+        os.path.join(configs["env"]["calib"]["dataset"])
     )
     target_dataset = os.path.join(
-        rl_explorer_root,
-        os.path.dirname(configs["dataset"]),
+        os.path.dirname(configs["env"]["calib"]["dataset"]),
         os.path.splitext(
-            os.path.basename(configs["dataset"])
+            os.path.basename(configs["env"]["calib"]["dataset"])
         )[0] + "-{}.txt".format(socket.gethostname())
     )
     design_space = load_design_space()

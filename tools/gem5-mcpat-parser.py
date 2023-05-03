@@ -431,9 +431,9 @@ def post_handle_boom(root):
                 name = param.attrib["name"]
                 if name == "icache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        (args.state[1] >> 1) * 64 * 64,
+                        args.state[20] * args.state[21] * 64,
                         64,
-                        args.state[1] >> 1,
+                        args.state[20],
                         1,
                         1,
                         3,
@@ -454,9 +454,9 @@ def post_handle_boom(root):
                 name = param.attrib["name"]
                 if name == "dcache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        args.state[20] * 64 * 64,
+                        args.state[22] * args.state[23] * 64,
                         64,
-                        args.state[20],
+                        args.state[22],
                         1,
                         1,
                         3,
@@ -464,7 +464,7 @@ def post_handle_boom(root):
                         1
                     )
                 if name == "buffer_sizes":
-                    mshr = args.state[21]
+                    mshr = args.state[24]
                     param.attrib["value"] = "%s,%s,%s,%s" % (
                         mshr,
                         mshr,
