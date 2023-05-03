@@ -72,6 +72,8 @@ env:
     # gem5 research pool root path specifications
     # it is an absolute path
     gem5-research-root: /Volumes/Research/repo/gem5-repo/
+    # an idx is set if a user specifies a specific gem5 repo.
+    idx: 1
   ## calibration settings
   calib:
     # dataset specifications

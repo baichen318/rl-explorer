@@ -607,7 +607,10 @@ def generate_simulation_dataset():
 
     for data in dataset:
         # data = adjust_data(configs["design"], design_space, data, choice=True)
-        manager = Simulator(configs, design_space, np.int64(data[:-3]), 1)
+        manager = Simulator(
+            configs, design_space, np.int64(data[:-3]),
+            configs["env"]["sim"]["idx"]
+        )
         perf, stats = manager.evaluate_perf()
         power, area = manager.evaluate_power_and_area()
         _stats = []

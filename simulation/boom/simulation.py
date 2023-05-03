@@ -268,10 +268,12 @@ class Gem5Wrapper(Simulation):
             cmd += "cd -;"
         elif machine.startswith("hpc"):
             cmd = "cd %s; " % self.macros["gem5-research-root"]
-            cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+            # cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+            cmd += "scons "
             cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
             cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
-            cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+            # cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+            cmd += "LINKFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
             cmd += "mv build/RISCV/gem5.opt build/RISCV/{}; ".format(
                 self.macros["simulator"]
