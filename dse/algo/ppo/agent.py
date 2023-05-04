@@ -345,7 +345,6 @@ class BOOMAgent(object):
             "[INFO]: load the RL model from {}".format(path)
         )
 
-
     def sync_critic(self, episode):
         if episode % self.update_critic_episode == 0:
             self._model.load_state_dict(self.model.state_dict())

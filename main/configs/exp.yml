@@ -26,7 +26,7 @@ algo:
     # the batch size for training specifications
     sample-size: 8
     # the number of n-step evaluation specifications
-    num-step: 7
+    num-step: 9
     # softmax temperature specifications to encourage exploration
     temperature: 10
     # learning rate specifications

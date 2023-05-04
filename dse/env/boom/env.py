@@ -29,11 +29,10 @@ class BasicEnv(gym.Env):
         # NOTICE: `self.idx`, a key to distinguish different gem5 repo.
         self.idx = idx
         self.component_do_not_touch = [
-            "branchPredictor", 
             "fetchWidth",
             "decodeWidth"
         ]
-        # in-order
+        # in-order w.r.t. the scaling graph
         self.component_touch = [
             "ISU",
             "IFU",
@@ -41,6 +40,8 @@ class BasicEnv(gym.Env):
             "ROB",
             "PRF",
             "LSU",
+            "branchPredictor", 
+            "I-Cache",
             "D-Cache"
         ]
         self.design_space = parse_design_space(self.configs)
@@ -146,7 +147,7 @@ class BOOMEnv(BasicEnv):
         manager = Gem5Wrapper(
             self.configs,
             self.design_space,
-            self.design_space.vec_to_embedding(state),
+            self.design_space.vec_to_embedding(state.tolist()),
             self.idx
         )
         perf, stats = manager.evaluate_perf()
@@ -209,7 +210,7 @@ class BOOMEnv(BasicEnv):
 
     def state_idx_to_state(self):
         return [
-            7, 2, 3, 5, 6, 8, 9
+            7, 2, 3, 5, 6, 8, 0, 9, 10
         ][self.state_idx]
 
     def step(self, action):
@@ -307,24 +308,19 @@ class BOOMEnv(BasicEnv):
 
     def generate_init_state(self):
         self.state = np.zeros(self.observation_space).astype(int)
-        if self.design == "1-wide 4-fetch SonicBOOM":
-            self.state[0] = 1
+        if self.design == "small-SonicBOOM":
             self.state[1] = 1
             self.state[4] = 1
-        elif self.design == "2-wide 4-fetch SonicBOOM":
-            self.state[0] = 1
+        elif self.design == "medium-SonicBOOM":
             self.state[1] = 1
             self.state[4] = 2
-        elif self.design == "3-wide 8-fetch SonicBOOM":
-            self.state[0] = 1
+        elif self.design == "large-SonicBOOM":
             self.state[1] = 2
             self.state[4] = 3
-        elif self.design == "4-wide 8-fetch SonicBOOM":
-            self.state[0] = 1
+        elif self.design == "mega-SonicBOOM":
             self.state[1] = 2
             self.state[4] = 4
-        elif self.design == "5-wide 8-fetch SonicBOOM":
-            self.state[0] = 1
+        elif self.design == "giga-SonicBOOM":
             self.state[1] = 2
             self.state[4] = 5
         else:

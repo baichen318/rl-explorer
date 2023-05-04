@@ -258,9 +258,9 @@ def train_ppo(agent, configs):
     envs = agent.envs
     assert agent.num_step == \
         envs.safe_get_attr("dims_of_tunable_state"), \
-            assert_error("current state: {} vs " \
-                " observation space: {}".format(
-                    envs.safe_get_attr("current_state")[0],
+            assert_error(": num_step {} vs " \
+                " tunabe state: {}".format(
+                    agent.num_step,
                     envs.safe_get_attr("dims_of_tunable_state")
                 )
             )
@@ -302,6 +302,11 @@ def train_ppo(agent, configs):
                         explore_w = preference.renew_preference(
                             explore_w, i
                         )
+                    configs["logger"].info(
+                        "state: {}, action: {}, next_state: {}, reward: {}".format(
+                            state, action, next_state, reward
+                        )
+                    )
                 state = next_state
 
             agent.anneal()

@@ -33,8 +33,10 @@ class Gem5Wrapper(Simulation):
             "benchmarks",
             "riscv-tests"
         )
+        if isinstance(state, np.ndarray):
+            state = state.tolist()
         self.macros["simulator"] = "gem5-{}.opt".format(
-            design_space.embedding_to_idx(state.tolist())
+            design_space.embedding_to_idx(state)
         )
         self.initialize_lut()
         self.stats, self.stats_name = self.init_stats()

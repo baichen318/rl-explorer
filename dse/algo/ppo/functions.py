@@ -90,8 +90,12 @@ def make_a2c_vec_envs(configs, device, env):
 
 
 def make_ppo_vec_envs(configs, env):
+    """
+        We set `offset` here is due to the machine status.
+    """
+    offset = 1
     envs = [
-        make_env(env, configs, idx) \
+        make_env(env, configs, idx + offset) \
             for idx in range(1,
                     configs["algo"]["num-parallel"] + 1
                 )
