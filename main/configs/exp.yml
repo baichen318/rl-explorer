@@ -4,16 +4,12 @@
 ### algorithm settings
 algo:
   # design specifications
-  # 1-wide 4-fetch SonicBOOM
-  # 1-wide 8-fetch SonicBOOM
-  # 2-wide 4-fetch SonicBOOM
-  # 2-wide 8-fetch SonicBOOM
-  # 3-wide 4-fetch SonicBOOM
-  # 3-wide 8-fetch SonicBOOM
-  # 4-wide 4-fetch SonicBOOM
-  # 4-wide 8-fetch SonicBOOM
-  # 5-wide SonicBOOM
-  design: "1-wide 4-fetch SonicBOOM"
+  # small-SonicBOOM
+  # medium-SonicBOOM
+  # large-SonicBOOM
+  # mega-SonicBOOM
+  # giga-SonicBOOM
+  design: "small-SonicBOOM"
   # the number of processes specifications
   num-parallel: 1
   # maximal episode specifications
@@ -78,8 +74,10 @@ env:
   calib:
     # dataset specifications
     dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/boom.txt
+    # simulation dataset specifications
+    calib-dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/dataset.txt
     # PPA models specifications
-    ppa-model: /Volumes/Research/repo/rl-explorer/tools/models
+    ppa-model: /Volumes/Research/repo/rl-explorer/tools/models/boom
   ## benchmarks specifications
   benchmarks:
     - towers

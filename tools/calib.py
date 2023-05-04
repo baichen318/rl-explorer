@@ -17,8 +17,8 @@ from collections import OrderedDict
 from sklearn.model_selection import KFold
 from utils.utils import get_configs, load_txt, \
     write_txt, mkdir, info, assert_error
-from sklearn.metrics import mean_absolute_error, mean_squared_error, \
-    mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error, \
+    mean_squared_error, mean_absolute_percentage_error
 try:
     from sklearn.externals import joblib
 except ImportError:
@@ -181,20 +181,22 @@ class CalibModel(object):
         if self.decode_width is not None:
             output_path = os.path.join(
                 rl_explorer_root,
-                configs["ppa-model"],
+                configs["env"]["calib"]["ppa-model"],
                 self.decode_width
             )
         else:
             output_path = os.path.join(
                 rl_explorer_root,
-                configs["ppa-model"]
+                configs["env"]["calib"]["ppa-model"]
             )
         mkdir(output_path)
-        if "BOOM" in configs["design"]:
+        if "BOOM" in configs["algo"]["design"]:
             name = "boom"
         else:
-            assert "Rocket" == configs["design"], \
-                    "[ERROR]: {} is not supported.".format(configs["design"])
+            assert "Rocket" == configs["algo"]["design"], \
+                    assert_error("{} is not supported.".format(
+                        configs["design"])
+                    )
             name = "rocket"
         output_path = os.path.join(
             output_path,
@@ -335,19 +337,30 @@ def visualize(metric, dataset, model, save_path=None):
     )()
     pred = model.predict(feature, gt)
     if save_path:
-        prefix_txt_save_path = save_path.split('.')[0]
-        gt_txt_save_path = "{}-gt.txt".format(prefix_txt_save_path)
-        pred_txt_save_path = "{}-pred.txt".format(prefix_txt_save_path)
+        gt_txt_save_path = os.path.join(
+            save_path, "{}-gt.txt".format(metric)
+        )
+        pred_txt_save_path = os.path.join(
+            save_path, "{}-pred.txt".format(metric)
+        )
         np.savetxt(
             gt_txt_save_path,
-            gt
+            gt,
+            fmt="%f"
         )
-        info("save dataset to {}.".format(gt_txt_save_path))
+        info("save dataset to {}".format(
+                gt_txt_save_path
+            )
+        )
         np.savetxt(
             pred_txt_save_path,
-            pred
+            pred,
+            fmt="%f"
         )
-        info("save dataset to {}.".format(pred_txt_save_path))
+        info("save dataset to {}".format(
+                pred_txt_save_path
+            )
+        )
     plt.scatter(
         np.array(pred),
         np.array(gt),
@@ -368,8 +381,11 @@ def visualize(metric, dataset, model, save_path=None):
         metric, model.mape, model.kendall_tau)
     )
     if save_path:
-        plt.savefig(save_path)
-        info("save fig. to {}".format(save_path))
+        fig_path = os.path.join(
+            save_path, "{}.pdf".format(metric)
+        )
+        plt.savefig(fig_path)
+        info("save fig. to {}".format(fig_path))
     plt.show()
 
 
@@ -378,14 +394,16 @@ def calib_xgboost(design_space, dataset):
     fold = 1
     for train, test in split_dataset(dataset):
         train_dataset = Dataset(
-            configs["design"],
+            configs["algo"]["design"],
             dataset[train],
-            len(design_space.descriptions[configs["design"]].keys())
+            len(design_space.descriptions[
+                configs["algo"]["design"]].keys())
         )
         test_dataset = Dataset(
-            configs["design"],
+            configs["algo"]["design"],
             dataset[test],
-            len(design_space.descriptions[configs["design"]].keys())
+            len(design_space.descriptions[
+                configs["algo"]["design"]].keys())
         )
         for metric in Dataset.metrics:
             model = CalibModel(
@@ -420,9 +438,10 @@ def calib_xgboost(design_space, dataset):
     stats.summary()
     if args.save:
         all_dataset = Dataset(
-            configs["design"],
+            configs["algo"]["design"],
             dataset[range(dataset.shape[0])],
-            len(design_space.descriptions[configs["design"]].keys())
+            len(design_space.descriptions[
+                configs["algo"]["design"]].keys())
         )
         for metric in Dataset.metrics:
             model = CalibModel(
@@ -438,7 +457,12 @@ def calib_xgboost(design_space, dataset):
             stats.update(model)
             model.save()
             stats.summary()
-            visualize(metric, all_dataset, model)
+            visualize(
+                metric,
+                all_dataset,
+                model,
+                configs["env"]["calib"]["ppa-model"]
+            )
 
 
 def ablation_study_calib_xgboost(design_space, dataset):
@@ -639,8 +663,7 @@ def calib_dataset():
     design_space = load_design_space()
     dataset = load_txt(
         os.path.join(
-            rl_explorer_root,
-            configs["dataset"]
+            configs["env"]["calib"]["calib-dataset"]
         ),
         fmt=float
     )
