@@ -77,7 +77,7 @@ env:
   ## calibration settings
   calib:
     # dataset specifications
-    dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/dataset.txt
+    dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/boom.txt
     # PPA models specifications
     ppa-model: /Volumes/Research/repo/rl-explorer/tools/models
   ## benchmarks specifications
