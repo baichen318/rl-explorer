@@ -27,13 +27,27 @@ class Status(object):
                 LSU action probability
                 D-Cache action probability
             """
-            self.ifu_action_prob = action_prob[0]
-            self.maxBrCount_action_prob = action_prob[1]
-            self.rob_action_prob = action_prob[2]
-            self.prf_action_prob = action_prob[3]
-            self.isu_action_prob = action_prob[4]
+            self.isu_action_prob = action_prob[0]
+            self.ifu_action_prob = action_prob[1]
+            self.maxBrCount_action_prob = action_prob[2]
+            self.rob_action_prob = action_prob[3]
+            self.prf_action_prob = action_prob[4]
             self.lsu_action_prob = action_prob[5]
-            self.dcache_action_prob = action_prob[6]
+            self.bp_action_prob = action_prob[6]
+            self.icache_action_prob = action_prob[7]
+            self.dcache_action_prob = action_prob[8]
+
+        def update_bp_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.bp_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/BP",
+                action_prob,
+                episode
+            )
 
         def update_ifu_action_prob(self, writer, episode):
             action_prob = OrderedDict()
@@ -107,6 +121,18 @@ class Status(object):
                 episode
             )
 
+        def update_icache_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.icache_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/I$",
+                action_prob,
+                episode
+            )
+
         def update_dcache_action_prob(self, writer, episode):
             action_prob = OrderedDict()
             idx = 1
@@ -120,12 +146,14 @@ class Status(object):
             )
 
         def update(self, writer, episode):
+            self.update_isu_action_prob(writer, episode)
             self.update_ifu_action_prob(writer, episode)
             self.update_maxBrCount_action_prob(writer, episode)
             self.update_rob_action_prob(writer, episode)
             self.update_prf_action_prob(writer, episode)
-            self.update_isu_action_prob(writer, episode)
             self.update_lsu_action_prob(writer, episode)
+            self.update_bp_action_prob(writer, episode)
+            self.update_icache_action_prob(writer, episode)
             self.update_dcache_action_prob(writer, episode)
 
 
@@ -165,6 +193,15 @@ class Status(object):
             episode
         )
 
+    def update_reward(self, reward, episode):
+        self.writer.add_scalars(
+            "episode/reward",
+            {
+                "reward": reward,
+            },
+            episode
+        )
+
     def update_preference(self, w, episode):
         perf_w, power_w, area_w = np.average(w, axis=0)
         self.writer.add_scalars(
@@ -184,7 +221,7 @@ class Status(object):
                 "actor-loss": agent.actor_loss.detach().numpy(),
                 "critic-loss": agent.critic_loss.detach().numpy(),
                 "entropy": agent.entropy.detach().numpy(),
-                "loss": agent.loss.detach().numpy()
+                "total-loss": agent.loss.detach().numpy()
             },
             episode
         )
@@ -223,6 +260,8 @@ class Status(object):
         self.update_perf(perf, episode)
         self.update_power(power, episode)
         self.update_area(area, episode)
+        reward = abs(perf) + abs(power) + abs(area)
+        self.update_reward(reward, episode)
         self.update_preference(explore_w, episode)
         self.update_loss(agent, episode)
         self.update_learning_rate(agent, episode)
@@ -293,6 +332,12 @@ def train_ppo(agent, configs):
                     state, action, next_state, reward, done
                 )
 
+                configs["logger"].info(
+                    "state: {}, action: {}, next_state: {}, reward: {}".format(
+                        state, action, next_state, reward
+                    )
+                )
+
                 # for visualization
                 action_prob.append(policy)
 
@@ -302,11 +347,6 @@ def train_ppo(agent, configs):
                         explore_w = preference.renew_preference(
                             explore_w, i
                         )
-                    configs["logger"].info(
-                        "state: {}, action: {}, next_state: {}, reward: {}".format(
-                            state, action, next_state, reward
-                        )
-                    )
                 state = next_state
 
             agent.anneal()

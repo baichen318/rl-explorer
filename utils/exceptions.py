@@ -17,9 +17,10 @@ class UnSupportedException(Exception):
         return self.msg
 
 
-class EvaluateException(Exception):
-    def __init__(self, target):
-        self.msg = target
+class EvaluationRuntimeError(Exception):
+    def __init__(self, msg):
+        super(EvaluationRuntimeError, self).__init__()
+        self.msg = msg
 
     def __str__(self):
         return self.msg

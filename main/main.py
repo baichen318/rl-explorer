@@ -11,7 +11,7 @@ from dse.algo.a2c.a2c import a2c
 from dse.algo.ppo.ppo import ppo
 from utils.utils import parse_args, get_configs, write_txt, \
     assert_error, if_exist, mkdir, create_logger, execute, \
-    get_configs_from_command
+    get_configs_from_command, copy
 
 
 def pre_requisite(configs):
@@ -63,6 +63,8 @@ def rl_explorer(configs):
     pre_requisite(configs)
     # an interface for the simulation
     configs["configs"] = fyaml
+    # copy the YAML to the output directory
+    copy(fyaml, configs["algo"]["output-root"])
     if "BOOM" in configs["algo"]["design"]:
         from dse.env.boom.env import BOOMEnv as env
     else:

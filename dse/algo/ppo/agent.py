@@ -148,9 +148,9 @@ class BOOMAgent(object):
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
             _policy = policy.data.cpu().numpy()
-            self.logger.info(
-                "[INFO]: action prob: {}.".format(_policy)
-            )
+            # self.logger.info(
+            #     "[INFO]: action prob: {}.".format(_policy)
+            # )
         else:
             policy = F.softmax(policy, dim=-1)
         action = self.random_choice_prob_index(policy)

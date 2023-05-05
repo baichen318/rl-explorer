@@ -8,6 +8,7 @@ import time
 import numpy as np
 import multiprocessing
 from collections import OrderedDict
+from utils.thread import WorkerThread
 from multiprocessing.pool import ThreadPool
 from simulation.base_simulation import Simulation
 from utils.utils import execute, remove_prefix, if_exist, \
@@ -81,12 +82,17 @@ class Gem5Wrapper(Simulation):
             self.macros["gem5-research-root"],
             "m5out"
         )
-        self.temp_root = os.path.join(
-            self.macros["rl-explorer-root"],
-            "temp",
-            str(self.idx)
-        )
-        mkdir(self.temp_root)
+        """
+            DEPRECATED.
+            `temp_root` is deprecated for multiple
+            simultaneous simulations.
+        """
+        # self.temp_root = os.path.join(
+        #     self.macros["rl-explorer-root"],
+        #     "temp",
+        #     str(self.idx)
+        # )
+        # mkdir(self.temp_root)
 
 
     def init_stats(self):
@@ -307,10 +313,14 @@ class Gem5Wrapper(Simulation):
             exit(-1)
         execute(cmd)
 
-    def get_results(self):
+    def get_results(self, benchmark):
         instructions, cycles = 0, 0
         misc_stats = OrderedDict()
-        with open(os.path.join(self.m5out_root, "stats.txt"), 'r') as f:
+        with open(os.path.join(
+                self.macros["gem5-research-root"],
+                benchmark, "stats.txt"
+            ), 'r'
+        ) as f:
             cnt = f.readlines()
         stats_name = ["system.cpu.{}".format(name) for name in self.stats_name]
         for line in cnt:
@@ -331,71 +341,94 @@ class Gem5Wrapper(Simulation):
         for k, v in self.stats.items():
             self.stats[k] /= cnt
 
-    def simulate(self):
-        machine = os.popen("hostname").readlines()[0].strip()
-        for bmark in self.benchmarks:
-            remove(os.path.join(
-                self.temp_root, "m5out-{}".format(bmark))
-            )
-        ipc = 0
+    def simulate_impl(self, bmark):
+        bmark_root = os.path.join(
+            self.macros["gem5-research-root"],
+            bmark
+        )
+        if if_exist(bmark_root):
+            remove(bmark_root)
+
         bp = {
             1: "LTAGE",
             2: "TAGE",
             3: "BiModeBP"
         }
-        for bmark in self.benchmarks:
-            cmd = "cd {}; build/RISCV/{} configs/example/se.py ".format(
+        cmd = "cd {}; {} --outdir={} {} ".format(
+            self.macros["gem5-research-root"],
+            os.path.join(
                 self.macros["gem5-research-root"],
-                self.macros["simulator"]
+                "build", "RISCV", self.macros["simulator"]
+            ),
+            bmark_root,
+            os.path.join(
+                self.macros["gem5-research-root"],
+                "configs", "example", "se.py"
             )
-            cmd += "--cmd=%s " % os.path.join(
+        )
+        cmd += "--cmd={} ".format(os.path.join(
                 self.macros["gem5-benchmark-root"],
                 bmark + ".riscv"
             )
-            cmd += "--num-cpus=1 "
-            cmd += "--cpu-type=DerivO3CPU "
-            cmd += "--caches "
-            cmd += "--cacheline_size=64 "
-            cmd += " --l1d_size={}kB ".format(
-                (((self.state[22] * self.state[23]) << 6)) >> 10
+        )
+        cmd += "--num-cpus=1 "
+        cmd += "--cpu-type=DerivO3CPU "
+        cmd += "--caches "
+        cmd += "--cacheline_size=64 "
+        cmd += " --l1d_size={}kB ".format(
+            (((self.state[22] * self.state[23]) << 6)) >> 10
+        )
+        cmd += "--l1i_size={}kB ".format(
+            (((self.state[20] * self.state[21]) << 6)) >> 10
+        )
+        cmd += "--l1d_assoc={} ".format(
+            self.state[22]
+        )
+        cmd += "--l1i_assoc={} ".format(
+            self.state[20]
+        )
+        cmd += "--sys-clock=2000000000Hz "
+        cmd += "--cpu-clock=2000000000Hz "
+        cmd += "--sys-voltage=6.3V "
+        # cmd += "--l2cache "
+        # cmd += "--l2_size=64MB "
+        # cmd += "--l2_assoc=8 "
+        cmd += "--mem-size=4096MB "
+        cmd += "--mem-type=LPDDR3_1600_1x32 "
+        cmd += "--mem-channels=1 "
+        cmd += "--enable-dram-powerdown "
+        cmd += "--bp-type={}".format(
+            bp[self.state[0]]
+        )
+        # simulate
+        print(cmd)
+        execute(cmd, logger=self.logger)
+        instructions, cycles, misc_stats = \
+            self.get_results(bmark)
+        return instructions, cycles, misc_stats
+
+    def simulate(self):
+        ipc = 0
+
+        threads = []
+        for bmark in self.benchmarks:
+            thread = WorkerThread(
+                func=self.simulate_impl,
+                args=(bmark,)
             )
-            cmd += "--l1i_size={}kB ".format(
-                (((self.state[20] * self.state[21]) << 6)) >> 10
-            )
-            cmd += "--l1d_assoc={} ".format(
-                self.state[22]
-            )
-            cmd += "--l1i_assoc={} ".format(
-                self.state[20]
-            )
-            cmd += "--sys-clock=2000000000Hz "
-            cmd += "--cpu-clock=2000000000Hz "
-            cmd += "--sys-voltage=6.3V "
-            # cmd += "--l2cache "
-            # cmd += "--l2_size=64MB "
-            # cmd += "--l2_assoc=8 "
-            cmd += "--mem-size=4096MB "
-            cmd += "--mem-type=LPDDR3_1600_1x32 "
-            cmd += "--mem-channels=1 "
-            cmd += "--enable-dram-powerdown "
-            cmd += "--bp-type=%s; cd -" % (
-                bp[self.state[0]]
-            )
-            execute(cmd, logger=self.logger)
-            instructions, cycles, misc_stats = self.get_results()
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        for thread in threads:
+            instructions, cycles, misc_stats = thread.get_output()
             self.incr_stats(misc_stats)
             ipc += (instructions / cycles)
-            # for McPAT usage
-            execute(
-                "mv -f %s %s" % (
-                    self.m5out_root,
-                    os.path.join(self.temp_root, "m5out-%s" % bmark)
-                )
-            )
         ipc /= len(self.benchmarks)
         self.avg_stats(len(self.benchmarks))
         return ipc
-
 
     def evaluate_perf(self):
         if if_exist(
@@ -447,15 +480,15 @@ class Gem5Wrapper(Simulation):
         power, area = 0, 0
         pool = ThreadPool(len(self.benchmarks))
         for bmark in self.benchmarks:
+            bmark_root = os.path.join(
+                self.macros["gem5-research-root"],
+                bmark
+            )
             mcpat_xml = os.path.join(
-                self.temp_root,
-                "m5out-%s" % bmark,
-                "%s-%s.xml" % ("BOOM", self.idx)
+                bmark_root, "{}-{}.xml".format("BOOM", self.idx)
             )
             mcpat_report = os.path.join(
-                self.temp_root,
-                "m5out-%s" % bmark,
-                "%s-%s.rpt" % ("BOOM", self.idx)
+                bmark_root, "{}-{}.rpt".format("BOOM", self.idx)
             )
             pool.apply_async(
                 execute,
@@ -477,8 +510,12 @@ class Gem5Wrapper(Simulation):
                             "gem5-mcpat-parser.py"
                         ),
                         self.configs["configs"],
-                        os.path.join(self.temp_root, "m5out-{}".format(bmark), "config.json"),
-                        os.path.join(self.temp_root, "m5out-{}".format(bmark), "stats.txt"),
+                        os.path.join(
+                            bmark_root, "config.json"
+                        ),
+                        os.path.join(
+                            bmark_root, "stats.txt"
+                        ),
                         os.path.join(
                             self.macros["rl-explorer-root"],
                             "tools",
@@ -501,10 +538,12 @@ class Gem5Wrapper(Simulation):
         pool.close()
         pool.join()
         for bmark in self.benchmarks:
+            bmark_root = os.path.join(
+                self.macros["gem5-research-root"],
+                bmark
+            )
             mcpat_report = os.path.join(
-                self.temp_root,
-                "m5out-%s" % bmark,
-                "%s-%s.rpt" % ("BOOM", self.idx)
+                bmark_root, "{}-{}.rpt".format("BOOM", self.idx)
             )
             power += extract_power(mcpat_report)
             area += extract_area(mcpat_report)

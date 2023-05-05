@@ -231,7 +231,6 @@ class %s extends Config(
     # branch predictor
     vec = []
     c, idx = 1, 1
-    print(embedding)
     vec.append(embedding[0])
     while idx < len(embedding):
       prev_idx = idx

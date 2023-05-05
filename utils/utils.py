@@ -2,11 +2,11 @@
 
 
 import os
+import csv
 import yaml
 import time
-import csv
-import shutil
 import torch
+import shutil
 import logging
 import argparse
 import subprocess
@@ -16,7 +16,7 @@ from typing import Union
 from math import ceil, log
 from sklearn import metrics
 from datetime import datetime
-from utils.exception import NotFoundException
+from utils.exceptions import NotFoundException
 
 
 def parse_args():
@@ -68,6 +68,11 @@ def mkdir(path):
     if not if_exist(path):
         info("create directory: %s" % path)
         os.makedirs(path, exist_ok=True)
+
+
+def copy(src, tgt):
+    shutil.copy(src, tgt)
+    info("copy {} to {}".format(src, tgt))
 
 
 def remove(path):

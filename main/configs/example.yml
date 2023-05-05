@@ -4,16 +4,12 @@
 ### algorithm settings
 algo:
   # design specifications
-  # 1-wide 4-fetch SonicBOOM
-  # 1-wide 8-fetch SonicBOOM
-  # 2-wide 4-fetch SonicBOOM
-  # 2-wide 8-fetch SonicBOOM
-  # 3-wide 4-fetch SonicBOOM
-  # 3-wide 8-fetch SonicBOOM
-  # 4-wide 4-fetch SonicBOOM
-  # 4-wide 8-fetch SonicBOOM
-  # 5-wide SonicBOOM
-  design: "1-wide 4-fetch SonicBOOM"
+  # small-SonicBOOM
+  # medium-SonicBOOM
+  # large-SonicBOOM
+  # mega-SonicBOOM
+  # giga-SonicBOOM
+  design: "large-SonicBOOM"
   # the number of processes specifications
   num-parallel: 1
   # maximal episode specifications
@@ -30,7 +26,7 @@ algo:
     # the batch size for training specifications
     sample-size: 8
     # the number of n-step evaluation specifications
-    num-step: 1
+    num-step: 9
     # softmax temperature specifications to encourage exploration
     temperature: 10
     # learning rate specifications
@@ -72,15 +68,20 @@ env:
     # gem5 research pool root path specifications
     # it is an absolute path
     gem5-research-root: /Volumes/Research/repo/gem5-repo/
+    # an idx is set if a user specifies a specific gem5 repo.
+    idx: 1
   ## calibration settings
   calib:
     # dataset specifications
-    dataset: data/boom/dataset.txt
+    dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/boom.txt
+    # simulation dataset specifications
+    calib-dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/dataset.txt
     # PPA models specifications
-    ppa-model: tools/models
+    ppa-model: /Volumes/Research/repo/rl-explorer/tools/models/boom
   ## benchmarks specifications
   benchmarks:
-    - median
     - towers
     - vvadd
-    - multiply
+    - spmv
+    # - median
+    # - multiply

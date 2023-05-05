@@ -14,7 +14,7 @@ except ImportError:
     import joblib
 from simulation.boom.simulation import Gem5Wrapper
 from dse.env.boom.design_space import parse_design_space
-from utils.exception import EvaluateException, UnSupportedException
+from utils.exceptions import EvaluationRuntimeError, UnSupportedException
 
 
 class BasicEnv(gym.Env):
@@ -221,7 +221,7 @@ class BOOMEnv(BasicEnv):
             self.state[self.state_idx_to_state()] = \
                 self.get_action_candidates(self.state_idx)[action]
         except IndexError as e:
-            raise EvaluateException(
+            raise EvaluationRuntimeError(
                 "index out of range: {} vs {}. " \
                 "current state: {}.".format(
                         action,
