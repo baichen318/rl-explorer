@@ -118,8 +118,10 @@ class BOOMEnv(BasicEnv):
 
     @property
     def if_terminate(self):
-        return self.state_idx == \
-            self.dims_of_tunable_state - 1
+        """
+            If a state has no zero element, then it is terminated.
+        """
+        return len(np.where(self.state == 0)[0]) == 0
 
     @property
     def current_state(self):
@@ -209,6 +211,9 @@ class BOOMEnv(BasicEnv):
         self.state_idx = 0
 
     def state_idx_to_state(self):
+        """
+            Hard-coded tunable state offsets.
+        """
         return [
             7, 2, 3, 5, 6, 8, 0, 9, 10
         ][self.state_idx]
