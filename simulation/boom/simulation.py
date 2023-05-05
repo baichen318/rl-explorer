@@ -41,6 +41,7 @@ class Gem5Wrapper(Simulation):
         )
         self.initialize_lut()
         self.stats, self.stats_name = self.init_stats()
+        self.simulation_is_failed = False
 
     @property
     def benchmarks(self):
@@ -401,7 +402,6 @@ class Gem5Wrapper(Simulation):
             bp[self.state[0]]
         )
         # simulate
-        print(cmd)
         execute(cmd, logger=self.logger)
         instructions, cycles, misc_stats = \
             self.get_results(bmark)
@@ -424,6 +424,10 @@ class Gem5Wrapper(Simulation):
 
         for thread in threads:
             instructions, cycles, misc_stats = thread.get_output()
+            if instructions == 0 or cycles == 0:
+                # an error occurs in the simulation
+                self.simulation_is_failed = True
+                return 0
             self.incr_stats(misc_stats)
             ipc += (instructions / cycles)
         ipc /= len(self.benchmarks)
@@ -478,6 +482,10 @@ class Gem5Wrapper(Simulation):
             return area
 
         power, area = 0, 0
+
+        if self.simulation_is_failed:
+            return power, area
+
         pool = ThreadPool(len(self.benchmarks))
         for bmark in self.benchmarks:
             bmark_root = os.path.join(
