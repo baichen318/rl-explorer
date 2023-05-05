@@ -96,8 +96,9 @@ def make_ppo_vec_envs(configs, env):
     offset = 1
     envs = [
         make_env(env, configs, idx + offset) \
-            for idx in range(1,
-                    configs["algo"]["num-parallel"] + 1
+            for idx in range(configs["env"]["sim"]["idx"],
+                    configs["env"]["sim"]["idx"] + \
+                        configs["algo"]["num-parallel"]
                 )
     ]
 
