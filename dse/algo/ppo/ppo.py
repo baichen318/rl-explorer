@@ -328,15 +328,35 @@ def train_ppo(agent, configs):
             for _ in range(agent.num_step):
                 action, policy = agent.get_action(state, explore_w)
                 next_state, reward, done, info = envs.step(action)
-                agent.buffer.insert(
-                    state, action, next_state, reward, done
-                )
 
-                configs["logger"].info(
-                    "state: {}, action: {}, next_state: {}, reward: {}".format(
-                        state, action, next_state, reward
+                """
+                    If `done` is True, `next_state` is override,
+                    so we need to get the correct `next_state` from
+                    `info`.
+                    See: https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/vec_env/subproc_vec_env.py#L22
+                """
+                if done[0]:
+                    # stack all terminal observation(s)
+                    _next_state = np.stack(
+                        [_info["terminal_observation"] for _info in info]
                     )
-                )
+                    agent.buffer.insert(
+                        state, action, _next_state, reward, done
+                    )
+                    configs["logger"].info(
+                        "state: {}, action: {}, next_state: {}, reward: {}".format(
+                            state, action, _next_state, reward
+                        )
+                    )
+                else:
+                    agent.buffer.insert(
+                        state, action, next_state, reward, done
+                    )
+                    configs["logger"].info(
+                        "state: {}, action: {}, next_state: {}, reward: {}".format(
+                            state, action, next_state, reward
+                        )
+                    )
 
                 # for visualization
                 action_prob.append(policy)
