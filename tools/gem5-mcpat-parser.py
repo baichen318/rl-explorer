@@ -85,8 +85,11 @@ def read_stats(stats_file):
             # ignore empty lines and lines starting with "---"
             if not ignores.match(line):
                 count += 1
-                stat_kind = stat_line.match(line).group(1)
-                stat_value = stat_line.match(line).group(2)
+                try:
+                    stat_kind = stat_line.match(line).group(1)
+                    stat_value = stat_line.match(line).group(2)
+                except AttributeError as e:
+                    continue
                 if stat_value == "nan":
                     warn("%s is \"nan\". set it to 0." % stat_kind)
                     stat_value = '0'
