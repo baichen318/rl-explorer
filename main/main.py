@@ -56,7 +56,8 @@ def pre_requisite(configs):
         configs["algo"]["output-root"],
         "models",
     )
-    mkdir(configs["model-path"])
+    if configs["algo"]["mode"] == "train":
+        mkdir(configs["model-path"])
 
 
 def rl_explorer(configs):

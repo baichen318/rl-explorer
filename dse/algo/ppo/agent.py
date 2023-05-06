@@ -119,7 +119,7 @@ class BOOMAgent(object):
             self._model.eval()
             self.load(
                 os.path.join(
-                    self.configs["test"]["rl-model"]
+                    self.configs["algo"]["test"]["rl-model"]
                 )
             )
         return True if self.mode == "train" else False
@@ -147,12 +147,12 @@ class BOOMAgent(object):
         policy = self.adjust_action_space(policy)
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
-            _policy = policy.data.cpu().numpy()
             # self.logger.info(
             #     "[INFO]: action prob: {}.".format(_policy)
             # )
         else:
             policy = F.softmax(policy, dim=-1)
+        _policy = policy.data.cpu().numpy()
         action = self.random_choice_prob_index(policy)
         return action, _policy
 

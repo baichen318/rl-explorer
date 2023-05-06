@@ -374,8 +374,67 @@ def train_ppo(agent, configs):
             status.update(agent, old_explore_w, action_prob, episode)
 
 
-def test_ppo():
-    pass
+def test_ppo(agent, configs):
+    envs = agent.envs
+    assert agent.num_step == \
+        envs.safe_get_attr("dims_of_tunable_state"), \
+            assert_error(": num_step {} vs " \
+                " tunabe state: {}".format(
+                    agent.num_step,
+                    envs.safe_get_attr("dims_of_tunable_state")
+                )
+            )
+
+    preference = agent.preference
+
+    # initialization
+    fixed_w = preference.init_preference()
+    explore_w = preference.generate_preference(
+        agent.num_parallel,
+        fixed_w
+    )
+
+    with Timer("{}".format(agent.mode)):
+        for episode in range(configs["algo"]["test"]["max-search-round"]):
+            """
+                When we start an episode, we clear the buffer.
+            """
+            agent.buffer.reset()
+            state = envs.reset()
+
+            for _ in range(agent.num_step):
+                action, _ = agent.get_action(state, explore_w)
+                next_state, reward, done, info = envs.step(action)
+
+                """
+                    If `done` is True, `next_state` is override,
+                    so we need to get the correct `next_state` from
+                    `info`.
+                    See: https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/vec_env/subproc_vec_env.py#L22
+                """
+                if done[0]:
+                    # stack all terminal observation(s)
+                    _next_state = np.stack(
+                        [_info["terminal_observation"] for _info in info]
+                    )
+                    configs["logger"].info(
+                        "episode: {}, state: {}, action: {}, next_state: " \
+                        "{}, reward: {}".format(
+                            episode, state, action, _next_state, reward
+                        )
+                    )
+                else:
+                    agent.buffer.insert(
+                        state, action, next_state, reward, done
+                    )
+
+                for i in range(1, agent.num_parallel):
+                    if done[i]:
+                        # if the i-th agent finishes, then we renew the preference
+                        explore_w = preference.renew_preference(
+                            explore_w, i
+                        )
+                state = next_state
 
 
 def ppo(env, configs):
@@ -389,4 +448,4 @@ def ppo(env, configs):
     if configs["algo"]["mode"] == "train":
         train_ppo(agent, configs)
     else:
-        test_ppo()
+        test_ppo(agent, configs)
