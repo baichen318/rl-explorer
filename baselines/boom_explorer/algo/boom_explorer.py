@@ -1,58 +1,30 @@
 # Author: baichen318@gmail.com
 
 
-import sys, os
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        os.path.pardir
-    )
-)
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        os.path.pardir,
-        "simulation"
-    )
-)
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        os.path.pardir,
-        "utils"
-    )
-)
-import random
-import functools
+import os
 import tqdm
 import torch
+import random
 import gpytorch
+import functools
 import numpy as np
 from time import time
+from utils.utils import info
 from datetime import datetime
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
+from baselines.boom_explorer.algo.dkl_gp import DKLGP
 from botorch.utils.multi_objective.hypervolume import Hypervolume
 from botorch.utils.multi_objective.pareto import is_non_dominated
-from botorch.utils.multi_objective.box_decompositions.non_dominated import NondominatedPartitioning
+from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from botorch.acquisition.multi_objective.analytic import ExpectedHypervolumeImprovement
-from sample import micro_al, random_sample, initial_random_sample
-from dkl_gp import DKLGP
-from util import calc_adrs, array_to_tensor, tensor_to_array, scale_dataset, rescale_dataset
-from utils import info
-from boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
-from rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
+from baselines.boom_explorer.util.sample import micro_al, random_sample, initial_random_sample
+from botorch.utils.multi_objective.box_decompositions.non_dominated import NondominatedPartitioning
+from baselines.boom_explorer.util.util import calc_adrs, array_to_tensor, tensor_to_array, scale_dataset, \
+    rescale_dataset
 
 
 def get_pareto_set(y: torch.Tensor):
@@ -163,14 +135,11 @@ def report(
         f.write("cost time: {} s.".format(ort))
 
 
-def evaluate_microarchitecture(configs, design_space, vec, boom):
-    return scale_dataset(
-        array_to_tensor(np.array([1, 2, 3])).unsqueeze(0), boom
-    )
+def evaluate_microarchitecture(configs, design_space, embedding, boom):
     def load_ppa_model():
         ppa_model_root = os.path.join(
             configs["rl-explorer-root"],
-            configs["ppa-model"]
+            configs["env"]["calib"]["ppa-model"]
         )
         perf_root = os.path.join(
             ppa_model_root,
@@ -197,26 +166,47 @@ def evaluate_microarchitecture(configs, design_space, vec, boom):
     manager = Simulator(
         configs,
         design_space,
-        vec,
-        os.path.basename(configs["gem5-research-root"])
+        embedding,
+        configs["env"]["sim"]["idx"]
     )
-    perf = manager.evaluate_perf()
+    perf, stats = manager.evaluate_perf()
     power, area = manager.evaluate_power_and_area()
+    area *= 1e6
+    stats_feature = []
+    for k, v in stats.items():
+        stats_feature.append(v)
+    stats_feature = np.array(stats_feature)
     perf = perf_model.predict(np.expand_dims(
-            np.concatenate((vec, [perf])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [perf]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
     power = power_model.predict(np.expand_dims(
-            np.concatenate((vec, [power])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [power]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
     area = area_model.predict(np.expand_dims(
-            np.concatenate((vec, [area])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [area]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
+    area *= 1e-6
     return scale_dataset(
         array_to_tensor(
             np.array([perf, power, area])
@@ -226,12 +216,19 @@ def evaluate_microarchitecture(configs, design_space, vec, boom):
 
 
 def boom_explorer(configs, settings, problem):
+
+    # set random seed
+    random.seed(settings["seed"])
+    np.random.seed(settings["seed"])
+    torch.manual_seed(settings["seed"])
+
     hv = Hypervolume(ref_point=problem._ref_point)
     # adrs saves ADRS before and after running of BOOM-Explorer
     adrs = []
 
     start = time()
     # generate initial data
+    info("sampling...")
     if problem.boom:
         x, y = micro_al(settings, problem)
     else:
@@ -243,6 +240,7 @@ def boom_explorer(configs, settings, problem):
         )
     )
 
+    info("initialize DKL-GP...")
     model = initialize_dkl_gp(settings, x, y)
 
     # Bayesian optimization

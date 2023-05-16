@@ -83,11 +83,27 @@ def load_dataset(csv_path, split=True, boom=True):
     """
         csv_path: <str>
     """
+    def remove_zero_data(dataset):
+        # perf
+        dataset = np.delete(
+            dataset, np.where(dataset[:,-3] == 0), axis=0
+        )
+        # power
+        dataset = np.delete(
+            dataset, np.where(dataset[:,-3] == 0), axis=0
+        )
+        # area
+        dataset = np.delete(
+            dataset, np.where(dataset[:,-3] == 0), axis=0
+        )
+        return dataset
+
     dataset = load_txt(
         csv_path,
         fmt=float
     )
-    dataset = dataset[:, :-3]
+    dataset = remove_zero_data(dataset)
+    # dataset = dataset[:, :-3]
     dataset = scale_dataset(dataset, boom)
     # split to two matrices
     x = []
@@ -104,15 +120,15 @@ def scale_dataset(dataset: Union[torch.Tensor, np.ndarray], boom=True):
         dataset: <numpy.array>
     NOTICE: scale the data by `max - x / \alpha`
     BOOM:
-      max ipc: 1.751441
-      min ipc: 0.646065
-      max power: 0.305892
-      min power: 0.02115
-      max area: 5069115.916
-      min area: 308878.162
+      max ipc: 2.56948
+      min ipc: 0.647819
+      max power: 0.083072
+      min power: 0.0173
+      max area: 6288190.439
+      min area: 1180798.068
       after scaling,
-      the power values are [0.09410800000000002, 0.37885]
-      the area values are [0.09308840839999998, 0.5691121838]
+      power: [0.083072, 0.14884399999999998],
+      area: [0.6288190439, 1.139558281]
     Rocket:
       max ipc: 0.846828
       min ipc: 0.596727
@@ -130,9 +146,9 @@ def scale_dataset(dataset: Union[torch.Tensor, np.ndarray], boom=True):
         _dataset = dataset.copy()
     if boom:
         # power
-        _dataset[:, -2] = 0.4 - _dataset[:, -2]
+        _dataset[:, -2] = 0.166144 - _dataset[:, -2]
         # area
-        _dataset[:, -1] = (6000000 - _dataset[:, -1]) / 1e7
+        _dataset[:, -1] = (12576380.878 - _dataset[:, -1]) / 1e7
     else:
         # power
         _dataset[:, -2] = 0.02 - _dataset[:, -2]

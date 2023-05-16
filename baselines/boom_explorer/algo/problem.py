@@ -1,24 +1,15 @@
 # Author: baichen318@gmail.com
 
 
-import sys, os
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        os.path.pardir,
-        "dse"
-    )
-)
+import os
 import torch
 import numpy as np
 from typing import Optional
+from utils.utils import assert_error
+from baselines.boom_explorer.util.util import load_dataset
 from botorch.test_functions.base import MultiObjectiveTestProblem
-from env.boom.design_space import parse_design_space as parse_boom_design_space
-from env.rocket.design_space import parse_design_space as parse_rocket_design_space
-from util import load_dataset
+from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
+from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
 
 
 class BOOMDesignProblem(MultiObjectiveTestProblem):
@@ -30,20 +21,21 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
         # NOTICE: for dataset
         # after scaling, the clock cycles are [0.2948, 1.32305],
         # the power values are [0.5349999999999999, 1.5405000000000002]
-        assert "BOOM" in self.configs["design"] or \
-            self.configs["design"] == "Rocket", \
-            "[ERROR]: {} is not supported.".format(self.configs["design"])
-        self.boom = "BOOM" in self.configs["design"]
+        assert "BOOM" in self.configs["algo"]["design"] or \
+            self.configs["algo"]["design"] == "Rocket", \
+            assert_error("{} is not supported.".format(
+                self.configs["design"])
+            )
+        self.boom = "BOOM" in self.configs["algo"]["design"]
         if self.boom:
             self._ref_point = torch.tensor([0.0, 0.0, 0.0])
-            self._bounds = torch.tensor([(2.5, 0.4, 0.6)])
+            self._bounds = torch.tensor([(3.0, 0.2, 2)])
         else:
             self._ref_point = torch.tensor([0.0, 0.0, 0.0])
             self._bounds = torch.tensor([(1.0, 0.02, 0.7)])
         self.total_x, self.total_y = load_dataset(
             os.path.join(
-                configs["rl-explorer-root"],
-                configs["dataset"]
+                configs["env"]["calib"]["dataset"]
             ),
             boom=self.boom
         )

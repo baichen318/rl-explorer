@@ -1,8 +1,12 @@
 # Author: baichen318@gmail.com
 
 
+# random seed
+seed: 42
+
+
 # randomized TED specification
-Nrted: 59
+Nrted: 5
 
 
 # randomized TED specification
@@ -14,7 +18,7 @@ sig: 0.1
 
 
 # batch specification in randomized TED
-batch: 50
+batch: 10
 
 
 # decoder clustering weight specification
@@ -30,11 +34,11 @@ optimizer: Adam
 
 
 # optimization steps specification for DKL-GP
-max-optimize-epoch: 1200
+max-optimize-epoch: 100
 
 
 # max iteration specification for BO
-max-bo-steps: 20
+max-bo-steps: 8
 
 
 # MLP output dimension specification
@@ -46,8 +50,8 @@ cluster: 5
 
 
 # cluster iteration specification in MicroAL
-cluster-iteration: 500
+cluster-iteration: 10
 
 
 # sampled design space size specification in BO
-sample-design-space-size: 10000
+sample-design-space-size: 1000

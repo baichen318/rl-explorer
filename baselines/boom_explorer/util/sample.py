@@ -245,7 +245,7 @@ class RandomSampler(Sampler):
 
         x = []
         for idx in index:
-            x.append(self.problem.design_space.idx_to_vec(idx))
+            x.append(self.problem.design_space.idx_to_embedding(idx))
         x = np.array(x)
         return x
 
@@ -259,7 +259,7 @@ class RandomSampler(Sampler):
         index = random.sample(range(len(self.labeled)), k=batch)
         x = []
         for idx in index:
-            x.append(self.problem.design_space.idx_to_vec(idx))
+            x.append(self.problem.design_space.idx_to_embedding(idx))
         x = np.array(x)
         return x
 
