@@ -113,7 +113,7 @@ def report(
         os.path.join(
             configs["rl-explorer-root"],
             "baselines",
-            "boom-explorer",
+            "boom_explorer",
             "solution-{}.txt".format(datetime.now()).replace(' ', '-')
         ),
         'w'

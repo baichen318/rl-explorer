@@ -2,7 +2,7 @@
 
 
 import os
-from utils.utils import get_configs
+from utils.utils import get_configs, Timer
 from baselines.boom_explorer.util.util import parse_args
 from baselines.boom_explorer.algo.problem import define_problem
 from baselines.boom_explorer.algo.boom_explorer import boom_explorer
@@ -26,4 +26,5 @@ if __name__ == "__main__":
     )
     configs["configs"] = args.configs
     configs["logger"] = None
-    main()
+    with Timer("BOOM-Explorer"):
+        main()
