@@ -1,32 +1,6 @@
 # Author: baichen318@gmail.com
 
-import sys, os
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir
-    )
-)
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        "utils"
-    )
-)
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        "simulation"
-    )
-)
+import os
 os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
 import numpy as np
@@ -39,11 +13,11 @@ try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
+from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+from utils.utils import parse_args, get_configs, info, load_txt, Timer
+from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
 from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
-from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
-from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
-from utils import parse_args, get_configs, info, load_txt
 
 
 def generate_L(dataset):
@@ -68,12 +42,11 @@ def load_dataset():
     dataset = load_txt(
         os.path.join(
             rl_explorer_root,
-            configs["dataset"]
+            configs["env"]["calib"]["dataset"]
         ),
         fmt=float
     )
-    # for the baseline implementation, we trunk the dataset
-    return dataset[:, :-3]
+    return dataset
 
 
 def create_mlp(hidden):
@@ -193,30 +166,51 @@ def calc_cv(data1, data2):
     return cv
 
 
-def evaluate_microarchitecture(vec, idx=5):
+def evaluate_microarchitecture(vec):
     manager = Simulator(
         configs,
         design_space,
         vec,
-        idx
+        configs["env"]["sim"]["idx"]
     )
-    perf = manager.evaluate_perf()
+    perf, stats = manager.evaluate_perf()
     power, area = manager.evaluate_power_and_area()
+    area *= 1e6
+    stats_feature = []
+    for k, v in stats.items():
+        stats_feature.append(v)
+    stats_feature = np.array(stats_feature)
     perf = perf_model.predict(np.expand_dims(
-            np.concatenate((vec, [perf])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [perf]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
     power = power_model.predict(np.expand_dims(
-            np.concatenate((vec, [power])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [power]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
     area = area_model.predict(np.expand_dims(
-            np.concatenate((vec, [area])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [area]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
+    area *= 1e-6
     return np.array([perf, power, area])
 
 
@@ -259,10 +253,7 @@ def main():
         for n in temp:
             solution_set.append(n)
             vec = design_space.idx_to_vec(n)
-            ppa = evaluate_microarchitecture(
-                vec,
-                idx=int(os.path.basename(configs["gem5-research-root"]))
-            )
+            ppa = evaluate_microarchitecture(vec)
             # move the newly labeled samples from P to L
             P.remove(n)
             dataset = np.insert(
@@ -315,9 +306,9 @@ if __name__ == "__main__":
     )
     ppa_model_root = os.path.join(
         rl_explorer_root,
-        configs["ppa-model"]
+        configs["env"]["calib"]["ppa-model"]
     )
-    if "BOOM" in configs["design"]:
+    if "BOOM" in configs["algo"]["design"]:
         design_space = parse_boom_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
@@ -333,8 +324,8 @@ if __name__ == "__main__":
         )
         Simulator = BOOMGem5Wrapper
     else:
-        assert configs["design"] == "Rocket", \
-            "{} is not supported.".format(configs["design"])
+        assert configs["algo"]["design"] == "Rocket", \
+            "{} is not supported.".format(configs["algo"]["design"])
         design_space = parse_rocket_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
@@ -352,4 +343,5 @@ if __name__ == "__main__":
     perf_model = joblib.load(perf_root)
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)
-    main()
+    with Timer("DAC16"):
+        main()
