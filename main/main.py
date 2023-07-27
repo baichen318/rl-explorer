@@ -8,7 +8,6 @@ import torch
 import socket
 import getpass
 from dse.algo.a2c.a2c import a2c
-from dse.algo.ppo.ppo import ppo
 from utils.utils import parse_args, get_configs, write_txt, \
     assert_error, if_exist, mkdir, create_logger, execute, \
     get_configs_from_command, copy
@@ -76,7 +75,7 @@ def rl_explorer(configs):
                 )
             )
         from dse.env.rocket.env import RocketEnv as env
-    ppo(env, configs)
+    a2c(env, configs)
 
 
 def main(configs):

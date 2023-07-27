@@ -79,12 +79,12 @@ class BasicEnv(gym.Env):
     def generate_actions(self):
         """
             A mapping from an episode state to an action candidates.
-            E.g.,
+            E.g., for "small-SonicBOOM":
                 actions = {
                     # ISU
-                    0: [1, 21, 36, 41],
+                    0: [1, 2, 3, 4 ,5],
                     # IFU
-                    1: [1, 2, 9, 10]
+                    1: [1, 2, 3, 4, 5]
                     ...
                 }
         """
@@ -213,6 +213,7 @@ class BOOMEnv(BasicEnv):
     def state_idx_to_state(self):
         """
             Hard-coded tunable state offsets.
+            Please see `component_touch` in `BasicEnv`.
         """
         return [
             7, 2, 3, 5, 6, 8, 0, 9, 10

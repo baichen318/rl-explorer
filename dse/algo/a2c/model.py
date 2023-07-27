@@ -13,13 +13,13 @@ class MLPBase(nn.Module):
         self.action_shape = action_shape
         self.reward_shape = reward_shape
         self.base = nn.Sequential(
-            nn.Linear(self.observation_shape + self.reward_shape, 1024),
+            nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
-            nn.Linear(1024, 512),
+            nn.Linear(128, 256),
             nn.LeakyReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(256, 256),
             nn.LeakyReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(256, 256),
         )
 
     def forward(self, x):
@@ -36,10 +36,15 @@ class BOOMActorCriticNetwork(MLPBase):
         self.actor = nn.Sequential(
             nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
+            nn.Linear(128, 128),
+            nn.LeakyReLU(),
             nn.Linear(128, self.action_shape)
+
         )
         self.critic = nn.Sequential(
             nn.Linear(self.observation_shape + self.reward_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 128),
             nn.LeakyReLU(),
             nn.Linear(128, self.reward_shape)
         )

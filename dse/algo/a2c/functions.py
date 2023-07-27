@@ -18,13 +18,33 @@ def make_env(env, configs, idx):
 
 
 class A2CVecEnvWrapper(VecEnvWrapper):
-    def __init__(self, venv, device):
+    def __init__(self, venv):
         """
             Return only every `skip`-th frame
         """
         super(A2CVecEnvWrapper, self).__init__(venv)
+        # a trick to incoorporate `reward_space`
         self.reward_space = venv.get_attr("reward_space")[0]
-        self.device = device
+
+    def safe_get_attr(self, attr_name, indices=None):
+        """
+            We directly retrieve the member from the environment safely.
+        """
+        return self.get_attr(attr_name, indices)[0]
+
+    def safe_set_attr(self, attr_name, value, indices=None):
+        """
+            We directly set the member from the environment safely.
+        """
+        return self.set_attr(attr_name, value, indices)[0]
+
+    def safe_env_method(self, method_name, *method_args, indices=None, **method_kwargs):
+        return self.env_method(
+            method_name,
+            *method_args,
+            indices=indices,
+            **method_kwargs
+        )[0]
 
     def reset(self):
         """
@@ -33,6 +53,7 @@ class A2CVecEnvWrapper(VecEnvWrapper):
             for `SubprocVecEnv.reset`, refer it to:
                 https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/vec_env/subproc_vec_env.py#L127
             `SubprocVecEnv.reset` expands the dimension
+            NOTICE: the return state is stacked automatically.
         """
         return self.venv.reset()
 
@@ -44,7 +65,10 @@ class A2CVecEnvWrapper(VecEnvWrapper):
         return self.venv.step_wait()
 
 
-def make_vec_envs(configs, device, env):
+def make_a2c_vec_envs(configs, device, env):
+    """
+        DEPRECATED.
+    """
     envs = [
         make_env(
             env,
@@ -63,6 +87,24 @@ def make_vec_envs(configs, device, env):
     )
 
     return envs
+
+
+def make_a2c_vec_envs(configs, env):
+    """
+        We set `offset` here is due to the machine status.
+    """
+    offset = 1
+    envs = [
+        make_env(env, configs, idx + offset) \
+            for idx in range(configs["env"]["sim"]["idx"],
+                    configs["env"]["sim"]["idx"] + \
+                        configs["algo"]["num-parallel"]
+                )
+    ]
+
+    return A2CVecEnvWrapper(
+        SubprocVecEnv(envs)
+    )
 
 
 def init(module, weight_init, bias_init, gain=1):

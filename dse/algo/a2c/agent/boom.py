@@ -10,12 +10,12 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from dse.algo.ppo.buffer import Buffer
-from dse.algo.ppo.preference import Preference
+from dse.algo.a2c.buffer import Buffer
+from dse.algo.a2c.preference import Preference
 from utils.utils import remove_suffix, if_exist
 from torch.distributions.categorical import Categorical
-from dse.algo.ppo.model import BOOMActorCriticNetwork, RocketActorCriticNetwork
-from dse.algo.ppo.functions import make_ppo_vec_envs, array_to_tensor, tensor_to_array
+from dse.algo.a2c.model import BOOMActorCriticNetwork, RocketActorCriticNetwork
+from dse.algo.a2c.functions import make_a2c_vec_envs, array_to_tensor, tensor_to_array
 
 
 class BOOMAgent(object):
@@ -25,7 +25,7 @@ class BOOMAgent(object):
         self.device = torch.device(
             "cuda" if self.configs["algo"]["use-cuda"] else "cpu"
         )
-        self.envs = make_ppo_vec_envs(self.configs, env)
+        self.envs = make_a2c_vec_envs(self.configs, env)
         self.model = BOOMActorCriticNetwork(
             self.envs.observation_space,
             self.envs.action_space,
@@ -408,21 +408,24 @@ class RocketAgent(object):
             )
         return True if self.configs["mode"] == "train" else False
 
-    def get_action(self, state, preference, status=None, episode=None):
-        state = array_to_tensor(state)
-        preference = array_to_tensor(preference)
-        policy, value = self.model(state, preference)
-        if self.training:
-            policy = F.softmax(policy / self.temperature, dim=-1)
-            self.configs["logger"].info("action prob: {}.".format(
-                policy.data.cpu.numpy())
-            )
-            if status is not None and episode is not None:
-                status.update_action_per_episode(policy, episode)
-        else:
-            policy = F.softmax(policy, dim=-1)
-        action = self.random_choice_prob_index(policy)
-        return action
+    """
+        DEPRECATED.
+    """
+    # def get_action(self, state, preference, status=None, episode=None):
+    #     state = array_to_tensor(state)
+    #     preference = array_to_tensor(preference)
+    #     policy, value = self.model(state, preference)
+    #     if self.training:
+    #         policy = F.softmax(policy / self.temperature, dim=-1)
+    #         self.configs["logger"].info("action prob: {}.".format(
+    #             policy.data.cpu.numpy())
+    #         )
+    #         if status is not None and episode is not None:
+    #             status.update_action_per_episode(policy, episode)
+    #     else:
+    #         policy = F.softmax(policy, dim=-1)
+    #     action = self.random_choice_prob_index(policy)
+    #     return action
 
     def random_choice_prob_index(self, policy, axis=1):
         policy = tensor_to_array(policy)

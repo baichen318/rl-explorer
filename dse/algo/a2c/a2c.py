@@ -3,328 +3,449 @@
 
 import numpy as np
 from time import time
-from collections import deque, OrderedDict
 from dse.env.boom.env import BOOMEnv
 from dse.env.rocket.env import RocketEnv
+from collections import deque, OrderedDict
+from utils.utils import Timer, assert_error
 from torch.utils.tensorboard import SummaryWriter
 from dse.algo.a2c.functions import tensor_to_array
 
 
 class Status(object):
-    """ Status """
-    def __init__(self, writer):
-        super(Status, self).__init__()
-        self.writer = SummaryWriter(writer)
-        self.reset()
+    """
+        Status
+    """
 
-    def reset(self):
-        self.perf_pred = []
-        self.perf_preference = []
-        self.power_pred = []
-        self.power_preference = []
-        self.area_pred = []
-        self.area_preference = []
-        self.perf_reward = []
-        self.power_reward = []
-        self.area_reward = []
-        self.actor_loss = []
-        self.critic_loss = []
-        self.entropy = []
-        self.loss = []
-        self.action = []
+    class BOOMStatus(object):
+        def __init__(self, action_prob):
+            """
+                IFU action probability
+                maxBrCount action probability
+                ROB action probability
+                PRF action probability
+                ISU action probability
+                LSU action probability
+                D-Cache action probability
+            """
+            self.isu_action_prob = action_prob[0]
+            self.ifu_action_prob = action_prob[1]
+            self.maxBrCount_action_prob = action_prob[2]
+            self.rob_action_prob = action_prob[3]
+            self.prf_action_prob = action_prob[4]
+            self.lsu_action_prob = action_prob[5]
+            self.bp_action_prob = action_prob[6]
+            self.icache_action_prob = action_prob[7]
+            self.dcache_action_prob = action_prob[8]
 
-    def update_per_episode(self, agent, info, preference, episode):
-        info = info[0]
-        self.perf_pred.append(float(info["perf-pred"]))
-        self.perf_preference.append(float(preference[0][0]))
-        self.power_pred.append(float(info["power-pred"]))
-        self.power_preference.append(float(preference[0][1]))
-        self.area_pred.append(float(info["area-pred"]))
-        self.area_preference.append(float(preference[0][2]))
-        self.perf_reward.append(
-            float(preference[0][0]) * float(info["perf-pred"])
-        )
-        self.power_reward.append(
-            float(preference[0][1]) * float(info["power-pred"])
-        )
-        self.area_reward.append(
-            float(preference[0][2]) * float(info["area-pred"])
-        )
-        self.writer.add_scalars(
-            "episode/perf",
-            {
-                "perf-baseline": float(info["perf-baseline"]),
-                "perf-pred": float(info["perf-pred"])
-                # "perf-preference": float(preference[0][0])
-            },
-            episode
-        )
-        self.writer.add_scalars(
-            "episode/power",
-            {
-                "power-baseline": float(info["power-baseline"]),
-                "power-pred": float(info["power-pred"])
-                # "power-preference": float(preference[0][1])
-            },
-            episode
-        )
-        self.writer.add_scalars(
-            "episode/area",
-            {
-                "area-baseline": float(info["area-baseline"]),
-                "area-pred": float(info["area-pred"])
-                # "area-preference": float(preference[0][2])
-            },
-            episode
-        )
-        self.writer.add_scalars(
-            "episode/preference",
-            {
-                "perf-preference": float(preference[0][0]),
-                "power-preference": float(preference[0][1]),
-                "area-preference": float(preference[0][2])
-            },
-            episode
-        )
-        self.writer.add_scalars(
-            "episode/reward",
-            {
-                "perf-reward": float(preference[0][0]) * float(info["perf-pred"]),
-                "power-reward": float(preference[0][1]) * float(info["power-pred"]),
-                "area-reward": float(preference[0][2]) * float(info["area-pred"]),
-                "total-reward": float(preference[0][0]) * float(info["perf-pred"]) + \
-                    float(preference[0][1]) * float(info["power-pred"]) + \
-                    float(preference[0][2]) * float(info["area-pred"])
-            },
-            episode
-        )
-        if hasattr(agent, "actor_loss") and \
-            hasattr(agent, "critic_loss") and \
-            hasattr(agent, "entropy") and \
-            hasattr(agent, "loss"):
-            self.actor_loss.append(agent.actor_loss.detach().numpy())
-            self.critic_loss.append(agent.critic_loss.detach().numpy())
-            self.entropy.append(agent.entropy.detach().numpy())
-            self.loss.append(agent.loss.detach().numpy())
-            self.writer.add_scalars(
-                "episode/loss",
-                {
-                    "actor-loss": agent.actor_loss.detach().numpy(),
-                    "critic-loss": agent.critic_loss.detach().numpy(),
-                    "entropy": agent.entropy.detach().numpy(),
-                    "loss": agent.loss.detach().numpy()
-                },
+        def update_bp_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.bp_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/BP",
+                action_prob,
                 episode
             )
 
-    def update_action_per_episode(self, action, episode):
-        # num-process = 1
-        action = tensor_to_array(action)
-        self.action.append(action[0])
-        action_dict = OrderedDict()
-        cnt = 1
-        for a in action[0]:
-            action_dict['a' + str(cnt)] = a
-            cnt += 1
+        def update_ifu_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.ifu_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/IFU",
+                action_prob,
+                episode
+            )
+
+        def update_maxBrCount_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.maxBrCount_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/maxBrCount",
+                action_prob,
+                episode
+            )
+
+        def update_rob_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.rob_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/ROB",
+                action_prob,
+                episode
+            )
+
+        def update_prf_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.prf_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/PRF",
+                action_prob,
+                episode
+            )
+
+        def update_isu_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.isu_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/ISU",
+                action_prob,
+                episode
+            )
+
+        def update_lsu_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.lsu_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/LSU",
+                action_prob,
+                episode
+            )
+
+        def update_icache_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.icache_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/I$",
+                action_prob,
+                episode
+            )
+
+        def update_dcache_action_prob(self, writer, episode):
+            action_prob = OrderedDict()
+            idx = 1
+            for prob in np.average(self.dcache_action_prob, axis=0):
+                action_prob['a' + str(idx)] = prob
+                idx += 1
+            writer.add_scalars(
+                "episode/action/D$",
+                action_prob,
+                episode
+            )
+
+        def update(self, writer, episode):
+            self.update_isu_action_prob(writer, episode)
+            self.update_ifu_action_prob(writer, episode)
+            self.update_maxBrCount_action_prob(writer, episode)
+            self.update_rob_action_prob(writer, episode)
+            self.update_prf_action_prob(writer, episode)
+            self.update_lsu_action_prob(writer, episode)
+            self.update_bp_action_prob(writer, episode)
+            self.update_icache_action_prob(writer, episode)
+            self.update_dcache_action_prob(writer, episode)
+
+
+    def __init__(self, configs):
+        super(Status, self).__init__()
+        self.configs = configs
+        self.writer = SummaryWriter(configs["summary-writer"])
+
+    @property
+    def design(self):
+        return self.configs["algo"]["design"]
+
+    def update_perf(self, perf, episode):
         self.writer.add_scalars(
-            "episode/action",
-            action_dict,
+            "episode/perf",
+            {
+                "perf": perf,
+            },
             episode
         )
 
-
-    def update_per_sequence(self, agent, info, preference, sequence):
-        info = info[0]
-        self.perf_pred.append(float(info["perf-pred"]))
-        self.perf_preference.append(float(preference[0][0]))
-        self.power_pred.append(float(info["power-pred"]))
-        self.power_preference.append(float(preference[0][1]))
-        self.area_pred.append(float(info["area-pred"]))
-        self.area_preference.append(float(preference[0][2]))
+    def update_power(self, power, episode):
         self.writer.add_scalars(
-            "sequence/perf",
+            "episode/power",
             {
-                "mean-perf": np.mean(self.perf_pred),
-                "max-perf": np.max(self.perf_pred),
-                "min-perf": np.min(self.perf_pred)
+                "power": power,
             },
-            sequence
+            episode
         )
+
+    def update_area(self, area, episode):
         self.writer.add_scalars(
-            "sequence/power",
+            "episode/area",
             {
-                "mean-power": np.mean(self.power_pred),
-                "max-power": np.max(self.power_pred),
-                "min-power": np.min(self.power_pred)
+                "area": area,
             },
-            sequence
+            episode
         )
+
+    def update_reward(self, reward, episode):
         self.writer.add_scalars(
-            "sequence/area",
+            "episode/reward",
             {
-                "mean-area": np.mean(self.area_pred),
-                "max-area": np.max(self.area_pred),
-                "min-area": np.min(self.area_pred)
+                "reward": reward,
             },
-            sequence
+            episode
         )
+
+    def update_preference(self, w, episode):
+        perf_w, power_w, area_w = np.average(w, axis=0)
         self.writer.add_scalars(
-            "sequence/preference",
+            "episode/preference",
             {
-                "perf-preference": np.mean(self.perf_preference),
-                "power-preference": np.mean(self.power_preference),
-                "area-preference": np.mean(self.area_preference)
+                "perf-preference": perf_w,
+                "power-preference": power_w,
+                "area-performance": area_w,
             },
-            sequence
+            episode
         )
+
+    def update_loss(self, agent, episode):
         self.writer.add_scalars(
-            "sequence/reward",
+            "episode/loss",
             {
-                "perf-reward": np.mean(self.perf_reward),
-                "power-reward": np.mean(self.power_reward),
-                "area-reward": np.mean(self.area_reward),
-                "total-reward": np.mean(self.perf_reward) + \
-                    np.mean(self.power_reward) + np.mean(self.area_reward)
+                "actor-loss": agent.actor_loss.detach().numpy(),
+                "critic-loss": agent.critic_loss.detach().numpy(),
+                "entropy": agent.entropy.detach().numpy(),
+                "total-loss": agent.loss.detach().numpy()
             },
-            sequence
+            episode
         )
+
+    def update_learning_rate(self, agent, episode):
         self.writer.add_scalars(
-            "sequence/loss",
+            "episode/learning-rate",
             {
-                "actor-loss": np.mean(self.actor_loss),
-                "critic-loss": np.mean(self.critic_loss),
-                "entropy": np.mean(self.entropy),
-                "loss": np.mean(self.loss)
+                "learning-rate": agent.lr
             },
-            sequence
+            episode
         )
-        action = np.array(self.action).mean(axis=0)
-        action_dict = OrderedDict()
-        cnt = 1
-        for a in action:
-            action_dict['a' + str(cnt)] = a
-            cnt += 1
-        self.writer.add_scalars(
-            "sequence/action",
-            action_dict,
-            sequence
-        )
-        self.reset()
+
+    def update_action_prob(self, action_prob, episode):
+        if "BOOM" in self.design:
+            self.BOOMStatus(action_prob).update(self.writer, episode)
+
+    def update(self, agent, explore_w, action_prob, episode):
+        """
+            Record several information w.r.t. the episode, including
+            1. performance
+            2. power
+            3. area
+            4. PPA values w.r.t. the uniform preference
+            5. average performance preference
+            6. average power preference
+            7. average area preference
+            8. actor loss
+            9. critic loss
+            10. entropy loss
+            11. learning rate
+            12. design-related action probabilities
+        """
+        buffer = agent.buffer
+        perf, power, area = np.average(buffer.total_reward[-1], axis=0)
+        self.update_perf(perf, episode)
+        self.update_power(power, episode)
+        self.update_area(area, episode)
+        reward = abs(perf) + abs(power) + abs(area)
+        self.update_reward(reward, episode)
+        self.update_preference(explore_w, episode)
+        self.update_loss(agent, episode)
+        self.update_learning_rate(agent, episode)
+        self.update_action_prob(action_prob, episode)
 
 
-def status_update_per_episode(status, agent, info, preference, episode):
-    if agent.training:
-        status.update_per_episode(agent, info, preference, episode)
-
-
-def status_update_per_sequence(status, agent, info, preference, sequence):
-    status.update_per_sequence(agent, info, preference, sequence)
-
-
-def train_a2c(configs, status, agent, fixed_preference, episode):
-    updated_preference = agent.preference.generate_preference(
-        configs["sample-size"],
-        fixed_preference
+def train_a2c_impl(configs, agent, fixed_w, episode, status):
+    updated_w = agent.preference.generate_preference(
+        agent.sample_size,
+        fixed_w
     )
-    total_updated_preference = updated_preference.repeat(
-        configs["num-parallel"] * configs["num-step"],
+    total_updated_w = updated_w.repeat(
+        agent.num_parallel * \
+            agent.num_step,
         axis=0
     )
     agent.buffer.generate_batch_with_n_step()
-    value, next_value, _ = agent.forward_transition(total_updated_preference)
+    value, next_value, policy = agent.forward_transition(total_updated_w)
     discounted_reward = agent.calc_discounted_reward(value, next_value)
-    adv, discounted_reward = agent.calc_advantage(
-        updated_preference,
+    adv, discounted_reward = agent.envelope_operator(
+        updated_w,
         discounted_reward,
         value,
         episode
     )
-    agent.optimize_actor_critic(total_updated_preference, discounted_reward, adv)
+    agent.optimize_actor_critic(total_updated_w, discounted_reward, adv)
     agent.schedule_lr(episode)
     agent.save(episode)
     agent.sync_critic(episode)
 
 
-def a2c(env, configs):
-    if env == BOOMEnv:
-        from dse.algo.a2c.agent import BOOMAgent as Agent
-    else:
-        assert env == RocketEnv
-        from dse.algo.a2c.agent import RocketAgent as Agent
-    agent = Agent(configs, env)
+def train_a2c(agent, configs):
+    envs = agent.envs
+    assert agent.num_step == \
+        envs.safe_get_attr("dims_of_tunable_state"), \
+            assert_error(": num_step {} vs " \
+                " tunabe state: {}".format(
+                    agent.num_step,
+                    envs.safe_get_attr("dims_of_tunable_state")
+                )
+            )
+
+    preference = agent.preference
 
     # initialization
-    sequence, episode = 0, 0
-    state = agent.envs.reset()
-    fixed_preference = agent.preference.init_preference()
-    explored_preference = agent.preference.generate_preference(
-        configs["num-parallel"],
-        fixed_preference
+    fixed_w = preference.init_preference()
+    explore_w = preference.generate_preference(
+        agent.num_parallel,
+        fixed_w
     )
-    status = Status(configs["summary-writer"])
+    status = Status(configs)
 
-    start = time()
-    while sequence < configs["max-sequence"]:
-        agent.buffer.reset()
-        configs["logger"].info(
-            "[INFO]: current sequence: {}, current episode {}.".format(
-                sequence,
-                episode
-            )
-        )
-        for _step in range(configs["num-step"]):
-            action = agent.get_action(state, explored_preference, status, episode)
-            next_state, reward, done, info = agent.envs.step(action)
-            agent.buffer.insert(
-                state,
-                action,
-                next_state,
-                reward,
-                done
-            )
+    with Timer("{}".format(agent.mode)):
+        for episode in range(agent.max_episode):
+            """
+                When we start an episode, we clear the buffer.
+            """
+            agent.buffer.reset()
+            state = envs.reset()
 
-            configs["logger"].info(
-                "sequence: {}, " \
-                "episode: {}, " \
-                "step: {}, " \
-                "state: {}, " \
-                "action: {}, " \
-                "next_state: {}, " \
-                "info: {}.".format(
-                    sequence,
-                    episode,
-                    _step + 1,
-                    state,
-                    action,
-                    next_state,
-                    info[0]
+            action_prob = []
+            old_explore_w = explore_w
+
+            for _ in range(agent.num_step):
+                action, policy = agent.get_action(state, explore_w)
+                next_state, reward, done, info = envs.step(action)
+
+                """
+                    If `done` is True, `next_state` is override,
+                    so we need to get the correct `next_state` from
+                    `info`.
+                    See: https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/vec_env/subproc_vec_env.py#L22
+                """
+                if done[0]:
+                    # stack all terminal observation(s)
+                    _next_state = np.stack(
+                        [_info["terminal_observation"] for _info in info]
+                    )
+                    agent.buffer.insert(
+                        state, action, _next_state, reward, done
+                    )
+                    configs["logger"].info(
+                        "state: {}, action: {}, next_state: {}, reward: {}".format(
+                            state, action, _next_state, reward
+                        )
+                    )
+                else:
+                    agent.buffer.insert(
+                        state, action, next_state, reward, done
+                    )
+                    configs["logger"].info(
+                        "state: {}, action: {}, next_state: {}, reward: {}".format(
+                            state, action, next_state, reward
+                        )
+                    )
+
+                # for visualization
+                action_prob.append(policy)
+
+                for i in range(1, agent.num_parallel):
+                    if done[i]:
+                        # if the i-th agent finishes, then we renew the preference
+                        explore_w = preference.renew_preference(
+                            explore_w, i
+                        )
+                state = next_state
+
+            agent.anneal()
+            train_a2c_impl(configs, agent, fixed_w, episode, status)
+            status.update(agent, old_explore_w, action_prob, episode)
+
+
+def test_a2c(agent, configs):
+    envs = agent.envs
+    assert agent.num_step == \
+        envs.safe_get_attr("dims_of_tunable_state"), \
+            assert_error(": num_step {} vs " \
+                " tunabe state: {}".format(
+                    agent.num_step,
+                    envs.safe_get_attr("dims_of_tunable_state")
                 )
             )
 
-            state = next_state
+    preference = agent.preference
 
-            status_update_per_episode(
-                status, agent, info, explored_preference, episode
-            )
-
-            if done:
-                state = agent.envs.reset()
-                agent.anneal()
-                status_update_per_sequence(
-                    status, agent, info, explored_preference, sequence
-                )
-                explored_preference = agent.preference.generate_preference(
-                    configs["num-parallel"]
-                )
-                sequence += 1
-
-            episode += configs["num-parallel"]
-
-        if agent.training:
-            train_a2c(configs, status, agent, fixed_preference, episode)
-
-    end = time()
-    configs["logger"].info(
-        "done. " \
-        "cost time: {}.".format(end - start)
+    # initialization
+    fixed_w = preference.init_preference()
+    explore_w = preference.generate_preference(
+        agent.num_parallel,
+        fixed_w
     )
+
+    with Timer("{}".format(agent.mode)):
+        for episode in range(configs["algo"]["test"]["max-search-round"]):
+            """
+                When we start an episode, we clear the buffer.
+            """
+            agent.buffer.reset()
+            state = envs.reset()
+
+            for _ in range(agent.num_step):
+                action, _ = agent.get_action(state, explore_w)
+                next_state, reward, done, info = envs.step(action)
+
+                """
+                    If `done` is True, `next_state` is override,
+                    so we need to get the correct `next_state` from
+                    `info`.
+                    See: https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/vec_env/subproc_vec_env.py#L22
+                """
+                if done[0]:
+                    # stack all terminal observation(s)
+                    _next_state = np.stack(
+                        [_info["terminal_observation"] for _info in info]
+                    )
+                    configs["logger"].info(
+                        "episode: {}, state: {}, action: {}, next_state: " \
+                        "{}, reward: {}".format(
+                            episode, state, action, _next_state, reward
+                        )
+                    )
+                else:
+                    agent.buffer.insert(
+                        state, action, next_state, reward, done
+                    )
+
+                for i in range(1, agent.num_parallel):
+                    if done[i]:
+                        # if the i-th agent finishes, then we renew the preference
+                        explore_w = preference.renew_preference(
+                            explore_w, i
+                        )
+                state = next_state
+
+
+def a2c(env, configs):
+    if env == BOOMEnv:
+        from dse.algo.a2c.agent.boom import BOOMAgent as Agent
+    else:
+        assert env == RocketEnv
+        from dse.algo.a2c.agent.rocket import RocketAgent as Agent
+    agent = Agent(configs, env)
+
+    if configs["algo"]["mode"] == "train":
+        train_a2c(agent, configs)
+    else:
+        test_a2c(agent, configs)

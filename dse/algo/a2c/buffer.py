@@ -25,6 +25,9 @@ class Buffer(object):
         self.total_done = []
 
     def insert(self, state, action, next_state, reward, done):
+        """
+            Each `state` is with a shape: step x parallel x dims_of_state
+        """
         self.total_state.append(state)
         self.total_action.append(action)
         self.total_next_state.append(next_state)
@@ -33,6 +36,17 @@ class Buffer(object):
 
     def generate_batch_with_n_step(self):
         def _generate_batch_with_n_step():
+            """
+                Each `total_state` is with a shape: (parallel x step x sample) x dims_of_state
+                E.g.:
+                    total_state:
+                        | worker 1's state @step 1 |
+                        | ------------------------ |
+                        | worker 1's state @step 2 |
+                        | ------------------------ |
+                        | worker 1's state @step 3 |
+                        |           ...            |
+            """
             total_state = np.stack(self.total_state).transpose(
                 [1, 0, 2]
             ).reshape(-1, self.observation_space)
