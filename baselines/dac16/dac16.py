@@ -23,8 +23,8 @@ from dse.env.rocket.design_space import parse_design_space as parse_rocket_desig
 def generate_L(dataset):
     L = []
     for data in dataset:
-        vec = data[:-3].astype(int)
-        L.append(design_space.vec_to_idx(list(vec)))
+        embedding = data[:-3].astype(int)
+        L.append(design_space.embedding_to_idx(list(embedding)))
     return L
 
 
@@ -166,11 +166,11 @@ def calc_cv(data1, data2):
     return cv
 
 
-def evaluate_microarchitecture(vec):
+def evaluate_microarchitecture(embedding):
     manager = Simulator(
         configs,
         design_space,
-        vec,
+        embedding,
         configs["env"]["sim"]["idx"]
     )
     perf, stats = manager.evaluate_perf()
@@ -225,7 +225,11 @@ def main():
     H1 = pseudo_train_adaboost_rt(dataset, 6)
     H2 = pseudo_train_adaboost_rt(dataset, 8)
 
-    K = 50
+    # K = 50
+    # W = 16
+    # N = 4
+
+    K = 20
     W = 16
     N = 4
 
@@ -233,10 +237,11 @@ def main():
 
     start = time()
     for i in range(K):
+        info("iter: {}/{}".format(i + 1, K))
         # both H1 and H2 predict the P
         p = []
         for idx in P:
-            p.append(design_space.idx_to_vec(idx))
+            p.append(design_space.idx_to_embedding(idx))
         p = np.array(p)
         y1 = predict_adaboost_rt(H1, p)
         y2 = predict_adaboost_rt(H2, p)
@@ -252,14 +257,14 @@ def main():
         # simulate the N samples
         for n in temp:
             solution_set.append(n)
-            vec = design_space.idx_to_vec(n)
-            ppa = evaluate_microarchitecture(vec)
+            embedding = design_space.idx_to_embedding(n)
+            ppa = evaluate_microarchitecture(embedding)
             # move the newly labeled samples from P to L
             P.remove(n)
             dataset = np.insert(
                 dataset,
                 dataset.shape[0],
-                np.concatenate((vec, ppa)),
+                np.concatenate((embedding, ppa)),
                 axis=0
             )
             L.append(n)

@@ -9,7 +9,7 @@ algo:
   # large-SonicBOOM
   # mega-SonicBOOM
   # giga-SonicBOOM
-  design: "large-SonicBOOM"
+  design: "small-SonicBOOM"
   # the number of processes specifications
   num-parallel: 1
   # maximal episode specifications
@@ -20,7 +20,7 @@ algo:
   output-root: logs
   # working mode specifications
   # train | test
-  mode: train
+  mode: test
   random-seed: 42
   train:
     # the batch size for training specifications
@@ -46,13 +46,15 @@ algo:
     # the episode specifications to update the critic
     update-critic-episode: 100
   test:
+    # search round
+    max-search-round: 100
     # PPA preference scaling
     ppa-preference:
       - 1
       - 1
       - 1
     # RL model specifications
-    rl-model: 1-wide-4-fetch-SonicBOOM-baichen-MacBook-Pro.lan-2022-05-09-18-11.pt
+    rl-model: /Volumes/Research/repo/rl-explorer/main/logs/train-large-SonicBOOM-cbai-hpc3.cse.cuhk.edu.hk-2023-05-05-15-50/models/log-2023-05-05-15-50.pt
 
 
 ### environment settings

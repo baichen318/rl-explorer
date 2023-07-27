@@ -1,33 +1,7 @@
 # Author: baichen318@gmail.com
 
 
-import sys, os
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir
-    )
-)
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        "utils"
-    )
-)
-sys.path.insert(
-    0,
-    os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        "simulation"
-    )
-)
+import os
 os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
 import itertools
@@ -35,18 +9,18 @@ import numpy as np
 from time import time
 from datetime import datetime
 from sklearn.base import clone
-from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPRegressor
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
+from sklearn.base import BaseEstimator, ClassifierMixin
+from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
+from utils.utils import parse_args, get_configs, info, load_txt, Timer
+from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
 from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
-from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
-from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
-from utils import parse_args, get_configs, info, load_txt
 
 
 # Boosting algorithm which uses another metric for success.
@@ -185,39 +159,59 @@ def create_mlp(hidden):
 def load_dataset():
     dataset = load_txt(
         os.path.join(
-            rl_explorer_root,
-            configs["dataset"]
+            os.path.dirname(__file__),
+            "test.txt"
         ),
         fmt=float
     )
-    # for the baseline implementation, we trunk the dataset
-    return dataset[:, :-3]
+    return dataset
 
 
-def evaluate_microarchitecture(vec, idx=5):
+def evaluate_microarchitecture(embedding):
     manager = Simulator(
         configs,
         design_space,
-        vec,
-        idx
+        embedding,
+        configs["env"]["sim"]["idx"]
     )
-    perf = manager.evaluate_perf()
+    perf, stats = manager.evaluate_perf()
     power, area = manager.evaluate_power_and_area()
+    area *= 1e6
+    stats_feature = []
+    for k, v in stats.items():
+        stats_feature.append(v)
+    stats_feature = np.array(stats_feature)
     perf = perf_model.predict(np.expand_dims(
-            np.concatenate((vec, [perf])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [perf]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
     power = power_model.predict(np.expand_dims(
-            np.concatenate((vec, [power])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [power]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
     area = area_model.predict(np.expand_dims(
-            np.concatenate((vec, [area])),
+            np.concatenate((
+                    np.array(embedding),
+                    stats_feature,
+                    [area]
+                )
+            ),
             axis=0
-        )
-    )[0]
+            )
+        )[0]
+    area *= 1e-6
     return np.array([perf, power, area])
 
 
@@ -288,7 +282,7 @@ def sample_from_design_space(k=1000):
     design_pool = []
     info("sampling {} designs...".format(k))
     for idx in index:
-        design_pool.append(design_space.idx_to_vec(idx))
+        design_pool.append(design_space.idx_to_embedding(idx))
     design_pool = np.array(design_pool)
     return index, design_pool
 
@@ -325,7 +319,7 @@ def main():
             "baselines",
             "isca14",
             "{}-solution-{}.txt".format(
-                configs["design"].replace(' ', '-'),
+                configs["algo"]["design"].replace(' ', '-'),
                 str(datetime.now()).replace(' ', '-')
             )
         ),
@@ -340,6 +334,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # set random seed
+    random.seed(42)
+    np.random.seed(42)
+
     args = parse_args()
     configs = get_configs(args.configs)
     configs["configs"] = args.configs
@@ -354,9 +352,9 @@ if __name__ == "__main__":
     )
     ppa_model_root = os.path.join(
         rl_explorer_root,
-        configs["ppa-model"]
+        configs["env"]["calib"]["ppa-model"]
     )
-    if "BOOM" in configs["design"]:
+    if "BOOM" in configs["algo"]["design"]:
         design_space = parse_boom_design_space(configs)
         perf_root = os.path.join(
             ppa_model_root,
@@ -374,23 +372,14 @@ if __name__ == "__main__":
         # set constraint DSE
         ppa = {
             # ipc power area
-            # Small SonicBOOM
-            "1-wide 4-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-            "1-wide 8-fetch SonicBOOM": [0.766128848, 0.0212, 1504764.403],
-            # Medium SonicBOOM
-            "2-wide 4-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-            "2-wide 8-fetch SonicBOOM": [1.100314122, 0.0267, 1933210.356],
-            # Large SonicBOOM
-            "3-wide 4-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-            "3-wide 8-fetch SonicBOOM": [1.312793895, 0.0457, 3205484.562],
-            # Mega SonicBOOM
-            "4-wide 4-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-            "4-wide 8-fetch SonicBOOM": [1.634452069, 0.0592, 4805888.807],
-            # Giga SonicBOOM
-            "5-wide SonicBOOM": [1.644617524, 0.0715, 5069115.916]
+            "small-SonicBOOM": [0.818802, 0.019507, 1446073.404],
+            "medium-SonicBOOM": [1.308069, 0.026663, 1942462.454],
+            "large-SonicBOOM": [1.5902, 0.03962, 2797450.652],
+            "mega-SonicBOOM": [1.99429, 0.055888, 4939507.226],
+            "giga-SonicBOOM": [1.996663, 0.065973, 4999903.373],
         }
     else:
-        assert configs["design"] == "Rocket", \
+        assert configs["algo"]["design"] == "Rocket", \
             "{} is not supported.".format(configs["design"])
         design_space = parse_rocket_design_space(configs)
         perf_root = os.path.join(
@@ -416,6 +405,7 @@ if __name__ == "__main__":
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)
 
-    threshold_power = ppa[configs["design"]][1]
-    threshold_area = ppa[configs["design"]][2]
-    main()
+    threshold_power = ppa[configs["algo"]["design"]][1]
+    threshold_area = ppa[configs["algo"]["design"]][2]
+    with Timer("ISCA14"):
+        main()
