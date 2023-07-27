@@ -9,12 +9,12 @@ import gpytorch
 import functools
 import numpy as np
 from time import time
-from utils.utils import info
 from datetime import datetime
 try:
     from sklearn.externals import joblib
 except ImportError:
     import joblib
+from utils.utils import info, mkdir
 from baselines.boom_explorer.algo.dkl_gp import DKLGP
 from botorch.utils.multi_objective.hypervolume import Hypervolume
 from botorch.utils.multi_objective.pareto import is_non_dominated
@@ -109,30 +109,34 @@ def report(
     ort
 ):
     # write results
-    with open(
-        os.path.join(
-            configs["rl-explorer-root"],
-            "baselines",
-            "boom_explorer",
-            "solution-{}.txt".format(datetime.now()).replace(' ', '-')
-        ),
-        'w'
+    # create the result directory
+    result_root = os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), "result"
+    )
+    mkdir(result_root)
+
+    with open(os.path.join(
+            result_root, "{}.txt".format(datetime.now()).replace(' ', '-')
+        ), 'w'
     ) as f:
         n_samples = pareto_optimal_solutions.shape[0]
         f.write(
-            "obtained solution: {}\n".format(
+            "obtained solution: {}:\n".format(
                 n_samples
             )
         )
         for i in range(n_samples):
             f.write(
-                "{}\t{}\n".format(pareto_optimal_solutions[i], pareto_frontier[i])
+                "{}\t{}\n".format(
+                    pareto_optimal_solutions[i].int().tolist(),
+                    pareto_frontier[i].float().tolist()
+                )
             )
-        f.write("microarchitecture embedding (follow the order):\n")
+        f.write("microarchitecture (follow the order):\n")
         for x in search_x:
-            f.write("{}\n".format(x))
+            f.write("{}\n".format(x[0].int().tolist()))
         f.write('\n')
-        f.write("cost time: {} s.".format(ort))
+        f.write("cost time: {}s.".format(ort))
 
 
 def evaluate_microarchitecture(configs, design_space, embedding, boom):
