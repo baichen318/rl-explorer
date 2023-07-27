@@ -1,5 +1,12 @@
 # Author: baichen318@gmail.com
 
+
+"""
+    We do not find any open-source repo. for DAC16 baseline.
+    So, we implement according to the original manuscript.
+"""
+
+
 import os
 os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
@@ -14,8 +21,8 @@ try:
 except ImportError:
     import joblib
 from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
-from utils.utils import parse_args, get_configs, info, load_txt, Timer
 from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
+from utils.utils import parse_args, get_configs, info, load_txt, Timer, mkdir
 from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
 from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
 
@@ -229,70 +236,77 @@ def main():
     # W = 16
     # N = 4
 
+    """
+        Reducing `K` is valid for DAC16 baseline.
+    """
     K = 20
     W = 16
     N = 4
 
     solution_set = []
+    cnt = 1
 
-    start = time()
-    for i in range(K):
-        info("iter: {}/{}".format(i + 1, K))
-        # both H1 and H2 predict the P
-        p = []
-        for idx in P:
-            p.append(design_space.idx_to_embedding(idx))
-        p = np.array(p)
-        y1 = predict_adaboost_rt(H1, p)
-        y2 = predict_adaboost_rt(H2, p)
+    # create the result directory
+    result_root = os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), "result"
+    )
+    mkdir(result_root)
 
-        # calculate c.v of each unlabeled sample in P and sort them
-        cv = calc_cv(y1, y2)
-
-        # choose N from top W randomly
-        idx = random.sample(range(W), N)
-        temp = []
-        for j in idx:
-            temp.append(P[cv[j][0]])
-        # simulate the N samples
-        for n in temp:
-            solution_set.append(n)
-            embedding = design_space.idx_to_embedding(n)
-            ppa = evaluate_microarchitecture(embedding)
-            # move the newly labeled samples from P to L
-            P.remove(n)
-            dataset = np.insert(
-                dataset,
-                dataset.shape[0],
-                np.concatenate((embedding, ppa)),
-                axis=0
-            )
-            L.append(n)
-
-        # rebuild H1, H2 by the new set L
-        H1 = pseudo_train_adaboost_rt(dataset, 6)
-        H2 = pseudo_train_adaboost_rt(dataset, 8)
-
-        # replenish the P by choosing N examples from U at random
-        _P = generate_P_from_U(N, L)
-        for p in _P:
-            P.append(p)
-    end = time()
-
-    with open(
-        os.path.join(
-            rl_explorer_root,
-            "baselines",
-            "dac16",
-            "solution-{}.txt".format(datetime.now()).replace(' ', '-')
-        ),
-        'w'
+    with open(os.path.join(
+            result_root, "{}.txt".format(datetime.now()).replace(' ', '-')
+        ), 'w'
     ) as f:
-        f.write("obtained solution: {}.\n".format(len(solution_set)))
-        for solution in solution_set:
-            f.write("{}\n".format(solution))
-        f.write("\n")
-        f.write("cost time: {}s.".format(end - start))
+        start = time()
+        for i in range(K):
+            info("iter: {}/{}".format(i + 1, K))
+            # both H1 and H2 predict the P
+            p = []
+            for idx in P:
+                p.append(design_space.idx_to_embedding(idx))
+            p = np.array(p)
+            y1 = predict_adaboost_rt(H1, p)
+            y2 = predict_adaboost_rt(H2, p)
+
+            # calculate c.v of each unlabeled sample in P and sort them
+            cv = calc_cv(y1, y2)
+
+            # choose N from top W randomly
+            idx = random.sample(range(W), N)
+            temp = []
+            for j in idx:
+                temp.append(P[cv[j][0]])
+            # simulate the N samples
+            for n in temp:
+                solution_set.append(n)
+                embedding = design_space.idx_to_embedding(n)
+                ppa = evaluate_microarchitecture(embedding)
+                # move the newly labeled samples from P to L
+                P.remove(n)
+                dataset = np.insert(
+                    dataset,
+                    dataset.shape[0],
+                    np.concatenate((embedding, ppa)),
+                    axis=0
+                )
+                L.append(n)
+
+                # write to the result file
+                f.write("solution #{}: {}: {}\n".format(cnt, n, ppa))
+                cnt += 1
+
+            # rebuild H1, H2 by the new set L
+            H1 = pseudo_train_adaboost_rt(dataset, 6)
+            H2 = pseudo_train_adaboost_rt(dataset, 8)
+
+            # replenish the P by choosing N examples from U at random
+            _P = generate_P_from_U(N, L)
+            for p in _P:
+                P.append(p)
+        end = time()
+
+        # append misc. information
+        f.write("\ntotal runtime: {}s.".format(end - start))
+
     info("DAC16 done.")
 
 
