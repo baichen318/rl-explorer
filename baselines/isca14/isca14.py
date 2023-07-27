@@ -1,6 +1,12 @@
 # Author: baichen318@gmail.com
 
 
+"""
+    We do not find any open-source repo. for DAC16 baseline.
+    So, we implement according to the original manuscript.
+"""
+
+
 import os
 os.environ["MKL_THREADING_LAYER"] = "GNU"
 import random
@@ -17,10 +23,10 @@ except ImportError:
     import joblib
 from sklearn.base import BaseEstimator, ClassifierMixin
 from simulation.boom.simulation import Gem5Wrapper as BOOMGem5Wrapper
-from utils.utils import parse_args, get_configs, info, load_txt, Timer
 from simulation.rocket.simulation import Gem5Wrapper as RocketGem5Wrapper
 from dse.env.boom.design_space import parse_design_space as parse_boom_design_space
 from dse.env.rocket.design_space import parse_design_space as parse_rocket_design_space
+from utils.utils import parse_args, get_configs, mkdir, info, load_txt, Timer, if_exist
 
 
 # Boosting algorithm which uses another metric for success.
@@ -157,13 +163,18 @@ def create_mlp(hidden):
 
 
 def load_dataset():
-    dataset = load_txt(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test.txt"
-        ),
-        fmt=float
-    )
+    """
+        Since the RankingBoost's runtime is extremely high,
+        we need to use a small dataset.
+    """
+    design = configs["algo"]["design"]
+    if "BOOM" in design:
+        name = "test-boom.txt"
+    else:
+        name = "rocket.txt"
+    _dataset = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+    if_exist(_dataset, strict=True)
+    dataset = load_txt(_dataset, fmt=float)
     return dataset
 
 
@@ -277,7 +288,7 @@ def construct_ranker(dataset, metric):
     return ranker.fit(X_new, y_new)
 
 
-def sample_from_design_space(k=1000):
+def sample_from_design_space(k=3):
     index = random.sample(range(1, design_space.size + 1), k=k)
     design_pool = []
     info("sampling {} designs...".format(k))
@@ -313,23 +324,22 @@ def main():
     rank_list = construct_rank_list(design_pool, ranker)
     sorted_list = construct_sorted_list(rank_list)
     end = time()
-    with open(
-        os.path.join(
-            rl_explorer_root,
-            "baselines",
-            "isca14",
-            "{}-solution-{}.txt".format(
-                configs["algo"]["design"].replace(' ', '-'),
-                str(datetime.now()).replace(' ', '-')
-            )
-        ),
-        'w'
+
+    # create the result directory
+    result_root = os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), "result"
+    )
+    mkdir(result_root)
+
+    with open(os.path.join(
+            result_root, "{}.txt".format(datetime.now()).replace(' ', '-')
+        ), 'w'
     ) as f:
         solutions = design_pool[np.array(sorted_list)]
-        f.write("obtained solution: {}.\n".format(solutions.shape[0]))
+        f.write("obtained solution: {}:\n".format(solutions.shape[0]))
         for solution in solutions:
-            f.write("{} \n".format(solution))
-        f.write("cost time: {} s.\n".format(end - start))
+            f.write("{} \n".format(list(solution)))
+        f.write("\ncost time: {} s.\n".format(end - start))
     info("ISCA14 done.")
 
 
