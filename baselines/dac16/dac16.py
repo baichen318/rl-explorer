@@ -14,8 +14,8 @@ import numpy as np
 from time import time
 from datetime import datetime
 from sklearn.ensemble import AdaBoostRegressor
-from sklearn.multioutput import MultiOutputRegressor
 from sklearn.neural_network import MLPRegressor
+from sklearn.multioutput import MultiOutputRegressor
 try:
     from sklearn.externals import joblib
 except ImportError:
@@ -311,6 +311,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # set random seed
+    random.seed(42)
+    np.random.seed(42)
+
     args = parse_args()
     configs = get_configs(args.configs)
     configs["configs"] = args.configs
