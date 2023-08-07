@@ -7,6 +7,7 @@ import torch
 from time import time
 import numpy as np
 from util import tensor_to_array
+from utils.utils import assert_error
 
 
 seed = int(time())
@@ -97,6 +98,11 @@ class MicroAL(RandomizedTED):
         super(MicroAL, self).__init__(configs)
         self.configs = configs
         self.num_per_cluster = self.configs["batch"] // self.configs["cluster"]
+        assert self.num_per_cluster > 0, \
+            assert_error("batch: {} should be larger than cluster: {}.".format(
+                    self.configs["batch"], self.configs["cluster"]
+                )
+            )
         self.decoder_threshold = self.configs["decoder-threshold"]
         # feature dimension
         self.n_dim = problem.n_dim

@@ -103,7 +103,7 @@ def ehvi_suggest(model, problem, sampled_x, sampled_y, batch=1):
 
 def report(
     configs,
-    search_x,
+    x, y,
     pareto_frontier,
     pareto_optimal_solutions,
     ort
@@ -111,7 +111,9 @@ def report(
     # write results
     # create the result directory
     result_root = os.path.join(os.path.dirname(
-        os.path.abspath(__file__)), "result"
+        os.path.abspath(__file__)),
+        os.path.pardir,
+        "result"
     )
     mkdir(result_root)
 
@@ -121,7 +123,7 @@ def report(
     ) as f:
         n_samples = pareto_optimal_solutions.shape[0]
         f.write(
-            "obtained solution: {}:\n".format(
+            "obtained Pareto solution: {}:\n".format(
                 n_samples
             )
         )
@@ -132,9 +134,13 @@ def report(
                     pareto_frontier[i].float().tolist()
                 )
             )
-        f.write("microarchitecture (follow the order):\n")
-        for x in search_x:
-            f.write("{}\n".format(x[0].int().tolist()))
+        f.write("\nsearched solution:\n")
+        for _x, _y in zip(x, y):
+            f.write("{}\t{}\n".format(
+                    _x.int().tolist(),
+                    _y.float().tolist()
+                )
+            )
         f.write('\n')
         f.write("cost time: {}s.".format(ort))
 
@@ -301,7 +307,7 @@ def boom_explorer(configs, settings, problem):
     # report
     report(
         configs,
-        search_x,
+        x, y,
         pareto_frontier,
         get_pareto_optimal_solutions(x, y),
         ort
