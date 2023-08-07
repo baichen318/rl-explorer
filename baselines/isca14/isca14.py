@@ -169,7 +169,7 @@ def load_dataset():
     """
     design = configs["algo"]["design"]
     if "BOOM" in design:
-        name = "test-boom.txt"
+        name = "boom.txt"
     else:
         name = "rocket.txt"
     _dataset = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
@@ -338,7 +338,8 @@ def main():
         solutions = design_pool[np.array(sorted_list)]
         f.write("obtained solution: {}:\n".format(solutions.shape[0]))
         for solution in solutions:
-            f.write("{} \n".format(list(solution)))
+            ppa = evaluate_microarchitecture(list(solution))
+            f.write("{}\t{}\n".format(list(solution), ppa.tolist()))
         f.write("\ncost time: {} s.\n".format(end - start))
     info("ISCA14 done.")
 
@@ -382,11 +383,11 @@ if __name__ == "__main__":
         # set constraint DSE
         ppa = {
             # ipc power area
-            "small-SonicBOOM": [0.818802, 0.019507, 1446073.404],
-            "medium-SonicBOOM": [1.308069, 0.026663, 1942462.454],
-            "large-SonicBOOM": [1.5902, 0.03962, 2797450.652],
-            "mega-SonicBOOM": [1.99429, 0.055888, 4939507.226],
-            "giga-SonicBOOM": [1.996663, 0.065973, 4999903.373],
+            "small-SonicBOOM": [0.445552, 0.038699, 306589.000000],
+            "medium-SonicBOOM": [0.577003, 0.051086, 310924.000000],
+            "large-SonicBOOM": [0.671735, 0.090563, 346155.000000],
+            "mega-SonicBOOM": [0.683200, 0.120811, 372036.000000],
+            "giga-SonicBOOM": [0.703640, 0.133239, 381220.000000],
         }
     else:
         assert configs["algo"]["design"] == "Rocket", \
@@ -415,7 +416,7 @@ if __name__ == "__main__":
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)
 
-    threshold_power = ppa[configs["algo"]["design"]][1]
-    threshold_area = ppa[configs["algo"]["design"]][2]
+    threshold_power = ppa["large-SonicBOOM"][1]
+    threshold_area = ppa["large-SonicBOOM"][2]
     with Timer("ISCA14"):
         main()
