@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from dse.algo.a2c.buffer import Buffer
+from dse.algo.a2c.agent.agent import Agent
 from dse.algo.a2c.preference import Preference
 from utils.utils import remove_suffix, if_exist
 from torch.distributions.categorical import Categorical
@@ -18,14 +19,13 @@ from dse.algo.a2c.model import BOOMActorCriticNetwork, RocketActorCriticNetwork
 from dse.algo.a2c.functions import make_a2c_vec_envs, array_to_tensor, tensor_to_array
 
 
-class RocketAgent(object):
+class RocketAgent(Agent):
     def __init__(self, configs, env):
-        super(RocketAgent, self).__init__()
-        self.configs = configs
+        super(RocketAgent, self).__init__(configs)
         self.device = torch.device(
-            "cuda" if self.configs["use-cuda"] else "cpu"
+            "cuda" if self.configs["algo"]["use-cuda"] else "cpu"
         )
-        self.envs = make_vec_envs(self.configs, self.device, env)
+        self.envs = make_a2c_vec_envs(self.configs, env)
         self.model = RocketActorCriticNetwork(
             self.envs.observation_space,
             self.envs.action_space,
@@ -34,23 +34,22 @@ class RocketAgent(object):
         self._model = copy.deepcopy(self.model)
         self.training = self.set_mode()
         self.preference = Preference(
-            self.configs["ppa-preference"],
-            self.envs.reward_space,
-            self.training
+            self.configs["algo"]["test"]["ppa-preference"],
+            self.envs.reward_space
         )
         self.buffer = Buffer(
             self.envs.observation_space,
             self.envs.reward_space,
-            self.configs["sample-size"]
+            self.sample_size
         )
-        self.lr = self.configs["learning-rate"]
+        self.temperature = self.configs["algo"]["train"]["temperature"]
+        self.lr = self.learning_rate
         self.optimizer = optim.Adam(
             self.model.parameters(),
             lr=self.lr
         )
-        self.temperature = self.configs["temperature"]
         self.mse = nn.MSELoss()
-        self.set_random_state(21164)
+        self.set_random_state(configs["algo"]["random-seed"])
 
     def set_random_state(self, seed):
         np.random.seed(seed)
@@ -59,33 +58,47 @@ class RocketAgent(object):
         torch.cuda.manual_seed(seed)
 
     def set_mode(self):
-        if self.configs["mode"] != "train":
+        if self.mode == "test":
             self.model.eval()
             self._model.eval()
             self.load(
                 os.path.join(
-                    self.configs["output-path"],
-                    "models",
-                    self.configs["rl-model"]
+                    self.configs["algo"]["test"]["rl-model"]
                 )
             )
-        return True if self.configs["mode"] == "train" else False
+        return True if self.mode == "train" else False
 
-    def get_action(self, state, preference, status=None, episode=None):
+    def adjust_action_space(self, policy):
+        """
+            We need to enforce rules to process the selected actions.
+            Refer to https://stats.stackexchange.com/questions/328835/enforcing-game-rules-in-alpha-go-zero
+            Our rule is to use the first N candidates as the true
+            action candidates. So we normalize with the first N
+            candidates.
+        """
+        ret = self.envs.safe_env_method(
+            "get_action_candidates",
+            self.envs.safe_get_attr("current_state")
+        )
+        num_of_candidates = len(ret)
+        policy = policy[:, :num_of_candidates]
+        return F.normalize(policy)
+
+    def get_action(self, state, preference):
         state = array_to_tensor(state)
         preference = array_to_tensor(preference)
         policy, value = self.model(state, preference)
+        policy = self.adjust_action_space(policy)
         if self.training:
             policy = F.softmax(policy / self.temperature, dim=-1)
-            self.configs["logger"].info("action prob: {}.".format(
-                policy.data.cpu.numpy())
-            )
-            if status is not None and episode is not None:
-                status.update_action_per_episode(policy, episode)
+            # self.logger.info(
+            #     "[INFO]: action prob: {}.".format(_policy)
+            # )
         else:
             policy = F.softmax(policy, dim=-1)
+        _policy = policy.data.cpu().numpy()
         action = self.random_choice_prob_index(policy)
-        return action
+        return action, _policy
 
     def random_choice_prob_index(self, policy, axis=1):
         policy = tensor_to_array(policy)
@@ -114,62 +127,49 @@ class RocketAgent(object):
 
         def _calc_discounted_reward(reward, done, value, next_value):
             discounted_reward = np.empty(
-                [self.configs["num-step"], self.envs.reward_space]
+                [self.num_step, self.envs.reward_space]
             )
             # implementation of generalized advantage estimator (GAE)
             gae = np.zeros(self.envs.reward_space)
-            for t in range(self.configs["num-step"] - 1, -1, -1):
-                delta = reward[t] + self.configs["gamma"] * \
+            for t in range(self.num_step - 1, -1, -1):
+                delta = reward[t] + self.gamma * \
                     next_value[t] * (1 - done[t]) - value[t]
-                gae = delta + self.configs["gamma"] * \
-                    self.configs["lambda"] * (1 - done[t]) * gae
+                gae = delta + self.gamma * self.lam * (1 - done[t]) * gae
                 discounted_reward[t] = gae + value[t]
             return discounted_reward
 
         total_discounted_reward = []
         total_adv = []
-        for idx in range(self.configs["sample-size"]):
-            n_step = self.configs["num-parallel"] * self.configs["num-step"]
-            for worker in range(self.configs["num-parallel"]):
+        for idx in range(self.sample_size):
+            n_step = self.num_parallel * self.num_step
+            for worker in range(self.num_parallel):
+                start = worker * self.num_step + idx * n_step
+                end = (worker + 1) * self.num_step + idx * n_step
                 discounted_reward = _calc_discounted_reward(
-                    buffer["reward"][
-                        worker * self.configs["num-step"] + idx * n_step : \
-                            (worker + 1) * self.configs["num-step"] + idx * n_step
-                    ],
-                    buffer["done"][
-                        worker * self.configs["num-step"] + idx * n_step : \
-                            (worker + 1) * self.configs["num-step"] + idx * n_step
-                    ],
-                    value[
-                        worker * self.configs["num-step"] + idx * n_step : \
-                            (worker + 1) * self.configs["num-step"] + idx * n_step
-                    ],
-                    next_value[
-                        worker * self.configs["num-step"] + idx * n_step : \
-                            (worker + 1) * self.configs["num-step"] + idx * n_step
-                    ]
+                    buffer["reward"][start: end],
+                    buffer["done"][start: end],
+                    value[start: end],
+                    next_value[start: end]
                 )
                 total_discounted_reward.append(discounted_reward)
         return np.concatenate(total_discounted_reward).reshape(-1, self.envs.reward_space)
 
-    def calc_advantage(self, preference, discounted_reward, value, episode):
-        n_step = self.configs["num-parallel"] * self.configs["num-step"]
+    def envelope_operator(self, preference, discounted_reward, value, episode):
+        ofs = self.num_parallel * self.num_step
 
         def apply_envelope_operator(discounted_reward, preference):
             prod = np.inner(discounted_reward, preference)
             mask = prod.transpose().reshape(
-                self.configs["sample-size"],
-                -1,
-                n_step
+                self.sample_size, -1, ofs
             ).argmax(axis=1)
-            mask = mask.reshape(-1) * n_step + \
+            mask = mask.reshape(-1) * ofs + \
                 np.array(
-                    list(range(n_step)) * self.configs["sample-size"]
+                    list(range(ofs)) * self.sample_size
                 )
             discounted_reward = discounted_reward[mask]
             return discounted_reward
 
-        if episode > self.configs["apply-envelope-operator-start"]:
+        if episode > self.start_envelope:
             discounted_reward = apply_envelope_operator(
                 discounted_reward,
                 preference
@@ -188,92 +188,83 @@ class RocketAgent(object):
             adv = array_to_tensor(adv)
 
         # calculate scalarized advantage
-        adv_w_preference = torch.bmm(
+        adv_w = torch.bmm(
             adv.unsqueeze(1),
             preference.unsqueeze(2)
         ).squeeze()
 
         # standardization
-        adv_w_preference = (adv_w_preference - adv_w_preference.mean()) / \
-            (adv_w_preference.std() + 1e-30)
+        adv_w = (adv_w - adv_w.mean()) / \
+            (adv_w.std() + 1e-30)
 
         policy, value = self.model(state, preference)
         optimal_action = Categorical(F.softmax(policy, dim=-1))
 
-        value_w_preference = torch.bmm(
+        value_w = torch.bmm(
             value.unsqueeze(1),
             preference.unsqueeze(2)
         ).squeeze()
 
-        reward_w_preference = torch.bmm(
+        reward_w = torch.bmm(
             reward.unsqueeze(1),
             preference.unsqueeze(2)
         ).squeeze()
 
         # actor loss
-        self.actor_loss = -optimal_action.log_prob(action) * adv_w_preference
+        self.actor_loss = -optimal_action.log_prob(action) * adv_w
         self.actor_loss = self.actor_loss.mean()
 
         # entropy loss
         self.entropy = optimal_action.entropy().mean()
 
         # critic loss
-        critic_loss_1 = self.mse(value_w_preference, reward_w_preference)
+        critic_loss_1 = self.mse(value_w, reward_w)
         critic_loss_2 = self.mse(value.view(-1), reward.view(-1))
 
         # total loss
-        self.critic_loss = 0.5 * \
-            (
-                self.configs["beta"] * critic_loss_1 + \
-                (1 - self.configs["beta"]) * critic_loss_2
+        self.critic_loss = 0.5 * (
+                self.beta * critic_loss_1 + \
+                (1 - self.beta) * critic_loss_2
             )
 
         self.loss = self.actor_loss.mean() + self.critic_loss - \
-            self.configs["alpha"] * self.entropy
-        
+            self.alpha * self.entropy
+
         self.optimizer.zero_grad()
         self.loss.backward()
         nn.utils.clip_grad_norm_(
             self.model.parameters(),
-            self.configs["clip-grad-norm"]
+            self.clip_grad_norm
         )
         self.optimizer.step()
 
-        self.configs["logger"].info(
-            "[INFO]: actor loss: {}, critic loss: {}, entropy loss: {}.".format(
-                self.actor_loss.detach().numpy(),
-                self.critic_loss.detach().numpy(),
-                self.entropy.detach().numpy()
-            )
-        )
-
-        self.configs["logger"].info(
-            "[INFO]: actor loss: {}, critic loss: {}, entropy loss: {}.".format(
-                self.actor_loss.detach().numpy(),
-                self.critic_loss.detach().numpy(),
-                self.entropy.detach().numpy()
+        self.logger.info(
+            "[INFO]: actor loss: {}, critic loss: {}, " \
+                "entropy loss: {}.".format(
+                    self.actor_loss.detach().numpy(),
+                    self.critic_loss.detach().numpy(),
+                    self.entropy.detach().numpy()
             )
         )
 
     def schedule_lr(self, episode):
-        self.lr = self.configs["learning-rate"] - \
-            (episode / (self.configs["max-sequence"] * self.configs["num-step"])) * \
-            self.configs["learning-rate"]
+        self.lr = self.learning_rate - \
+            (episode / self.max_episode) * self.learning_rate
         for params in self.optimizer.param_groups:
             params["lr"] = self.lr
-        # self.configs["logger"].info("[INFO]: learning rate: {}.".format(self.lr))
+        self.logger.info("[INFO]: learning rate: {}.".format(
+            self.lr)
+        )
 
     def save(self, episode):
-        if episode % (
-            self.configs["num-parallel"] * \
-            self.configs["num-step"] * 10
-        ) == 0:
+        if episode % 100 == 0:
             model_path = os.path.join(
                 self.configs["model-path"],
                 "{}.pt".format(
                     remove_suffix(
-                        os.path.basename(self.configs["log-path"]),
-                        ".log"
+                        os.path.basename(
+                            self.configs["log-path"]
+                        ), ".log"
                     )
                 )
             )
@@ -281,7 +272,7 @@ class RocketAgent(object):
                 self.model.state_dict(),
                 model_path
             )
-            self.configs["logger"].info(
+            self.logger.info(
                 "[INFO]: save model: {} at episode: {}.".format(
                     model_path, episode
                 )
@@ -294,15 +285,14 @@ class RocketAgent(object):
         else:
             self.model.load_state_dict(torch.load(path))
         self._model = copy.deepcopy(self.model)
-        self.configs["logger"].info(
-            "load the RL model from {}".format(path)
+        self.logger.info(
+            "[INFO]: load the RL model from {}".format(path)
         )
 
-
     def sync_critic(self, episode):
-        if episode % self.configs["update-critic-episode"] == 0:
+        if episode % self.update_critic_episode == 0:
             self._model.load_state_dict(self.model.state_dict())
-            self.configs["logger"].info(
+            self.logger.info(
                 "[INFO]: update the critic at episode: {}.".format(
                     episode
                 )

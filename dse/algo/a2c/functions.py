@@ -65,28 +65,28 @@ class A2CVecEnvWrapper(VecEnvWrapper):
         return self.venv.step_wait()
 
 
-def make_a2c_vec_envs(configs, device, env):
-    """
-        DEPRECATED.
-    """
-    envs = [
-        make_env(
-            env,
-            configs,
-            int(os.path.basename(
-                    configs["gem5-research-root"].rstrip("/gem5-research")
-                )
-            )
-        ) \
-            for i in range(configs["num-parallel"])
-    ]
+# def make_a2c_vec_envs(configs, device, env):
+#     """
+#         DEPRECATED.
+#     """
+#     envs = [
+#         make_env(
+#             env,
+#             configs,
+#             int(os.path.basename(
+#                     configs["gem5-research-root"].rstrip("/gem5-research")
+#                 )
+#             )
+#         ) \
+#             for i in range(configs["num-parallel"])
+#     ]
 
-    envs = A2CVecEnvWrapper(
-        SubprocVecEnv(envs),
-        device
-    )
+#     envs = A2CVecEnvWrapper(
+#         SubprocVecEnv(envs),
+#         device
+#     )
 
-    return envs
+#     return envs
 
 
 def make_a2c_vec_envs(configs, env):

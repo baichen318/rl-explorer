@@ -1,11 +1,12 @@
 # Author: baichen318@gmail.com
 
+
 import os
 import sys
 import gym
 import time
-import random
 import torch
+import random
 import numpy as np
 from collections import OrderedDict
 try:
@@ -255,6 +256,9 @@ class BOOMEnv(BasicEnv):
         return self.state, reward, done, info
 
     def get_human_implementation(self):
+        """
+            DEPRECATED.
+        """
         def get_idx_of_human_baseline():
             if "BOOM" in self.configs["design"]:
                 # some human implementations are missing, so we only explore a design
@@ -280,6 +284,9 @@ class BOOMEnv(BasicEnv):
         )
 
     def get_human_baseline(self):
+        """
+            DEPRECATED.
+        """
         if "BOOM" in self.configs["design"]:
             ppa = {
                 # ipc power area
