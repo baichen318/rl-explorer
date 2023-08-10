@@ -605,6 +605,9 @@ def adjust_rocket_data(design_space, data):
 
 
 def adjust_data(design, design_space, data, choice=True):
+    """
+        DEPRECATED.
+    """
     if choice:
         if "BOOM" in design:
             return adjust_boom_data(design_space, data)
@@ -630,7 +633,6 @@ def generate_simulation_dataset():
     new_dataset = []
 
     for data in dataset:
-        # data = adjust_data(configs["design"], design_space, data, choice=True)
         manager = Simulator(
             configs, design_space, np.int64(data[:-3]),
             configs["env"]["sim"]["idx"]
@@ -789,10 +791,5 @@ if __name__ == '__main__':
     configs["logger"] = None
     # a tricy to implement `Gem5Wrapper`
     Simulator = None
-    # if "BOOM" in configs["design"]:
-    #     decode_width = configs["design"].split(' ')[0].split('-')[0]
-    #     configs["decode_width"] = decode_width
-    # else:
-    #     configs["decode_width"] = None
     configs["decode_width"] = None
     main()

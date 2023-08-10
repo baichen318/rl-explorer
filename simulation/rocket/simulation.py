@@ -108,7 +108,7 @@ class Gem5Wrapper(Simulation):
                 f.write(re.sub(r"%s" % pattern, target, cnt, count))
 
         # RAS@btb
-        ras_size = self.design_space.get_mapping_params(self.state, 0)[0]
+        ras_size = self.state[0]
         _modify_gem5(
             self.btb_root,
             "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
@@ -119,7 +119,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # BTB@btb
-        btb = self.design_space.get_mapping_params(self.state, 0)[1]
+        btb = self.state[1]
         _modify_gem5(
             self.btb_root,
             "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
@@ -130,7 +130,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # TLB@D-Cache
-        tlb = self.design_space.get_mapping_params(self.state, 5)[2]
+        tlb = self.state[12]
         _modify_gem5(
             self.tlb_root,
             "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
@@ -141,7 +141,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # MSHR@D-Cache
-        mshr = self.design_space.get_mapping_params(self.state, 5)[3]
+        mshr = self.state[13]
         _modify_gem5(
             self.cache_root,
             "mshrs\ =\ \d+",
@@ -212,7 +212,7 @@ class Gem5Wrapper(Simulation):
             exit(-1)
         execute(cmd)
 
-    def get_results(self):
+    def get_results(self, benchmark):
         instructions, cycles = 0, 0
         misc_stats = OrderedDict()
         with open(os.path.join(
@@ -445,7 +445,7 @@ class Gem5Wrapper(Simulation):
                 bmark
             )
             mcpat_report = os.path.join(
-                bmark_root, "{}-{}.rpt".format("BOOM", self.idx)
+                bmark_root, "{}-{}.rpt".format("Rocket", self.idx)
             )
             power += extract_power(mcpat_report)
             area += extract_area(mcpat_report)
