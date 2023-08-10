@@ -12,7 +12,7 @@ from utils.thread import WorkerThread
 from multiprocessing.pool import ThreadPool
 from simulation.base_simulation import Simulation
 from utils.utils import execute, remove_prefix, if_exist, \
-    remove, mkdir, round_power_of_two, error
+    remove, mkdir, round_power_of_two, error, assert_error
 
 
 class Gem5Wrapper(Simulation):
@@ -89,13 +89,24 @@ class Gem5Wrapper(Simulation):
         # mkdir(self.temp_root)
 
     def init_stats(self):
-        # 16 stats
+        # 9 stats
         stats = OrderedDict()
-        stats_name = [
-            "issueRate", "intInstQueueReads", "intInstQueueWrites",
-            "intAluAccesses", "numLoadInsts", "numStoreInsts",
-            "numBranches", "intRegfileReads", "intRegfileWrites"
-        ]
+        if "BOOM" in self.configs["algo"]["design"]:
+            stats_name = [
+                "issueRate", "intInstQueueReads", "intInstQueueWrites",
+                "intAluAccesses", "numLoadInsts", "numStoreInsts",
+                "numBranches", "intRegfileReads", "intRegfileWrites"
+            ]
+        else:
+            assert "Rocket" in self.configs["algo"]["design"], \
+                assert_error("{} is unsupported.".format(
+                    configs["algo"]["design"])
+                )
+            stats_name = [
+                "branchPred.condIncorrect", "branchPred.RASIncorrect", "system.cpu.dcache.ReadReq.mshrMissRate::total",
+                "system.cpu.dcache.WriteReq.mshrMissRate::total", "exec_context.thread_0.numInsts", "exec_context.thread_0.numIntAluAccesses",
+                "exec_context.thread_0.numLoadInsts", "exec_context.thread_0.numStoreInsts", "exec_context.thread_0.numBranches"
+            ]
         for name in stats_name:
             stats[name] = 0
         return stats, stats_name
