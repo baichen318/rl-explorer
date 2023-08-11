@@ -45,59 +45,39 @@ class Dataset(object):
         self.dims_of_state = dims_of_state
         self.design_space = load_design_space()
         self.embedding = self.design_space.embedding_dims
-        if "BOOM" in design:
-            self.perf_feature = np.concatenate((
-                    # embedding
-                    dataset[:, :self.embedding],
-                    # statistics
-                    dataset[:, self.embedding + 3:self.embedding + 3 + 9],
-                    # pred. PPA
-                    np.expand_dims(dataset[:, -3], axis=1)
-                ),
-                axis=1
-            )
-            self.perf_gt = dataset[:, self.embedding]
-            self.power_feature = np.concatenate((
-                    # embedding
-                    dataset[:, :self.embedding],
-                    # statistics
-                    dataset[:, self.embedding + 3:self.embedding + 3 + 9],
-                    # pred. PPA
-                    np.expand_dims(dataset[:, -2], axis=1)
-                ),
-                axis=1
-            )
-            self.power_gt = dataset[:, self.embedding + 1]
-            self.area_feature = np.concatenate((
-                    # embedding
-                    dataset[:, :self.embedding],
-                    # statistics
-                    dataset[:, self.embedding + 3:self.embedding + 3 + 9],
-                    # pred. PPA
-                    np.expand_dims(dataset[:, -1], axis=1)
-                ),
-                axis=1
-            )
-            self.area_gt = dataset[:, self.embedding + 2]
-        else:
-            self.perf_feature = dataset[
-                :, [i for i in range(dims_of_state)] + [-3]
-            ]
-            self.perf_gt = dataset[
-                :, dims_of_state
-            ]
-            self.power_feature = dataset[
-                :, [i for i in range(dims_of_state)] + [-2]
-            ]
-            self.power_gt = dataset[
-                :, dims_of_state + 1
-            ]
-            self.area_feature = dataset[
-                :, [i for i in range(dims_of_state)] + [-1]
-            ]
-            self.area_gt = dataset[
-                :, dims_of_state + 2
-            ]
+        self.perf_feature = np.concatenate((
+                # embedding
+                dataset[:, :self.embedding],
+                # statistics
+                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                # pred. PPA
+                np.expand_dims(dataset[:, -3], axis=1)
+            ),
+            axis=1
+        )
+        self.perf_gt = dataset[:, self.embedding]
+        self.power_feature = np.concatenate((
+                # embedding
+                dataset[:, :self.embedding],
+                # statistics
+                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                # pred. PPA
+                np.expand_dims(dataset[:, -2], axis=1)
+            ),
+            axis=1
+        )
+        self.power_gt = dataset[:, self.embedding + 1]
+        self.area_feature = np.concatenate((
+                # embedding
+                dataset[:, :self.embedding],
+                # statistics
+                dataset[:, self.embedding + 3:self.embedding + 3 + 9],
+                # pred. PPA
+                np.expand_dims(dataset[:, -1], axis=1)
+            ),
+            axis=1
+        )
+        self.area_gt = dataset[:, self.embedding + 2]
 
     def get_perf_dataset(self):
         return self.perf_feature, self.perf_gt
