@@ -46,6 +46,7 @@ class BasicEnv(gym.Env):
         self.dims_of_action = self.get_dims_of_action()
         # PPA metrics
         self.dims_of_reward = 3
+        self.dims_of_tunable_state = len(self.component_touch)
 
     @property
     def design(self):

@@ -1,12 +1,13 @@
 # Author: baichen318@gmail.com
 
 
-from abc import ABC
+from abc import ABC, abstractmethod
+
 
 class Agent(ABC):
-	def __init__(self, configs):
-		super(Agent, self).__init__()
-		self.configs = configs
+    def __init__(self, configs):
+        super(Agent, self).__init__()
+        self.configs = configs
 
     @property
     def mode(self):
@@ -64,8 +65,6 @@ class Agent(ABC):
     def update_critic_episode(self):
         return self.configs["algo"]["train"]["update-critic-episode"]
 
-    @abstract
+    @abstractmethod
     def get_action(self, state, explore_w):
     	raise NotImplementedError
-
-		
