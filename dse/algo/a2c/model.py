@@ -74,10 +74,14 @@ class RocketActorCriticNetwork(MLPBase):
         self.actor = nn.Sequential(
             nn.Linear(self.observation_shape + self.reward_shape, 128),
             nn.LeakyReLU(),
+            nn.Linear(128, 128),
+            nn.LeakyReLU(),
             nn.Linear(128, self.action_shape)
         )
         self.critic = nn.Sequential(
             nn.Linear(self.observation_shape + self.reward_shape, 128),
+            nn.LeakyReLU(),
+            nn.Linear(128, 128),
             nn.LeakyReLU(),
             nn.Linear(128, self.reward_shape)
         )

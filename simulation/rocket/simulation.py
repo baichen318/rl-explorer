@@ -7,10 +7,12 @@ import sys
 import time
 import numpy as np
 import multiprocessing
+from collections import OrderedDict
+from utils.thread import WorkerThread
 from multiprocessing.pool import ThreadPool
 from simulation.base_simulation import Simulation
-from utils.utils import execute, if_exist, remove, mkdir, \
-    round_power_of_two, error
+from utils.utils import execute, remove_prefix, if_exist, \
+    remove, mkdir, round_power_of_two, error, assert_error
 
 
 class Gem5Wrapper(Simulation):
@@ -22,20 +24,32 @@ class Gem5Wrapper(Simulation):
         self.idx = idx
         self.macros["gem5-research-root"] = os.path.abspath(
             os.path.join(
-                self.configs["gem5-research-root"],
+                self.configs["env"]["sim"]["gem5-research-root"],
+                str(self.idx),
                 "gem5-research"
-            ),
+            )
         )
         self.macros["gem5-benchmark-root"] = os.path.join(
             self.macros["gem5-research-root"],
             "benchmarks",
             "riscv-tests"
         )
-        self.macros["simulator"] = "gem5-{}-{}.opt".format(
-            self.state[0],
-            self.state[5]
+        if isinstance(state, np.ndarray):
+            state = state.tolist()
+        self.macros["simulator"] = "gem5-{}.opt".format(
+            design_space.embedding_to_idx(state)
         )
         self.initialize_lut()
+        self.stats, self.stats_name = self.init_stats()
+        self.simulation_is_failed = False
+
+    @property
+    def benchmarks(self):
+        return self.configs["env"]["benchmarks"]
+
+    @property
+    def logger(self):
+        return self.configs["logger"]
 
     def initialize_lut(self):
         self.btb_root = os.path.join(
@@ -62,13 +76,40 @@ class Gem5Wrapper(Simulation):
             self.macros["gem5-research-root"],
             "m5out"
         )
-        self.temp_root = os.path.join(
-            self.macros["rl-explorer-root"],
-            "temp",
-            str(self.idx)
-        )
-        mkdir(self.temp_root)
+        """
+            DEPRECATED.
+            `temp_root` is deprecated for multiple
+            simultaneous simulations.
+        """
+        # self.temp_root = os.path.join(
+        #     self.macros["rl-explorer-root"],
+        #     "temp",
+        #     str(self.idx)
+        # )
+        # mkdir(self.temp_root)
 
+    def init_stats(self):
+        # 9 stats
+        stats = OrderedDict()
+        if "BOOM" in self.configs["algo"]["design"]:
+            stats_name = [
+                "issueRate", "intInstQueueReads", "intInstQueueWrites",
+                "intAluAccesses", "numLoadInsts", "numStoreInsts",
+                "numBranches", "intRegfileReads", "intRegfileWrites"
+            ]
+        else:
+            assert "Rocket" in self.configs["algo"]["design"], \
+                assert_error("{} is unsupported.".format(
+                    configs["algo"]["design"])
+                )
+            stats_name = [
+                "branchPred.condIncorrect", "branchPred.RASIncorrect", "system.cpu.dcache.ReadReq.mshrMissRate::total",
+                "system.cpu.dcache.WriteReq.mshrMissRate::total", "exec_context.thread_0.numInsts", "exec_context.thread_0.numIntAluAccesses",
+                "exec_context.thread_0.numLoadInsts", "exec_context.thread_0.numStoreInsts", "exec_context.thread_0.numBranches"
+            ]
+        for name in stats_name:
+            stats[name] = 0
+        return stats, stats_name
 
     def modify_gem5(self):
         # NOTICE: we modify gem5 w.r.t. state[0] & state[5]
@@ -78,7 +119,7 @@ class Gem5Wrapper(Simulation):
                 f.write(re.sub(r"%s" % pattern, target, cnt, count))
 
         # RAS@btb
-        ras_size = self.design_space.get_mapping_params(self.state, 0)[0]
+        ras_size = self.state[0]
         _modify_gem5(
             self.btb_root,
             "RASSize\ =\ Param\.Unsigned\(\d+,\ \"RAS\ size\"\)",
@@ -89,7 +130,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # BTB@btb
-        btb = self.design_space.get_mapping_params(self.state, 0)[1]
+        btb = self.state[1]
         _modify_gem5(
             self.btb_root,
             "BTBEntries\ =\ Param\.Unsigned\(\d+,\ \"Number\ of\ BTB\ entries\"\)",
@@ -100,7 +141,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # TLB@D-Cache
-        tlb = self.design_space.get_mapping_params(self.state, 5)[2]
+        tlb = self.state[12]
         _modify_gem5(
             self.tlb_root,
             "size\ =\ Param\.Int\(\d+,\ \"TLB\ size\"\)",
@@ -111,7 +152,7 @@ class Gem5Wrapper(Simulation):
         )
 
         # MSHR@D-Cache
-        mshr = self.design_space.get_mapping_params(self.state, 5)[3]
+        mshr = self.state[13]
         _modify_gem5(
             self.cache_root,
             "mshrs\ =\ \d+",
@@ -145,10 +186,12 @@ class Gem5Wrapper(Simulation):
             cmd += "cd -;"
         elif machine.startswith("hpc"):
             cmd = "cd %s; " % self.macros["gem5-research-root"]
-            cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+            # cmd += "/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/scons "
+            cmd += "scons "
             cmd += "build/RISCV/gem5.opt CCFLAGS_EXTRA=\"-I/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/include\" "
             cmd += "PYTHON_CONFIG=\"/research/dept8/gds/cbai/tools/Python-3.9.7/build/bin/python3-config\" "
-            cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+            # cmd += "LDFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
+            cmd += "LINKFLAGS_EXTRA=\"-L/research/dept8/gds/cbai/tools/protobuf-3.6.1/build/lib -L/research/dept8/gds/cbai/tools/hdf5-1.12.0/build/lib\" "
             cmd += "-j%d; " % int(round(1.4 * multiprocessing.cpu_count()))
             cmd += "mv build/RISCV/gem5.opt build/RISCV/{}; ".format(
                 self.macros["simulator"]
@@ -180,82 +223,121 @@ class Gem5Wrapper(Simulation):
             exit(-1)
         execute(cmd)
 
-    def get_results(self):
+    def get_results(self, benchmark):
         instructions, cycles = 0, 0
-        with open(os.path.join(self.m5out_root, "stats.txt"), 'r') as f:
+        misc_stats = OrderedDict()
+        with open(os.path.join(
+                self.macros["gem5-research-root"],
+                benchmark, "stats.txt"
+            ), 'r'
+        ) as f:
             cnt = f.readlines()
+        stats_name = ["system.cpu.{}".format(name) for name in self.stats_name]
         for line in cnt:
             if line.startswith("simInsts"):
                 instructions = int(line.split()[1])
             if line.startswith("system.cpu.numCycles"):
                 cycles = int(line.split()[1])
-        return instructions, cycles
+            for name in stats_name:
+                if line.startswith(name):
+                    misc_stats[remove_prefix(name, "system.cpu.")] = float(line.split()[1])
+        return instructions, cycles, misc_stats
 
-    def simulate(self):
-        machine = os.popen("hostname").readlines()[0].strip()
-        for bmark in self.configs["benchmarks"]:
-            remove(os.path.join(self.temp_root, "m5out-%s" % bmark))
-        ipc = 0
-        for bmark in self.configs["benchmarks"]:
-            cmd = "cd {}; build/RISCV/{} configs/example/se.py ".format(
+    def incr_stats(self, misc_stats):
+        for k, v in misc_stats.items():
+            self.stats[k] += v
+
+    def avg_stats(self, cnt=1):
+        for k, v in self.stats.items():
+            self.stats[k] /= cnt
+
+    def simulate_impl(self, bmark):
+        bmark_root = os.path.join(
+            self.macros["gem5-research-root"],
+            bmark
+        )
+        if if_exist(bmark_root):
+            remove(bmark_root)
+
+        cmd = "cd {}; {} --outdir={} {} ".format(
+            self.macros["gem5-research-root"],
+            os.path.join(
                 self.macros["gem5-research-root"],
-                self.macros["simulator"]
+                "build", "RISCV", self.macros["simulator"]
+            ),
+            bmark_root,
+            os.path.join(
+                self.macros["gem5-research-root"],
+                "configs", "example", "se.py"
             )
-            cmd += "--cmd=%s " % os.path.join(
+        )
+        cmd += "--cmd={} ".format(os.path.join(
                 self.macros["gem5-benchmark-root"],
                 bmark + ".riscv"
             )
-            cmd += "--num-cpus=1 "
-            cmd += "--cpu-type=TimingSimpleCPU "
-            cmd += "--caches "
-            cmd += "--cacheline_size=64 "
-            cmd += " --l1d_size={}kB ".format(
-                (
-                    self.design_space.get_mapping_params(self.state, 5)[0] * \
-                        self.design_space.get_mapping_params(self.state, 5)[1] * \
-                            (2 ** 6)
-                ) >> 10
-            )
-            cmd += "--l1i_size={}kB ".format(
-                (
-                    self.design_space.get_mapping_params(self.state, 1)[0] * \
-                        (2 ** 6) * \
-                            (2 ** 6)
-                ) >> 10
-            )
-            cmd += "--l1d_assoc={} ".format(
-                self.design_space.get_mapping_params(self.state, 5)[1]
-            )
-            cmd += "--l1i_assoc={} ".format(
-                self.design_space.get_mapping_params(self.state, 1)[0]
-            )
-            cmd += "--sys-clock=2000000000Hz "
-            cmd += "--cpu-clock=2000000000Hz "
-            cmd += "--sys-voltage=6.3V "
-            # cmd += "--l2cache "
-            # cmd += "--l2_size=64MB "
-            # cmd += "--l2_assoc=8 "
-            cmd += "--mem-size=4096MB "
-            cmd += "--mem-type=LPDDR3_1600_1x32 "
-            cmd += "--mem-channels=1 "
-            cmd += "--enable-dram-powerdown "
-            cmd += "--bp-type=BiModeBP "
-            cmd += "--l1i-hwp-type=TaggedPrefetcher "
-            cmd += "--l1d-hwp-type=TaggedPrefetcher "
-            cmd += "--l2-hwp-type=TaggedPrefetcher; cd -"
-            execute(cmd, logger=self.configs["logger"])
-            instructions, cycles = self.get_results()
-            ipc += (instructions / cycles)
-            # for McPAT usage
-            execute(
-                "mv -f %s %s" % (
-                    self.m5out_root,
-                    os.path.join(self.temp_root, "m5out-%s" % bmark)
-                )
-            )
-        ipc /= len(self.configs["benchmarks"])
-        return ipc
+        )
+        cmd += "--num-cpus=1 "
+        cmd += "--cpu-type=TimingSimpleCPU "
+        cmd += "--caches "
+        cmd += "--cacheline_size=64 "
+        cmd += " --l1d_size={}kB ".format(
+            (((self.state[10] * self.state[11]) << 6)) >> 10
+        )
+        cmd += "--l1i_size={}kB ".format(
+            (((self.state[3] * 64) << 6)) >> 10
+        )
+        cmd += "--l1d_assoc={} ".format(
+            self.state[11]
+        )
+        cmd += "--l1i_assoc={} ".format(
+            self.state[3]
+        )
+        cmd += "--sys-clock=2000000000Hz "
+        cmd += "--cpu-clock=2000000000Hz "
+        cmd += "--sys-voltage=6.3V "
+        # cmd += "--l2cache "
+        # cmd += "--l2_size=64MB "
+        # cmd += "--l2_assoc=8 "
+        cmd += "--mem-size=4096MB "
+        cmd += "--mem-type=LPDDR3_1600_1x32 "
+        cmd += "--mem-channels=1 "
+        cmd += "--enable-dram-powerdown "
+        cmd += "--bp-type=BiModeBP "
+        cmd += "--l1i-hwp-type=TaggedPrefetcher "
+        cmd += "--l1d-hwp-type=TaggedPrefetcher "
+        cmd += "--l2-hwp-type=TaggedPrefetcher"
+        # simulate
+        execute(cmd, logger=self.logger)
+        instructions, cycles, misc_stats = \
+            self.get_results(bmark)
+        return instructions, cycles, misc_stats
 
+    def simulate(self):
+        ipc = 0
+
+        threads = []
+        for bmark in self.benchmarks:
+            thread = WorkerThread(
+                func=self.simulate_impl,
+                args=(bmark,)
+            )
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        for thread in threads:
+            instructions, cycles, misc_stats = thread.get_output()
+            if instructions == 0 or cycles == 0:
+                # an error occurs in the simulation
+                self.simulation_is_failed = True
+                return 0
+            self.incr_stats(misc_stats)
+            ipc += (instructions / cycles)
+        ipc /= len(self.benchmarks)
+        self.avg_stats(len(self.benchmarks))
+        return ipc
 
     def evaluate_perf(self):
         if if_exist(
@@ -269,11 +351,11 @@ class Gem5Wrapper(Simulation):
             )
         ):
             ipc = self.simulate()
-            return ipc
+            return ipc, self.stats
         self.modify_gem5()
         self.generate_gem5()
         ipc = self.simulate()
-        return ipc
+        return ipc, self.stats
 
     def evaluate_power_and_area(self):
         def extract_power(mcpat_report):
@@ -305,17 +387,21 @@ class Gem5Wrapper(Simulation):
             return area
 
         power, area = 0, 0
-        pool = ThreadPool(len(self.configs["benchmarks"]))
-        for bmark in self.configs["benchmarks"]:
+
+        if self.simulation_is_failed:
+            return power, area
+
+        pool = ThreadPool(len(self.benchmarks))
+        for bmark in self.benchmarks:
+            bmark_root = os.path.join(
+                self.macros["gem5-research-root"],
+                bmark
+            )
             mcpat_xml = os.path.join(
-                self.temp_root,
-                "m5out-%s" % bmark,
-                "%s-%s.xml" % ("Rocket", self.idx)
+                bmark_root, "{}-{}.xml".format("Rocket", self.idx)
             )
             mcpat_report = os.path.join(
-                self.temp_root,
-                "m5out-%s" % bmark,
-                "%s-%s.rpt" % ("Rocket", self.idx)
+                bmark_root, "{}-{}.rpt".format("Rocket", self.idx)
             )
             pool.apply_async(
                 execute,
@@ -337,8 +423,12 @@ class Gem5Wrapper(Simulation):
                             "gem5-mcpat-parser.py"
                         ),
                         self.configs["configs"],
-                        os.path.join(self.temp_root, "m5out-{}".format(bmark), "config.json"),
-                        os.path.join(self.temp_root, "m5out-{}".format(bmark), "stats.txt"),
+                        os.path.join(
+                            bmark_root, "config.json"
+                        ),
+                        os.path.join(
+                            bmark_root, "stats.txt"
+                        ),
                         os.path.join(
                             self.macros["rl-explorer-root"],
                             "tools",
@@ -350,7 +440,7 @@ class Gem5Wrapper(Simulation):
                         os.path.join(
                             self.macros["rl-explorer-root"],
                             "tools",
-                            "mcpat-riscv-7",
+                            "mcpat-research",
                             "mcpat"
                         ),
                         mcpat_xml,
@@ -360,13 +450,15 @@ class Gem5Wrapper(Simulation):
             )
         pool.close()
         pool.join()
-        for bmark in self.configs["benchmarks"]:
+        for bmark in self.benchmarks:
+            bmark_root = os.path.join(
+                self.macros["gem5-research-root"],
+                bmark
+            )
             mcpat_report = os.path.join(
-                self.temp_root,
-                "m5out-%s" % bmark,
-                "%s-%s.rpt" % ("Rocket", self.idx)
+                bmark_root, "{}-{}.rpt".format("Rocket", self.idx)
             )
             power += extract_power(mcpat_report)
             area += extract_area(mcpat_report)
-        return power / len(self.configs["benchmarks"]), \
-            area / len(self.configs["benchmarks"])
+        return power / len(self.benchmarks), \
+            area / len(self.benchmarks)

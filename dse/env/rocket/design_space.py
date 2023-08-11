@@ -3,15 +3,15 @@
 
 import os
 import numpy as np
+from typing import List
 from collections import OrderedDict
-from utils.utils import load_excel, if_exist
 from dse.env.base_design_space import DesignSpace, Macros
+from utils.utils import load_excel, assert_error, if_exist
 
 
 class RocketMacros(Macros):
     def __init__(self, root):
         super(RocketMacros, self).__init__()
-        self.root = root
         self.macros["chipyard-research-root"] = root
         self.macros["workstation-root"] = os.path.join(
             self.macros["chipyard-research-root"],
@@ -167,11 +167,42 @@ class %s extends Config(
         with open(self.macros["soc-cfg"], 'a') as f:
             f.writelines(codes)
 
-    def vec_to_microarchitecture_embedding(self, vec):
-        pass
+    def vec_to_embedding(self, vec):
+        embedding = []
+        for idx in range(len(vec)):
+            for v in self.get_mapping_params(vec, idx):
+                if v == "true":
+                    v = 1
+                elif v == "false":
+                    v = 0
+                embedding.append(v)
+        return embedding
 
-    def microarchitecture_embedding_to_vec(self, microarchitecture_embedding):
-        pass
+    def embedding_to_vec(self, embedding):
+        vec = []
+        c, idx = 0, 0
+        while idx < len(embedding):
+            prev_idx = idx
+            num = len(self.components_mappings[self.components[c]]["description"])
+            feature = embedding[idx : idx + num]
+            for k, v in self.components_mappings[self.components[c]].items():
+                if "true" in v or "false" in v:
+                    for i in range(len(v)):
+                        if v[i] == "true":
+                            v[i] = 1
+                        elif v[i] == "false":
+                            v[i] = 0
+                if v == feature:
+                    vec.append(int(k))
+                    idx += num
+                    break
+            if prev_idx == idx:
+                break
+            c += 1
+        assert len(vec) == self.dims, assert_error(
+          "invalid vec: {}".format(vec)
+        )
+        return vec
 
 
 class RocketDesignSpace(DesignSpace, RocketMacros):
@@ -322,12 +353,12 @@ class RocketDesignSpace(DesignSpace, RocketMacros):
         idx += 1
         return idx
 
-    def idx_to_microarchitecture_embedding(self, idx):
+    def idx_to_embedding(self, idx):
         vec = self.idx_to_vec(idx)
-        return self.vec_to_microarchitecture_embedding(vec)
+        return self.vec_to_embedding(vec)
 
-    def idx_to_microarchitecture_embedding_to_idx(self, microarchitecture_embedding):
-        vec = self.microarchitecture_embedding_to_vec(microarchitecture_embedding)
+    def embedding_to_idx(self, embedding):
+        vec = self.embedding_to_vec(embedding)
         return self.vec_to_idx(vec)
 
     def generate_core_cfg(self, batch):
@@ -454,11 +485,11 @@ def parse_design_space(configs):
     """
     design_space_excel = os.path.abspath(
         os.path.join(
-            configs["chipyard-research-root"],
+            configs["env"]["vlsi"]["chipyard-research-root"],
             "workstation",
             "configs",
             "design-space",
-            "design-space.xlsx"
+            "design-space-v2.xlsx"
         )
     )
     rocket_design_space_sheet = load_excel(
@@ -467,7 +498,7 @@ def parse_design_space(configs):
     )
     components_sheet = load_excel(design_space_excel, sheet_name="Components")
     rocket_design_space = parse_rocket_design_space(
-        configs["chipyard-research-root"],
+        configs["env"]["vlsi"]["chipyard-research-root"],
         rocket_design_space_sheet,
         components_sheet
     )

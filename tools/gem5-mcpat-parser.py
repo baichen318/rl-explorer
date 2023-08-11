@@ -303,22 +303,16 @@ def post_handle_rocket(root):
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "number_entries":
-                    itlb = design_space.components_mappings[
-                        design_space.components[1]
-                    ][args.state[1]][1]
+                    itlb = args.state[4]
                     param.attrib["value"] = str(itlb)
         if name == "icache":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "icache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        design_space.components_mappings[
-                            design_space.components[1]
-                        ][args.state[1]][0] * 64 * 64,
+                        args.state[3] * 64 * 64,
                         64,
-                        design_space.components_mappings[
-                            design_space.components[1]
-                        ][args.state[1]][0],
+                        args.state[3],
                         1,
                         1,
                         3,
@@ -334,25 +328,16 @@ def post_handle_rocket(root):
                 name = param.attrib["name"]
                 if name == "number_entries":
                     param.attrib["value"] = str(
-                        design_space.components_mappings[
-                            design_space.components[5]
-                        ][args.state[5]][2]
+                        args.state[12]
                     )
         if name == "dcache":
             for param in component.iter("param"):
                 name = param.attrib["name"]
                 if name == "dcache_config":
                     param.attrib["value"] = "%s,%s,%s,%s,%s,%s,%s,%s" % (
-                        design_space.components_mappings[
-                            design_space.components[5]
-                        ][args.state[5]][0] * \
-                            design_space.components_mappings[
-                                design_space.components[5]
-                            ][args.state[5]][1] * 64,
+                        args.state[10] * args.state[11] * 64,
                         64,
-                        design_space.components_mappings[
-                            design_space.components[5]
-                        ][args.state[5]][1],
+                        args.state[11],
                         1,
                         1,
                         3,
@@ -360,9 +345,7 @@ def post_handle_rocket(root):
                         1
                     )
                 if name == "buffer_sizes":
-                    mshr = design_space.components_mappings[
-                        design_space.components[5]
-                    ][args.state[5]][3]
+                    mshr = args.state[13]
                     param.attrib["value"] = "%s,%s,%s,%s" % (
                         2 if mshr == 0 else mshr << 1, 2, 2, 2
                     )
@@ -370,9 +353,7 @@ def post_handle_rocket(root):
                 for param in component.iter("param"):
                     name = param.attrib["name"]
                     if name == "BTB_config":
-                        bht = design_space.components_mappings[
-                            design_space.components[0]
-                        ][args.state[0]][2]
+                        bht = args.state[2]
                         param.attrib["value"] = "%s,%s,%s,%s,%s,%s" % (
                             bht, 2, 1, 1, 1
                         )
