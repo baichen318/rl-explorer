@@ -90,61 +90,78 @@ class Dataset(object):
 
 
 class CalibModel(object):
-    def __init__(self, metric, decode_width=None):
+    def __init__(self, metric, decode_width=None, ablation_study=False):
         super(CalibModel, self).__init__()
         self.metric = metric
         self.decode_width = decode_width
-        self.model = self.init_xgb()
+        self.model = self.init_xgb(ablation_study)
         self.mae = None
         self.mse = None
         self.mape = None
         self.kendall_tau = None
 
-    def init_xgb(self):
-        if self.metric == "perf":
+    def init_xgb(self, ablation_study):
+        if ablation_study:
+            """
+                Refer it to:
+                https://github.com/apache/tvm/blob/main/python/tvm/autotvm/tuner/xgboost_cost_model.py
+            """
             return XGBRegressor(
-                max_depth=6,
-                gamma=0.0000001,
+                max_depth=3,
+                gamma=0.0001,
                 min_child_weight=1,
                 subsample=1.0,
-                eta=0.1,
+                eta=0.3,
+                reg_lambda=1.00,
                 reg_alpha=0,
-                reg_lambda=0.1,
-                booster="gbtree",
-                objective="reg:squaredlogerror",
-                eval_metric="mae",
-                n_jobs=-1
-            )
-        elif self.metric == "power":
-            return XGBRegressor(
-                max_depth=6,
-                gamma=0,
-                min_child_weight=1,
-                subsample=1.0,
-                eta=0.11,
-                reg_alpha=0,
-                reg_lambda=0.1,
-                booster="gbtree",
-                objective="reg:squarederror",
-                eval_metric="mae",
+                objective="reg:linear",
                 n_jobs=-1
             )
         else:
-            assert self.metric == "area", \
-                "[ERROR]: {} is not supported.".format(metric)
-            return XGBRegressor(
-                max_depth=6,
-                gamma=0.0000001,
-                min_child_weight=1,
-                subsample=1.0,
-                eta=0.25,
-                reg_alpha=0,
-                reg_lambda=0.1,
-                booster="gbtree",
-                objective="reg:squarederror",
-                eval_metric="mae",
-                n_jobs=-1
-            )
+            if self.metric == "perf":
+                return XGBRegressor(
+                    max_depth=6,
+                    gamma=0.0000001,
+                    min_child_weight=1,
+                    subsample=1.0,
+                    eta=0.1,
+                    reg_alpha=0,
+                    reg_lambda=0.1,
+                    booster="gbtree",
+                    objective="reg:squaredlogerror",
+                    eval_metric="mae",
+                    n_jobs=-1
+                )
+            elif self.metric == "power":
+                return XGBRegressor(
+                    max_depth=6,
+                    gamma=0,
+                    min_child_weight=1,
+                    subsample=1.0,
+                    eta=0.11,
+                    reg_alpha=0,
+                    reg_lambda=0.1,
+                    booster="gbtree",
+                    objective="reg:squarederror",
+                    eval_metric="mae",
+                    n_jobs=-1
+                )
+            else:
+                assert self.metric == "area", \
+                    "[ERROR]: {} is not supported.".format(metric)
+                return XGBRegressor(
+                    max_depth=6,
+                    gamma=0.0000001,
+                    min_child_weight=1,
+                    subsample=1.0,
+                    eta=0.25,
+                    reg_alpha=0,
+                    reg_lambda=0.1,
+                    booster="gbtree",
+                    objective="reg:squarederror",
+                    eval_metric="mae",
+                    n_jobs=-1
+                )
 
     def fit(self, train_feature, train_gt):
         self.model.fit(train_feature, train_gt)
@@ -402,18 +419,6 @@ def calib_xgboost(design_space, dataset):
             model.predict(test_feature, test_gt)
             stats.update(model)
             stats.show_current_status()
-            # visualize(
-            #     metric,
-            #     test_dataset,
-            #     model,
-            #     save_path=os.path.join(
-            #         configs["vis-root"],
-            #         "{}-{}.jpg".format(
-            #             metric,
-            #             fold
-            #         )
-            #     )
-            # )
         fold += 1
     stats.summary()
     if args.save:
@@ -450,6 +455,8 @@ def ablation_study_calib_xgboost(design_space, dataset):
     # we make a pertubation
     random.seed(2022)
     n_samples = dataset.shape[0]
+    # random shuffle the dataset
+    np.random.shuffle(dataset)
     idx = random.sample(range(n_samples), k=n_samples)
     dataset = dataset[idx]
 
@@ -464,17 +471,24 @@ def ablation_study_calib_xgboost(design_space, dataset):
         info("current ratio: {}".format(_ratio))
         stats = Stats(Dataset.metrics)
         _train_dataset = Dataset(
-            configs["design"],
+            configs["algo"]["design"],
             train_dataset[:round(n_samples * _ratio), :],
-            len(design_space.descriptions[configs["design"]].keys())
+            len(design_space.descriptions[configs["algo"]["design"]].keys())
         )
         _test_dataset = Dataset(
-            configs["design"],
+            configs["algo"]["design"],
             test_dataset,
-            len(design_space.descriptions[configs["design"]].keys())
+            len(design_space.descriptions[configs["algo"]["design"]].keys())
         )
         for metric in Dataset.metrics:
-            model = CalibModel(metric)
+            """
+                Since the quality of the dataset is high, only a small
+                fraction of dataset can train a very good model.
+                In the ablation study, we reduce the complexity of the model
+                to illustrate a rationale: train via enlarging the dataset until
+                we see that Kendall tau and MAPE are converged.
+            """
+            model = CalibModel(metric, ablation_study=True)
             train_feature, train_gt = getattr(
                 _train_dataset,
                 "get_{}_dataset".format(metric)
@@ -704,8 +718,7 @@ def abalation_study():
     design_space = load_design_space()
     dataset = load_txt(
         os.path.join(
-            rl_explorer_root,
-            configs["dataset"]
+            configs["env"]["calib"]["calib-dataset"]
         ),
         fmt=float
     )
@@ -716,8 +729,7 @@ def validate():
     design_space = load_design_space()
     dataset = load_txt(
         os.path.join(
-            rl_explorer_root,
-            configs["dataset"]
+            configs["env"]["calib"]["calib-dataset"]
         ),
         fmt=float
     )
