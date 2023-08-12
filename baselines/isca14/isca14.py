@@ -383,12 +383,14 @@ if __name__ == "__main__":
         # set constraint DSE
         ppa = {
             # ipc power area
-            "small-SonicBOOM": [0.445552, 0.038699, 306589.000000],
-            "medium-SonicBOOM": [0.577003, 0.051086, 310924.000000],
-            "large-SonicBOOM": [0.671735, 0.090563, 346155.000000],
-            "mega-SonicBOOM": [0.683200, 0.120811, 372036.000000],
-            "giga-SonicBOOM": [0.703640, 0.133239, 381220.000000],
+            "small-SonicBOOM": [0.445552, 0.038699, 306589.000000 * 1e-6],
+            "medium-SonicBOOM": [0.577003, 0.051086, 310924.000000 * 1e-6],
+            "large-SonicBOOM": [0.671735, 0.090563, 346155.000000 * 1e-6],
+            "mega-SonicBOOM": [0.683200, 0.120811, 372036.000000 * 1e-6],
+            "giga-SonicBOOM": [0.703640, 0.133239, 381220.000000 * 1e-6],
         }
+        threshold_power = ppa["large-SonicBOOM"][1]
+        threshold_area = ppa["large-SonicBOOM"][2]
     else:
         assert configs["algo"]["design"] == "Rocket", \
             "{} is not supported.".format(configs["design"])
@@ -410,13 +412,14 @@ if __name__ == "__main__":
         ppa = {
             # ipc power area
             # Small SonicBOOM
-            "Rocket": [0.801072362, 0.0026, 0.908152038],
+            "Rocket": [0.5863153599, 0.0061203433600000015, 544133.31653 * 1e-6],
         }
+        threshold_power = ppa["Rocket"][1]
+        threshold_area = ppa["Rocket"][2]
+
     perf_model = joblib.load(perf_root)
     power_model = joblib.load(power_root)
     area_model = joblib.load(area_root)
 
-    threshold_power = ppa["large-SonicBOOM"][1]
-    threshold_area = ppa["large-SonicBOOM"][2]
     with Timer("ISCA14"):
         main()
