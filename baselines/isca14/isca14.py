@@ -167,12 +167,7 @@ def load_dataset():
         Since the RankingBoost's runtime is extremely high,
         we need to use a small dataset.
     """
-    design = configs["algo"]["design"]
-    if "BOOM" in design:
-        name = "boom.txt"
-    else:
-        name = "rocket.txt"
-    _dataset = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+    _dataset = os.path.join(configs["env"]["calib"]["dataset"])
     if_exist(_dataset, strict=True)
     dataset = load_txt(_dataset, fmt=float)
     return dataset
