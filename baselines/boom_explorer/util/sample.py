@@ -258,11 +258,11 @@ class RandomSampler(Sampler):
     def sample_from_offline_dataset(self, batch=1):
         for i in range(self.problem.n_sample):
             self.labeled.add(
-                self.problem.design_space.vec_to_idx(
-                    tensor_to_array(self.problem.total_x[i]).astype("int")
+                self.problem.design_space.embedding_to_idx(
+                    list(tensor_to_array(self.problem.total_x[i]).astype("int"))
                 )
             )
-        index = random.sample(range(len(self.labeled)), k=batch)
+        index = random.sample(list(self.labeled), k=batch)
         x = []
         for idx in index:
             x.append(self.problem.design_space.idx_to_embedding(idx))

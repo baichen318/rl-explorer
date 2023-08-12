@@ -130,15 +130,15 @@ def scale_dataset(dataset: Union[torch.Tensor, np.ndarray], boom=True):
       power: [0.083072, 0.14884399999999998],
       area: [0.6288190439, 1.139558281]
     Rocket:
-      max ipc: 0.846828
-      min ipc: 0.596727
-      max power: 0.014125
-      min power: 0.002483
-      max area: 875844.0
-      min area: 228969.0
+      max ipc: 0.847504333
+      min ipc: 0.288189333
+      max power: 0.007005
+      min power: 0.004995333
+      max area: 845678.302
+      min area: 291518.48
       after scaling,
-      the power values are [0.005875, 0.017517]
-      the area values are [0.024156, 0.671031]
+      the power values are [0.012995, 0.015004667]
+      the area values are [0.054321697999999974, 0.60848152]
     """
     if isinstance(dataset, torch.Tensor):
         _dataset = dataset.clone()

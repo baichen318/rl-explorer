@@ -32,7 +32,7 @@ class BOOMDesignProblem(MultiObjectiveTestProblem):
             self._bounds = torch.tensor([(3.0, 0.2, 2)])
         else:
             self._ref_point = torch.tensor([0.0, 0.0, 0.0])
-            self._bounds = torch.tensor([(1.0, 0.02, 0.7)])
+            self._bounds = torch.tensor([(1.0, 0.02, 1.0)])
         self.total_x, self.total_y = load_dataset(
             os.path.join(
                 configs["env"]["calib"]["dataset"]

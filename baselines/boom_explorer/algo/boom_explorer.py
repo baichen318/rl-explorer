@@ -147,21 +147,25 @@ def report(
 
 def evaluate_microarchitecture(configs, design_space, embedding, boom):
     def load_ppa_model():
+        if boom:
+            name = "boom"
+        else:
+            name = "rocket"
         ppa_model_root = os.path.join(
             configs["rl-explorer-root"],
             configs["env"]["calib"]["ppa-model"]
         )
         perf_root = os.path.join(
             ppa_model_root,
-            "boom-perf.pt"
+            "{}-perf.pt".format(name)
         )
         power_root = os.path.join(
             ppa_model_root,
-            "boom-power.pt"
+            "{}-power.pt".format(name)
         )
         area_root = os.path.join(
             ppa_model_root,
-            "boom-area.pt"
+            "{}-area.pt".format(name)
         )
         perf_model = joblib.load(perf_root)
         power_model = joblib.load(power_root)
