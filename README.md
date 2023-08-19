@@ -302,7 +302,12 @@ train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59
                 └── events.out.tfevents
 ```
 
-- RL Design Space Exploration (DSE)
+- Example training curves
+
+![Results](./misc/rl-training.png)
+
+
+- RL design space exploration (DSE)
 ```bash
 $ cd main # Assume you are not in the `main` directory
 $ vim configs/example.yml
