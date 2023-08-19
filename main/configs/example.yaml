@@ -12,6 +12,10 @@ algo:
   # Rocket
   design: "small-SonicBOOM"
   # the number of processes specifications
+  # Currently, we use `1` as an example.
+  # If user wants to experience high parallelism, multiple `gem5-research`
+  # in `gem5-repo`should be duplicated.
+  # In the released version, `num-parallel` should be `1`.
   num-parallel: 1
   # maximal episode specifications
   # we use a small `max-episode` to demonstrate the algorithm flow 
