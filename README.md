@@ -127,11 +127,11 @@ Key folders where we implement critical functions.
 
 ## Evaluation requirements
 
-### Software requirments
+### Software requirements
 
 #### Python package requirements
-Currently, we do not provide docker environment.
-So, users need to install required software packages.
+Currently, we do not provide a docker environment.
+So, users need to install the required software packages.
 The software requirements are listed in `requirements.txt`.
 ```bash
 $ pip3 install -r requirements.txt
@@ -171,15 +171,15 @@ $ vim main/configs/example.yaml
     In `main/configs/example.yaml`, several absolute paths needs to be configurated correctly.
 They are:
 
-    * `chipyard-research-root`: set the path to point to `chipyar-research`.
+  * `chipyard-research-root`: set the path to point to `chipyar-research`.
 
-    * `gem5-research-root`: set the path to point to `gem5-research`.
+  * `gem5-research-root`: set the path to point to `gem5-research`.
 
-    * `dataset`: set the path to point to `rl-explorer/data/boom/boom.txt`.
+  * `dataset`: set the path to point to `rl-explorer/data/boom/boom.txt`.
 
-    * `calib-dataset`: set the path to point to `rl-explorer/data/boom/dataset.txt`.
+  * `calib-dataset`: set the path to point to `rl-explorer/data/boom/dataset.txt`.
 
-    * `ppa-model`: set the path to point to `rl-explorer/tools/models/boom`.
+  * `ppa-model`: set the path to point to `rl-explorer/tools/models/boom`.
 
 - RL training
 ```bash
@@ -189,15 +189,15 @@ $ python3 main.py -c configs/example.yml
 
 - Check outputs after the training
 
-    ```bash
-    $ cd logs
-    ```
+```bash
+$ cd logs
+```
 
-    The training logs include following folder organizations.
-    `train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59` is an example folder name.
+The training logs include the following folder organizations.
+`train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59` is an example folder name.
 
-    ```bash
-    train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59
+```bash
+train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59
     ├── example.yaml                                                    # users' YAML configuration file
     ├── log-2023-08-18-23-59.log                                        # users' RL training log
     ├── models
@@ -205,13 +205,13 @@ $ python3 main.py -c configs/example.yml
     └── summary-logs
         └── train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59
             └── log-2023-08-18-23-59.log
-                ├── episode_action_BP_a1                                # action probability visualization
+                ├── episode_action_BP_a1                                # action probability visualization, e.g., 1st branch predictor
                 │		 └── events.out.tfevents
                 ├── episode_action_BP_a2
                 │		 └── events.out.tfevents
                 ├── episode_action_BP_a3
                 │		 └── events.out.tfevents
-                ├── episode_action_D$_a1
+                ├── episode_action_D$_a1                                # action probability visualization, e.g., 1st d-cache structure
                 │		 └── events.out.tfevents
                 ├── episode_action_D$_a2
                 │		 └── events.out.tfevents
@@ -300,24 +300,24 @@ $ python3 main.py -c configs/example.yml
                 ├── episode_reward_reward
                 │		 └── events.out.tfevents
                 └── events.out.tfevents
-    ```
+```
 
 - RL Design Space Exploration (DSE)
 ```bash
-$ cd main # assume you are not in the `main` directory
+$ cd main # Assume you are not in the `main` directory
 $ vim configs/example.yml
 ```
 
-    In `main/configs/example.yaml`, make some revisions to start DSE.
+  In `main/configs/example.yaml`, make some revisions to start DSE.
 
-    * change `mode: train` to `mode: test`.
+  * change `mode: train` to `mode: test`.
 
-    * `rl-model`: set with the saved RL agents' absolute path, e.g., `/path/to/train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59/models/log-2023-05-09-15-10.pt `
+  * `rl-model`: set with the saved RL agents' absolute path, e.g., `/path/to/train-small-SonicBOOM-example-user-example-machine-2023-08-18-23-59/models/log-2023-05-09-15-10.pt `
 
-    We start DSE by executing following instructions:
-	```bash
-	$ python3 main.py -c configs/example.yml
-	```
+  We start DSE by executing the following instructions:
+  ```bash
+  $ python3 main.py -c configs/example.yml
+  ```
 
 ## Results
 
