@@ -310,9 +310,25 @@ class Gem5Wrapper(Simulation):
             )            
             cmd += "cd -;"
         else:
-            error("{} is not support.".format(machine))
-            exit(-1)
+            cmd = "cd {} && scons build/RISCV/gem5.opt -j{} ".format(
+                self.macros["gem5-research-root"],
+                multiprocessing.cpu_count()
+            )
+            cmd += "{} && mv -f build/RISCV/gem5.opt build/RISCV/{};".format(
+                cmd,
+                self.macros["simulator"]
+            )
         execute(cmd)
+
+        # check for the compilation
+        if not if_exist(os.path.join(
+                self.macros["gem5-research-root"],
+                "build", "RISCV", self.macros["simulator"]
+            ), quiet=False
+        ):
+            error("The gem5 simulation is failed to generate. Please check your environment"
+                " to make sure you can compile GEM5 successfully!"
+            )
 
     def get_results(self, benchmark):
         instructions, cycles = 0, 0
