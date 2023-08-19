@@ -160,3 +160,5 @@ logs/
 ~$*.xlsx
 *.txt
 misc/
+tools/models/boom/*.pdf
+tools/models/rocket/*.pdf

@@ -13,6 +13,104 @@ The solution qualities also outperform human implementations by at most 2.03× i
 ## Folder organizations
 
 ```bash
+rl-explorer
+├── LICENSE
+├── README.md
+├── __init__.py
+├── baselines
+│	 ├── boom_explorer
+│	 │	 ├── LICENSE
+│	 │	 ├── README.md
+│	 │	 ├── algo
+│	 │	 │	 ├── boom_explorer.py
+│	 │	 │	 ├── dkl_gp.py
+│	 │	 │	 └── problem.py
+│	 │	 ├── configs
+│	 │	 │	 ├── README.md
+│	 │	 │	 └── boom-explorer.yml
+│	 │	 ├── main.py
+│	 │	 └── util
+│	 │	     ├── __init__.py
+│	 │	     ├── exception.py
+│	 │	     ├── sample.py
+│	 │	     └── util.py
+│	 ├── dac16
+│	 │	 ├── README.md
+│	 │	 └── dac16.py
+│	 └── isca14
+│	     ├── README.md
+│	     ├── boom.txt
+│	     ├── configs
+│	     │	 └── isca14.yml
+│	     ├── isca14.py
+├── data
+│	 ├── boom
+│	 │	 ├── README.md
+│	 │	 ├── boom.txt
+│	 │	 └── dataset.txt
+│	 └── rocket
+│	     ├── dataset.txt
+│	     └── rocket.txt
+├── dse
+│	 ├── algo
+│	 │	 └── a3c
+│	 │	     ├── a3c.py
+│	 │	     ├── agent
+│	 │	     │	 ├── agent.py
+│	 │	     │	 ├── boom.py
+│	 │	     │	 └── rocket.py
+│	 │	     ├── buffer.py
+│	 │	     ├── functions.py
+│	 │	     ├── model.py
+│	 │	     └── preference.py
+│	 └── env
+│	     ├── base_design_space.py
+│	     ├── boom
+│	     │	 ├── design_space.py
+│	     │	 └── env.py
+│	     └── rocket
+│	         ├── design_space.py
+│	         └── env.py
+├── main
+│	 ├── configs
+│	 │	 ├── example.yml
+│	 │	 ├── giga.yaml
+│	 │	 ├── medium.yaml
+│	 │	 ├── mega.yaml
+│	 │	 ├── rocket.yaml
+│	 │	 └── small.yaml
+│	 └── main.py
+├── simulation
+│	 ├── base_simulation.py
+│	 ├── boom
+│	 │	 └── simulation.py
+│	 └── rocket
+│	     └── simulation.py
+├── tools
+│	 ├── README.md
+│	 ├── calib.py
+│	 ├── gem5-mcpat-parser.py
+│	 ├── mcpat-research
+│	 │	 └── ...                        # mcpat-research project
+│	 ├── models
+│	 │	 ├── boom
+│	 │	 │	 ├── boom-area.pt
+│	 │	 │	 ├── boom-perf.pt
+│	 │	 │	 ├── boom-power.pt
+│	 │	 └── rocket
+│	 │	     ├── rocket-area.pt
+│	 │	     ├── rocket-perf.pt
+│	 │	     └── rocket-power.pt
+│	 └── template
+│	  	 ├── boom.xml
+│	  	 ├── rocket.xml
+│	  	 └── template.xml
+└── utils
+    ├── exceptions.py
+    ├── handle_data.py
+    ├── thread.py
+    ├── utils.py
+    └── visualizer.py
 ```
 
 ## End-to-end Flow
