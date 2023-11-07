@@ -181,6 +181,9 @@ They are:
 
   * `ppa-model`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/tools/models/boom`.
 
+
+**NOTICE: chipyard-research-root & gem5-research-root are the other two private repositories. These two repositories are too large to be anonymous. We will open-source them to the public after the anonymous stage.**
+
 - RL training
 ```bash
 $ cd main
