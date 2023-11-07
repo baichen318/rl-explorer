@@ -15,7 +15,7 @@ The solution qualities also outperform human implementations by at most 2.03× i
 The folder tree is shown below.
 
 ```bash
-rl-explorer
+towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning
 ├── LICENSE
 ├── README.md
 ├── __init__.py
@@ -162,7 +162,7 @@ In our experiments, we use 80 Quad Intel(R) Xeon(R) CPU E7-4820 V3 cores with a 
 
 - Environment setup
 ```bash
-$ cd /path/to/rl-explorer
+$ cd /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning
 $ export PYTHONPATH=`pwd`
 $ pushd tools/mcpat-research && make -j`nproc` && popd
 $ vim main/configs/example.yaml
@@ -175,11 +175,11 @@ They are:
 
   * `gem5-research-root`: set the path to point to `gem5-research`.
 
-  * `dataset`: set the path to point to `rl-explorer/data/boom/boom.txt`.
+  * `dataset`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/boom.txt`.
 
-  * `calib-dataset`: set the path to point to `rl-explorer/data/boom/dataset.txt`.
+  * `calib-dataset`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/dataset.txt`.
 
-  * `ppa-model`: set the path to point to `rl-explorer/tools/models/boom`.
+  * `ppa-model`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/tools/models/boom`.
 
 - RL training
 ```bash
