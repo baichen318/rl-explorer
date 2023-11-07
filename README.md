@@ -130,7 +130,7 @@ Key folders where we implement critical functions.
 ### Software requirements
 
 #### Python package requirements
-Currently, we do not provide a docker environment.
+Currently, we do not provide the Docker environment (we will provide Docker environment in the future work).
 So, users need to install the required software packages.
 The software requirements are listed in `requirements.txt`.
 ```bash
@@ -140,7 +140,7 @@ $ pip3 install -r requirements.txt
 #### EDA tools requirements
 
 Users need to purchase commercial EDA tools licenses to reproduce PPA values reported in the manuscript.
-Otherwise, users only obtain PPA values from lightweight PPA models, and these values are highly inaccurate compared to estimations from commercial EDA tools.
+Otherwise, users only obtain PPA values from lightweight PPA models, and these values are inaccurate compared to estimations from commercial EDA tools.
 *However, users can still experience our algorithm flow if commercial EDA tools are not presented on users' machines.*
 
 The commercial EDA tools are:
@@ -188,7 +188,6 @@ $ python3 main.py -c configs/example.yml
 ```
 
 - Check outputs after the training
-
 ```bash
 $ cd logs
 ```
