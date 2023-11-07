@@ -81,11 +81,11 @@ env:
   ## calibration settings
   calib:
     # dataset specifications
-    dataset: /path/to/rl-explorer/data/boom/boom.txt
+    dataset: /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/boom.txt
     # simulation dataset specifications
-    calib-dataset: /path/to/rl-explorer/data/boom/dataset.txt
+    calib-dataset: /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/dataset.txt
     # PPA models specifications
-    ppa-model: /path/to/rl-explorer/tools/models/boom
+    ppa-model: /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/tools/models/boom
   ## benchmarks specifications
   benchmarks:
     - towers

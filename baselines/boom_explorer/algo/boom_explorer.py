@@ -151,7 +151,7 @@ def evaluate_microarchitecture(configs, design_space, embedding, boom):
         else:
             name = "rocket"
         ppa_model_root = os.path.join(
-            configs["rl-explorer-root"],
+            configs["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
             configs["env"]["calib"]["ppa-model"]
         )
         perf_root = os.path.join(

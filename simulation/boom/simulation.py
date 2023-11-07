@@ -88,7 +88,7 @@ class Gem5Wrapper(Simulation):
             simultaneous simulations.
         """
         # self.temp_root = os.path.join(
-        #     self.macros["rl-explorer-root"],
+        #     self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
         #     "temp",
         #     str(self.idx)
         # )
@@ -528,7 +528,7 @@ class Gem5Wrapper(Simulation):
                     "-print_level 5 > {}" \
                     .format(
                         sys.executable, os.path.join(
-                            self.macros["rl-explorer-root"],
+                            self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
                             "tools",
                             "gem5-mcpat-parser.py"
                         ),
@@ -540,7 +540,7 @@ class Gem5Wrapper(Simulation):
                             bmark_root, "stats.txt"
                         ),
                         os.path.join(
-                            self.macros["rl-explorer-root"],
+                            self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
                             "tools",
                             "template",
                             "boom.xml"
@@ -548,7 +548,7 @@ class Gem5Wrapper(Simulation):
                         ' '.join([str(s) for s in self.state]),
                         mcpat_xml,
                         os.path.join(
-                            self.macros["rl-explorer-root"],
+                            self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
                             "tools",
                             "mcpat-research",
                             "mcpat"

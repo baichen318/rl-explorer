@@ -10,7 +10,7 @@ class Simulation(abc.ABC):
 		self.configs = configs
 		self.macros = {}
 		self.macros["gem5-research-root"] = None
-		self.macros["rl-explorer-root"] = os.path.abspath(
+		self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"] = os.path.abspath(
 			os.path.join(
 				os.path.dirname(__file__),
 				os.path.pardir

@@ -16,7 +16,7 @@ if __name__ == "__main__":
     args = parse_args()
     configs = get_configs(args.configs)
     settings = get_configs(args.settings)
-    configs["rl-explorer-root"] = os.path.abspath(
+    configs["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"] = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
             os.path.pardir,
