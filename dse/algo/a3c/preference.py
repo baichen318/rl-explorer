@@ -1,4 +1,3 @@
-# Author baichen318@gmail.com
 
 
 import numpy as np

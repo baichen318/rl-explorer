@@ -1,4 +1,3 @@
-# baichen318@gmail.com
 
 
 import os

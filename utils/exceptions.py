@@ -1,4 +1,3 @@
-# Author: baichen318@gmail.com
 
 
 class NotFoundException(Exception):
