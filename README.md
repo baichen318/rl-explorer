@@ -163,7 +163,7 @@ In our experiments, we use 80 Quad Intel(R) Xeon(R) CPU E7-4820 V3 cores with a 
 - Environment setup
 ```bash
 $ cd /path/to/rl-explorer
-$ export PYTHONPATH=`pwd` # or you can use . ./tools/settings.sh
+$ export PYTHONPATH=`pwd` # `. ./tools/settings.sh` is also OK for you
 $ pushd tools/mcpat-research && make -j`nproc` && popd
 $ vim main/configs/example-boom.yaml # main/configs/example-rocket.yaml is used for Rocket experiments
 ```
@@ -171,9 +171,9 @@ $ vim main/configs/example-boom.yaml # main/configs/example-rocket.yaml is used 
     In `main/configs/example.yaml`, several absolute paths needs to be configurated correctly.
 They are:
 
-  * `chipyard-research-root`: set the path to point to `chipyar-research`.
+  * `chipyard-research-root`: set the path to point to `chipyar-research` (Please see [TODO](#todo)).
 
-  * `gem5-research-root`: set the path to point to `gem5-research`.
+  * `gem5-research-root`: set the path to point to `gem5-research` (Please see [TODO](#todo)).
 
   * `dataset`: set the path to point to `rl-explorer/data/boom/boom.txt`.
 
@@ -331,3 +331,9 @@ $ vim configs/example.yml
 The main results evaluated with commercial EDA tools are reported below.
 
 ![Results](./misc/results.png)
+
+
+## TODO
+
+- Open source part of `chipyard-research` for `rl-explorer`.
+- Open source `gem5-research` for `rl-explorer`.
