@@ -145,11 +145,11 @@ Otherwise, users only obtain PPA values from lightweight PPA models, and these v
 
 The commercial EDA tools are:
 
-* Synopsys VCS M-2017.03: [Consultation Link](https://www.synopsys.com/verification/simulation/vcs.html)
+* Synopsys VCS M-2017.03: More information can be found in [link](https://www.synopsys.com/verification/simulation/vcs.html).
 
-* Synopsys PrimeTime PX R-2020.09-SP1: [Consultation Link](https://news.synopsys.com/index.php?s=20295&item=123041)
+* Synopsys PrimeTime PX R-2020.09-SP1: More information can be found in [link](https://news.synopsys.com/index.php?s=20295&item=123041)
 
-* Cadence Genus 18.12-e012 1: [Consultation Link](https://www.cadence.com/en_US/home/tools/digital-design-and-signoff/synthesis/genus-synthesis-solution.html)
+* Cadence Genus 18.12-e012 1: More information can be found in [link](https://www.cadence.com/en_US/home/tools/digital-design-and-signoff/synthesis/genus-synthesis-solution.html)
 
 ### Hardware requirements
 
