@@ -162,10 +162,10 @@ In our experiments, we use 80 Quad Intel(R) Xeon(R) CPU E7-4820 V3 cores with a 
 
 - Environment setup
 ```bash
-$ cd /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning
-$ export PYTHONPATH=`pwd`
+$ cd /path/to/rl-explorer
+$ export PYTHONPATH=`pwd` # or you can use . ./tools/settings.sh
 $ pushd tools/mcpat-research && make -j`nproc` && popd
-$ vim main/configs/example.yaml
+$ vim main/configs/example-boom.yaml # main/configs/example-rocket.yaml is used for Rocket experiments
 ```
 
     In `main/configs/example.yaml`, several absolute paths needs to be configurated correctly.
@@ -175,11 +175,11 @@ They are:
 
   * `gem5-research-root`: set the path to point to `gem5-research`.
 
-  * `dataset`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/boom.txt`.
+  * `dataset`: set the path to point to `rl-explorer/data/boom/boom.txt`.
 
-  * `calib-dataset`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/dataset.txt`.
+  * `calib-dataset`: set the path to point to `rl-explorer/data/boom/dataset.txt`.
 
-  * `ppa-model`: set the path to point to `towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/tools/models/boom`.
+  * `ppa-model`: set the path to point to `rl-explorer/tools/models/boom`.
 
 
 **NOTICE: chipyard-research-root & gem5-research-root are the other two private repositories. These two repositories are too large to be anonymous. We will open-source them to the public after the anonymous stage.**
@@ -323,7 +323,7 @@ $ vim configs/example.yml
 
   We start DSE by executing the following instructions:
   ```bash
-  $ python3 main.py -c configs/example.yml
+  $ python3 main.py -c configs/example-boom.yml
   ```
 
 ## Results
