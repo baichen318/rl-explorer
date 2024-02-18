@@ -82,7 +82,7 @@ class Gem5Wrapper(Simulation):
             simultaneous simulations.
         """
         # self.temp_root = os.path.join(
-        #     self.macros["rl-explorer-root"],
+        #     self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
         #     "temp",
         #     str(self.idx)
         # )
@@ -219,9 +219,25 @@ class Gem5Wrapper(Simulation):
             )            
             cmd += "cd -;"
         else:
-            error("{} is not support.".format(machine))
-            exit(-1)
+            cmd = "cd {} && scons build/RISCV/gem5.opt -j{} ".format(
+                self.macros["gem5-research-root"],
+                multiprocessing.cpu_count()
+            )
+            cmd += "{} && mv -f build/RISCV/gem5.opt build/RISCV/{};".format(
+                cmd,
+                self.macros["simulator"]
+            )
         execute(cmd)
+
+        # check for the compilation
+        if not if_exist(os.path.join(
+                self.macros["gem5-research-root"],
+                "build", "RISCV", self.macros["simulator"]
+            )
+        ):
+            error("The gem5 simulation is failed to generate. Please check your environment"
+                " to make sure you can compile GEM5 successfully!"
+            )
 
     def get_results(self, benchmark):
         instructions, cycles = 0, 0
@@ -418,7 +434,7 @@ class Gem5Wrapper(Simulation):
                     "-print_level 5 > {}" \
                     .format(
                         sys.executable, os.path.join(
-                            self.macros["rl-explorer-root"],
+                            self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
                             "tools",
                             "gem5-mcpat-parser.py"
                         ),
@@ -430,7 +446,7 @@ class Gem5Wrapper(Simulation):
                             bmark_root, "stats.txt"
                         ),
                         os.path.join(
-                            self.macros["rl-explorer-root"],
+                            self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
                             "tools",
                             "template",
                             "rocket.xml"
@@ -438,7 +454,7 @@ class Gem5Wrapper(Simulation):
                         ' '.join([str(s) for s in self.state]),
                         mcpat_xml,
                         os.path.join(
-                            self.macros["rl-explorer-root"],
+                            self.macros["towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning-root"],
                             "tools",
                             "mcpat-research",
                             "mcpat"

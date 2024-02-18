@@ -1,13 +1,14 @@
-# Author baichen318@gmail.com
+# Author: baichen318@gmail.com
 
 
 import numpy as np
+from typing import List
 
 
 class Preference(object):
-	def __init__(self, scale_factor, reward_space):
+	def __init__(self, scale_factor: List[int], reward_space):
 		"""
-			scale_factor: <list>
+			scale_factor: scaling factor
 		"""
 		super(Preference, self).__init__()
 		self.reward_space = reward_space

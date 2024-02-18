@@ -65,7 +65,7 @@ class A2CVecEnvWrapper(VecEnvWrapper):
         return self.venv.step_wait()
 
 
-# def make_a2c_vec_envs(configs, device, env):
+# def make_a3c_vec_envs(configs, device, env):
 #     """
 #         DEPRECATED.
 #     """
@@ -89,7 +89,7 @@ class A2CVecEnvWrapper(VecEnvWrapper):
 #     return envs
 
 
-def make_a2c_vec_envs(configs, env):
+def make_a3c_vec_envs(configs, env):
     """
         We set `offset` here is due to the machine status.
     """

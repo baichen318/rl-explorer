@@ -1,4 +1,3 @@
-# Author: baichen318@gmail.com
 
 import sys, os
 sys.path.insert(

@@ -1,4 +1,3 @@
-# Author: baichen318@gmail.com
 
 
 ### algorithm settings
@@ -54,7 +53,7 @@ algo:
       - 1
       - 1
     # RL model specifications
-    rl-model: /Volumes/Research/repo/rl-explorer/main/logs/train-large-SonicBOOM-cbai-hpc3.cse.cuhk.edu.hk-2023-05-05-15-50/models/log-2023-05-05-15-50.pt
+    rl-model: /Volumes/Research/repo/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/main/logs/train-large-SonicBOOM-cbai-hpc3.cse.cuhk.edu.hk-2023-05-05-15-50/models/log-2023-05-05-15-50.pt
 
 
 ### environment settings
@@ -75,11 +74,11 @@ env:
   ## calibration settings
   calib:
     # dataset specifications
-    dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/boom.txt
+    dataset: /Volumes/Research/repo/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/v3/boom.txt
     # simulation dataset specifications
-    calib-dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/dataset.txt
+    calib-dataset: /Volumes/Research/repo/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/v3/dataset.txt
     # PPA models specifications
-    ppa-model: /Volumes/Research/repo/rl-explorer/tools/models/boom
+    ppa-model: /Volumes/Research/repo/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/tools/models/boom
   ## benchmarks specifications
   benchmarks:
     - towers

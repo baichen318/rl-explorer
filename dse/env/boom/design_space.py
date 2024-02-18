@@ -2,6 +2,7 @@
 
 
 import os
+import pandas
 import numpy as np
 from typing import List
 from collections import OrderedDict
@@ -251,9 +252,11 @@ class %s extends Config(
 
 
 class BOOMDesignSpace(DesignSpace, BOOMMacros):
-  def __init__(self, root, descriptions, components_mappings, size):
+  def __init__(
+    self, root: str, descriptions: OrderedDict, components_mappings: OrderedDict, size: int
+  ):
     """
-      descriptions: <class "collections.OrderedDict">
+      descriptions: descriptions of the design space
       Example:
       descriptions = {
         "1-wide SonicBOOM": {
@@ -270,7 +273,7 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
         }
       }
 
-      components_mappings: <class "collections.OrderedDict">
+      components_mappings: components specification of the design space
       Example:
       components_mappings = {
         "ISU": {
@@ -290,16 +293,16 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
         }
       }
 
-      size: <int> the size of the entire design space
+      size: the size of the entire design space
     """
     self.descriptions = descriptions
     self.components_mappings = components_mappings
     # construct look-up tables
-    # self.designs: <list>
+    # self.designs: List[str]
     # Example:
     #   ["1-wide SonicBOOM", "2-wide SonicBOOM", "3-wide SonicBOOM"]
     self.designs = list(self.descriptions.keys())
-    # self.components: <list>
+    # self.components: List[str]
     # Example:
     #   ["fetchWidth", "decodeWidth", "ISU", "IFU"]
     self.components = list(self.descriptions[self.designs[0]].keys())
@@ -307,7 +310,7 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
     #   length of ["branchPredictor", "fetchWidth", "numFetchBufferEntries", ...]
     self.embedding_dims = self.construct_embedding_dims()
     self.design_size = self.construct_design_size()
-    # self.acc_design_size: <list> list of accumulated sizes of each design
+    # self.acc_design_size: List[int] list of accumulated sizes of each design
     # Example:
     # self.design_size = [a, b, c, d, e] # accordingly
     #   self.acc_design_size = [a, a + b, a + b + c, a + b + c + d, a + b + c + d + e]
@@ -337,7 +340,7 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
 
   def construct_design_size(self):
     """
-      design_size: <list> list of sizes of each design
+      design_size: List[int] list of sizes of each design
       Example:
         [a, b, c, d, e] and np.sum([[a, b, c, d, e]]) = self.size
     """
@@ -351,7 +354,7 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
 
   def construct_component_dims(self):
     """
-      component_dims: <list> list of dimensions of each
+      component_dims: List[int] list of dimensions of each
                    component w.r.t. each design
       Example:
         [
@@ -367,9 +370,9 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
       component_dims.append(_component_dims)
     return component_dims
 
-  def idx_to_vec(self, idx):
+  def idx_to_vec(self, idx: int):
     """
-      idx: <int> the index of a microarchitecture
+      idx: the index of a microarchitecture
     """
     idx -= 1
     assert idx >= 0, \
@@ -391,9 +394,9 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
     vec[4] = self.type[design][1]
     return vec
 
-  def vec_to_idx(self, vec):
+  def vec_to_idx(self, vec: List[int]):
     """
-      vec: <list> the list of a microarchitecture encoding
+      vec: the list of a microarchitecture encoding
     """
 
     idx = 0
@@ -415,11 +418,11 @@ class BOOMDesignSpace(DesignSpace, BOOMMacros):
     idx += 1
     return idx
 
-  def idx_to_embedding(self, idx):
+  def idx_to_embedding(self, idx: int):
     vec = self.idx_to_vec(idx)
     return self.vec_to_embedding(vec)
 
-  def embedding_to_idx(self, microarchitecture_embedding):
+  def embedding_to_idx(self, microarchitecture_embedding: List[int]):
     vec = self.embedding_to_vec(microarchitecture_embedding)
     return self.vec_to_idx(vec)
 
@@ -490,7 +493,7 @@ def parse_components_sheet(components_sheet):
   head = components_sheet.columns.tolist()
 
   # construct look-up tables
-  # mappings: <list> [name, width, idx]
+  # mappings: List [name, width, idx]
   # Example:
   #   mappings = [("ISU", 10, 0), ("IFU", 4, 10), ("ROB", 2, 14)]
   mappings = []
@@ -522,10 +525,13 @@ def parse_components_sheet(components_sheet):
   return components_mappings
 
 
-def parse_boom_design_space(root, design_space_sheet, components_sheet):
+def parse_boom_design_space(
+  root: str,
+  design_space_sheet: pandas.core.frame.DataFrame,
+  components_sheet: pandas.core.frame.DataFrame
+):
   """
-    design_space_sheet: <class "pandas.core.frame.DataFrame">
-    components_sheet: <class "pandas.core.frame.DataFrame">
+    parse the BOOM design space
   """
   # parse design space
   descriptions = parse_design_space_sheet(design_space_sheet)
@@ -541,9 +547,9 @@ def parse_boom_design_space(root, design_space_sheet, components_sheet):
   )
 
 
-def parse_design_space(configs):
+def parse_design_space(configs: dict):
   """
-    configs: <dict>
+    configs: configurations data structure
   """
   design_space_excel = os.path.abspath(
     os.path.join(

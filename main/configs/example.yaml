@@ -9,18 +9,25 @@ algo:
   # large-SonicBOOM
   # mega-SonicBOOM
   # giga-SonicBOOM
+  # Rocket
   design: "small-SonicBOOM"
   # the number of processes specifications
+  # Currently, we use `1` as an example.
+  # If user wants to experience high parallelism, multiple `gem5-research`
+  # in `gem5-repo`should be duplicated.
+  # In the released version, `num-parallel` should be `1`.
   num-parallel: 1
   # maximal episode specifications
-  max-episode: 1000000
+  # we use a small `max-episode` to demonstrate the algorithm flow 
+  max-episode: 1000
   # GPU utilization specifications
+  # CPU is OK since our agent is small
   use-cuda: false
   # output root specifications
   output-root: logs
   # working mode specifications
   # train | test
-  mode: test
+  mode: train
   random-seed: 42
   train:
     # the batch size for training specifications
@@ -47,14 +54,14 @@ algo:
     update-critic-episode: 100
   test:
     # search round
-    max-search-round: 100
-    # PPA preference scaling
+    max-search-round: 40
+    # PPA preference scaling, we use small-SonicBOOM's preference as an example
     ppa-preference:
-      - 1
-      - 1
-      - 1
+      - 0.083
+      - 0.083
+      - 0.834
     # RL model specifications
-    rl-model: /Volumes/Research/repo/rl-explorer/main/logs/train-large-SonicBOOM-cbai-hpc3.cse.cuhk.edu.hk-2023-05-05-15-50/models/log-2023-05-05-15-50.pt
+    rl-model: ~
 
 
 ### environment settings
@@ -64,26 +71,24 @@ env:
     # chipyard research root path specifications
     # make sure chipyar-research is at the 'rl' branch
     # and it is an absolute path
-    chipyard-research-root: /Volumes/Research/repo/chipyard-research/
+    chipyard-research-root: /path/to/chipyard-research/
   ## simulation settings
   sim:
     # gem5 research pool root path specifications
     # it is an absolute path
-    gem5-research-root: /Volumes/Research/repo/gem5-repo/
+    gem5-research-root: /path/to/gem5-repo/
     # an idx is set if a user specifies a specific gem5 repo.
     idx: 1
   ## calibration settings
   calib:
     # dataset specifications
-    dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/boom.txt
+    dataset: /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/boom.txt
     # simulation dataset specifications
-    calib-dataset: /Volumes/Research/repo/rl-explorer/data/boom/v3/dataset.txt
+    calib-dataset: /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/data/boom/dataset.txt
     # PPA models specifications
-    ppa-model: /Volumes/Research/repo/rl-explorer/tools/models/boom
+    ppa-model: /path/to/towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning/tools/models/boom
   ## benchmarks specifications
   benchmarks:
     - towers
     - vvadd
     - spmv
-    # - median
-    # - multiply

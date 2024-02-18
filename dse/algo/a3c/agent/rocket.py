@@ -10,13 +10,13 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from dse.algo.a2c.buffer import Buffer
-from dse.algo.a2c.agent.agent import Agent
-from dse.algo.a2c.preference import Preference
+from dse.algo.a3c.buffer import Buffer
+from dse.algo.a3c.agent.agent import Agent
+from dse.algo.a3c.preference import Preference
 from utils.utils import remove_suffix, if_exist
 from torch.distributions.categorical import Categorical
-from dse.algo.a2c.model import BOOMActorCriticNetwork, RocketActorCriticNetwork
-from dse.algo.a2c.functions import make_a2c_vec_envs, array_to_tensor, tensor_to_array
+from dse.algo.a3c.model import BOOMActorCriticNetwork, RocketActorCriticNetwork
+from dse.algo.a3c.functions import make_a3c_vec_envs, array_to_tensor, tensor_to_array
 
 
 class RocketAgent(Agent):
@@ -25,7 +25,7 @@ class RocketAgent(Agent):
         self.device = torch.device(
             "cuda" if self.configs["algo"]["use-cuda"] else "cpu"
         )
-        self.envs = make_a2c_vec_envs(self.configs, env)
+        self.envs = make_a3c_vec_envs(self.configs, env)
         self.model = RocketActorCriticNetwork(
             self.envs.observation_space,
             self.envs.action_space,

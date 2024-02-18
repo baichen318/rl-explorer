@@ -12,17 +12,18 @@ import argparse
 import subprocess
 import numpy as np
 import pandas as pd
-from typing import Union
 from math import ceil, log
 from sklearn import metrics
 from datetime import datetime
+from typing import Union, List
 from utils.exceptions import NotFoundException
 
 
 def parse_args():
     def initialize_parser(parser):
         parser.add_argument(
-            "-c", "--configs",
+            "-c",
+            "--configs",
             required=True,
             type=str,
             default="configs.yml",
@@ -36,7 +37,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_configs(fyaml):
+def get_configs(fyaml: str):
     if_exist(fyaml, strict=True)
     with open(fyaml, 'r') as f:
         try:
@@ -50,7 +51,7 @@ def get_configs_from_command():
     return get_configs(parse_args().configs)
 
 
-def if_exist(path, strict=False):
+def if_exist(path: str, strict=False):
     try:
         if os.path.exists(path):
             return True
@@ -64,18 +65,18 @@ def if_exist(path, strict=False):
             exit(1)
 
 
-def mkdir(path):
+def mkdir(path: str):
     if not if_exist(path):
-        info("create directory: %s" % path)
+        info("create directory: {}".format(path))
         os.makedirs(path, exist_ok=True)
 
 
-def copy(src, tgt):
+def copy(src: str, tgt: str):
     shutil.copy(src, tgt)
     info("copy {} to {}".format(src, tgt))
 
 
-def remove(path):
+def remove(path: str):
     if if_exist(path):
         if os.path.isfile(path):
             os.remove(path)
@@ -93,26 +94,26 @@ def timer():
     return datetime.now()
 
 
-def execute(cmd, logger=None):
+def execute(cmd: str, logger=None):
     if logger:
-        logger.info("executing: %s" % cmd)
+        logger.info("executing: {}".format(cmd))
     else:
-        print("[INFO]: executing: %s" % cmd)
+        print("[INFO]: executing: {}".format(cmd))
     return os.system(cmd)
 
 
-def execute_with_subprocess(cmd, logger=None):
+def execute_with_subprocess(cmd: str, logger=None):
     if logger:
-        logger.info("executing: %s" % cmd)
+        logger.info("executing: {}".format(cmd))
     else:
-        print("[INFO]: executing: %s" % cmd)
+        print("[INFO]: executing: {}".format(cmd))
     subprocess.call(["bash", "-c", cmd])
 
 
-def create_logger(path, name):
+def create_logger(path: str, name: str):
     """
-        path: <str> path to logs. directory
-        name: <str> prefix name of a log file
+        path: the path of logs (directory)
+        name: the prefix name of a log file
     """
     time_str = time.strftime("%Y-%m-%d-%H-%M")
     log_file = "{}-{}.log".format(name, time_str)
@@ -129,20 +130,20 @@ def create_logger(path, name):
     return logger, log_file
 
 
-def strflush(msg, logger=None):
+def strflush(msg: str, logger=None):
     if logger:
         logger.info(msg)
     else:
         info(msg)
 
 
-def dump_yaml(path, yml_dict):
+def dump_yaml(path: str, yml_dict: dict):
     with open(path, 'w') as f:
         yaml.dump(yml_dict, f)
     info("dump YAML to {}".format(path))
 
 
-def is_power_of_two(num):
+def is_power_of_two(num: int):
     if not (num & (num - 1)):
         return True
     else:
@@ -150,26 +151,26 @@ def is_power_of_two(num):
         return False
 
 
-def load_txt(path, fmt=int):
+def load_txt(path: str, fmt=int):
     if if_exist(path):
-        info("loading from %s" % path)
+        info("loading from {}".format(path))
         return np.loadtxt(path, dtype=fmt)
     else:
-        warn("cannot load %s" % path)
+        warn("cannot load {}".format(path))
 
 
-def load_csv(data, header=0):
+def load_csv(data: str, header=0):
     """
-        data: <str>
+        data: path of the CSV data
     """
     if_exist(data, strict=True)
     return np.array(pd.read_csv(data, header=header))
 
 
-def load_excel(path, sheet_name=0):
+def load_excel(path: str, sheet_name: Union[int, str] = 0):
     """
-        path: <str>
-        sheet_name: <int> | <str>
+        path: path of the Excel file
+        sheet_name: index of the sheet
     """
     if_exist(path, strict=True)
     data = pd.read_excel(path, sheet_name=sheet_name)
@@ -177,14 +178,14 @@ def load_excel(path, sheet_name=0):
     return data
 
 
-def write_txt(path, data, fmt="%i"):
+def write_txt(path: str, data: np.ndarray, fmt="%i"):
     """
-        path: <str> path to the output path
-        data: <numpy.ndarray>
+        path: path to the output path
+        data: numpy.ndarray data
     """
     dims = len(data.shape)
     if dims > 2:
-        warn("cannot save to %s" % path)
+        warn("cannot save to {}".format(path))
         return
     info(
         "saving matrix (%d x %d) to %s" %
@@ -193,36 +194,38 @@ def write_txt(path, data, fmt="%i"):
     np.savetxt(path, data, fmt)
 
 
-def remove_prefix(s, prefix):
+def remove_prefix(s: str, prefix: str):
     if prefix and s.startswith(prefix):
         return s[len(prefix):]
     else:
         return s[:]
 
-def remove_suffix(s, suffix):
+
+def remove_suffix(s: str, suffix: str):
     """
-        s: <str>
-        suffix <str>
+        s: the original string
+        suffix: the suffix to be removed
     """
     if suffix and s.endswith(suffix):
         return s[:-len(suffix)]
     else:
         return s[:]
 
-def write_csv(path, data, mode='w', col_name=None):
+
+def write_csv(path: str, data: np.ndarray, mode='w', col_name=None):
     with open(path, mode) as f:
         writer = csv.writer(f)
         if col_name:
             writer.writerow(col_name)
         writer.writerows(data)
-    info("writing csv to %s" % path)
+    info("writing csv to {}".format(path))
 
 
-def write_excel(path, data, features):
+def write_excel(path: str, data: np.ndarray, features: List[str]):
     """
-        path: <str> the path of the output file
-        data: <numpy.ndarray>
-        features: <list> column names
+        path: the path of the output file
+        data: numpy.ndarray data
+        features: column names
     """
     writer = pd.ExcelWriter(path)
     _data = pd.DataFrame(data)
@@ -236,34 +239,34 @@ def timestamp():
     return time.time()
 
 
-def mse(gt, predict):
+def mse(gt: np.ndarray, predict: np.ndarray):
     """
-        gt: <numpy.ndarray>
-        predict: <numpy.ndarray>
+        gt: ground-truth values
+        predict: predictions
     """
     return metrics.mean_squared_error(gt, predict)
 
 
-def r2(gt, predict):
+def r2(gt: np.ndarray, predict: np.ndarray):
     """
-        gt: <numpy.ndarray>
-        predict: <numpy.ndarray>
+        gt: ground-truth values
+        predict: predictions
     """
     return metrics.r2_score(gt, predict)
 
 
-def mape(gt, predict):
+def mape(gt: np.ndarray, predict: np.ndarray):
     """
-        gt: <numpy.ndarray>
-        predict: <numpy.ndarray>
+        gt: ground-truth values
+        predict: predictions
     """
     return metrics.mean_absolute_percentage_error(gt, predict)
 
 
-def rmse(gt, predict):
+def rmse(gt: np.ndarray, predict: np.ndarray):
     """
-        gt: <numpy.ndarray>
-        predict: <numpy.ndarray>
+        gt: ground-truth values
+        predict: predictions
     """
     return np.mean(np.sqrt(np.power(gt - predict, 2)))
 
@@ -272,36 +275,36 @@ def round_power_of_two(x: int):
     return pow(2, ceil(log(x)/log(2)))
 
 
-def info(msg):
+def info(msg: str):
     """
-        msg: <str>
+        msg: message
     """
     print("[INFO]: {}".format(msg))
 
 
-def test(msg):
+def test(msg: str):
     """
         msg: <str>
     """
     print("[TEST]: {}".format(msg))
 
 
-def warn(msg):
+def warn(msg: str):
     """
-        msg: <str>
+        msg: message
     """
     print("[WARN]: {}".format(msg))
 
 
-def error(msg):
+def error(msg: str):
     """
-        msg: <str>
+        msg: message
     """
     print("[ERROR]: {}".format(msg))
     exit(1)
 
 
-def assert_error(msg):
+def assert_error(msg: str):
     return "[ERROR]: {}".format(msg)
 
 
