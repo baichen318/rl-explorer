@@ -1,3 +1,4 @@
+# Author: baichen318@gmail.com
 
 
 import os
@@ -323,7 +324,7 @@ class Gem5Wrapper(Simulation):
         if not if_exist(os.path.join(
                 self.macros["gem5-research-root"],
                 "build", "RISCV", self.macros["simulator"]
-            ), quiet=False
+            )
         ):
             error("The gem5 simulation is failed to generate. Please check your environment"
                 " to make sure you can compile GEM5 successfully!"

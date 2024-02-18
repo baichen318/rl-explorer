@@ -9,12 +9,12 @@ $ python3 calib.py -h
 
 - Generate the simulation data
 ```bash
-$ python3 -c ../configs/boom-macos.yml -m simulation
+$ python3 calib.py -c ../configs/boom-macos.yml -m simulation
 ```
 
 - Calibration
 ```bash
-$ python3 -c ../configs/boom-macos.yml -m calib
+$ python3 calib.py -c ../configs/boom-macos.yml -m calib
 ```
 
 ## Statistics

@@ -15,7 +15,7 @@ The solution qualities also outperform human implementations by at most 2.03× i
 The folder tree is shown below.
 
 ```bash
-towards-automated-risc-v-microarchitecture-design-with-reinforcement-learning
+rl-explorer
 ├── LICENSE
 ├── README.md
 ├── __init__.py

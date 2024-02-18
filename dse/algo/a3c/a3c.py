@@ -1,3 +1,4 @@
+# Author: baichen318@gmail.com
 
 
 import numpy as np
@@ -7,7 +8,7 @@ from dse.env.rocket.env import RocketEnv
 from collections import deque, OrderedDict
 from utils.utils import Timer, assert_error
 from torch.utils.tensorboard import SummaryWriter
-from dse.algo.a2c.functions import tensor_to_array
+from dse.algo.a3c.functions import tensor_to_array
 
 
 class Status(object):
@@ -267,7 +268,7 @@ class Status(object):
         self.update_action_prob(action_prob, episode)
 
 
-def train_a2c_impl(configs, agent, fixed_w, episode, status):
+def train_a3c_impl(configs, agent, fixed_w, episode, status):
     updated_w = agent.preference.generate_preference(
         agent.sample_size,
         fixed_w
@@ -292,12 +293,12 @@ def train_a2c_impl(configs, agent, fixed_w, episode, status):
     agent.sync_critic(episode)
 
 
-def train_a2c(agent, configs):
+def train_a3c(agent, configs):
     envs = agent.envs
     assert agent.num_step == \
         envs.safe_get_attr("dims_of_tunable_state"), \
             assert_error(": num_step {} vs " \
-                " tunabe state: {}".format(
+                "tunabe state: {}".format(
                     agent.num_step,
                     envs.safe_get_attr("dims_of_tunable_state")
                 )
@@ -369,11 +370,11 @@ def train_a2c(agent, configs):
                 state = next_state
 
             agent.anneal()
-            train_a2c_impl(configs, agent, fixed_w, episode, status)
+            train_a3c_impl(configs, agent, fixed_w, episode, status)
             status.update(agent, old_explore_w, action_prob, episode)
 
 
-def test_a2c(agent, configs):
+def test_a3c(agent, configs):
     envs = agent.envs
     assert agent.num_step == \
         envs.safe_get_attr("dims_of_tunable_state"), \
@@ -436,15 +437,15 @@ def test_a2c(agent, configs):
                 state = next_state
 
 
-def a2c(env, configs):
+def a3c(env, configs):
     if env == BOOMEnv:
-        from dse.algo.a2c.agent.boom import BOOMAgent as Agent
+        from dse.algo.a3c.agent.boom import BOOMAgent as Agent
     else:
         assert env == RocketEnv
-        from dse.algo.a2c.agent.rocket import RocketAgent as Agent
+        from dse.algo.a3c.agent.rocket import RocketAgent as Agent
     agent = Agent(configs, env)
 
     if configs["algo"]["mode"] == "train":
-        train_a2c(agent, configs)
+        train_a3c(agent, configs)
     else:
-        test_a2c(agent, configs)
+        test_a3c(agent, configs)

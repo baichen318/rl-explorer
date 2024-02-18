@@ -1,39 +1,41 @@
+# Author: baichen318@gmail.com
 
 
 import os
 import abc
+from typing import List
 
 
 class DesignSpace(abc.ABC):
-	def __init__(self, size, dims):
+	def __init__(self, size: int, dims: int):
 		"""
-			size: <int> total size of the design space
-			dims: <int> dimension of a microarchitecture embedding
+			size: total size of the design space
+			dims: dimension of a microarchitecture embedding
 		"""
 		self.size = size
 		self.dims = dims
 
 	@abc.abstractmethod
-	def idx_to_vec(self, idx):
+	def idx_to_vec(self, idx: int):
 		"""
 			transfer from an index to a vector
-			idx: <int>
+			idx: index
 		"""
 		raise NotImplementedError()
 
 	@abc.abstractmethod
-	def vec_to_idx(self, vec):
+	def vec_to_idx(self, vec: List[int]):
 		"""
 			transfer from a vector to an index
-			vec: <list> microarchitecture encoding
+			vec: microarchitecture encoding
 		"""
 		raise NotImplementedError()
 
 	@abc.abstractmethod
-	def generate_chisel_codes(self, batch):
+	def generate_chisel_codes(self, batch: List[int]):
 		"""
 			generate chisel codes w.r.t. code templates
-			batch: <list> list of indexes
+			batch: list of indexes
 		"""
 		raise NotImplementedError()
 
@@ -45,11 +47,11 @@ class Macros(abc.ABC):
 		self.macros["workstation-root"] = None
 
 	@abc.abstractmethod
-	def generate_core_cfg_impl(self, name, vec):
+	def generate_core_cfg_impl(self, name: str, vec: List[int]):
 		"""
 			core chisel codes template
-			name: <str> name of the core
-			vec: <list> microarchitecture encoding
+			name: name of the core
+			vec: microarchitecture encoding
 		"""
 		raise NotImplementedError()
 
