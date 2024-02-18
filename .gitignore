@@ -162,3 +162,7 @@ logs/
 misc/
 tools/models/boom/*.pdf
 tools/models/rocket/*.pdf
+baselines/
+handle_data.py
+visualizer.py
+
